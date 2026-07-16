@@ -6,11 +6,14 @@ Claude Code 하네스 뼈대입니다. 마감: 7/31.
 ## 구조
 
 ```
-CLAUDE.md                      프로젝트 헌법 (짧게 유지 — 60줄 목표)
+CLAUDE.md                      프로젝트 헌법 — 포인터 인덱스 (최소 규칙 + 참조 맵)
 specs/
   requirements.md              EARS 인수 기준 (진실 공급원)
   interview/question-bank.md   Deep Interview 질문 뱅크 (Phase 1)
-docs/adr/                      아키텍처 결정 기록 (WHY 박제)
+docs/
+  progress.md                  진행 원장 — 요구사항·참조 파일·상태 기록 (갱신 의무)
+  harness/changelog.md         하네스 변경 이력
+  adr/                         아키텍처 결정 기록 (WHY 박제)
 .claude/
   settings.json                hooks + permissions
   hooks/log_trajectory.py      [스텁①] 트래젝토리 로그 (Stop hook → JSONL)
