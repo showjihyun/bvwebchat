@@ -1,4 +1,5 @@
 .harness/logs/
+_workspace/
 .env
 .env.*
 node_modules/
