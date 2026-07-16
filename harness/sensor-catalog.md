@@ -20,9 +20,9 @@
 | 트래젝토리 로그 | Comp | 세션 종료(Stop) | hook | ✅ |
 | 스펙 동결 게이트 (🟡 존재 시 구현 차단) | Comp | 구현 파일 수정 직전(PreToolUse) + PR(CI fail) | hook exit 2 + ci.yml | ✅ |
 | 골든 정답 수정 승인 게이트 | Comp | evals/golden/** Edit·Write 시 | permissions (ask) | ✅ |
-| 파일 수정 후 빠른 검사 | Comp | 수정 직후(PostToolUse) | hook → check.sh --fast | 🟡 스택 확정 후 |
-| lint / typecheck | Comp | pre-commit·CI | check.sh | 🟡 스택 확정 후 |
-| 단위·통합 테스트 (트랙 A) | Comp | CI, PR 머지 게이트 | ci.yml | 🟡 스택 확정 후 |
+| 파일 수정 후 빠른 검사 | Comp | 수정 직후(PostToolUse) | hook → check.sh --fast (실측 1.4초) | ✅ 2026-07-17 |
+| lint / typecheck | Comp | CI (check.sh) | eslint + tsc --noEmit | ✅ 2026-07-17 |
+| 단위·통합 테스트 (트랙 A) | Comp | CI, PR 머지 게이트 | ci.yml → vitest run | ✅ 게이트 활성 (GA 케이스는 구현과 함께) |
 | 테스트-코드 동행 검사 (M3 프록시) | Comp | CI, PR | ci.yml (경고) | ✅ (경로 패턴은 ADR-0005 후 확정) |
 | 독립 평가 에이전트 (evaluator) | Inf | 각 RQ 구현 직후 (tdd-workflow Phase 3) | 오케스트레이터 스킬 | ✅ |
 | 트랙 B rubric 체크 | Inf | 하네스 변경 시·주간 | 사람 (수동) | ✅ 절차만 |

@@ -13,8 +13,10 @@
 - [x] ✅ **Phase 3 — ADR-0001~0005 승인** (2026-07-17, 스택: Node+TS/Socket.IO/React+Vite —
       결정 요약: `docs/adr/README.md`)
 - [ ] **Phase 3.5 — DESIGN.md 확보**: 클로드 디자인 산출물 → `docs/design/DESIGN.md` 커밋
-- [ ] **게이트 실질화**: `scripts/check.sh`, `ci.yml` TODO, `deploy.yml` 배포 스텝, `scripts/smoke.sh`
-      (참조: ADR-0001/0005, RQ-17)
+- [x] ✅ **게이트 실질화(검증)**: check.sh·ci.yml 실명령 + 스캐폴드 (2026-07-17,
+      실측: fast 1.4초/전체 3.2초 — ADR-0005 예산 내)
+- [ ] **게이트 실질화(배포)**: deploy.yml 배포 스텝·smoke.sh 구현 — 배포 서버
+      확정 후 (RQ-17: 사내망, 참조: ADR-0001)
 - [ ] **Phase 4~5 — RQ 구현**: 아래 작업 원장 (스펙 동결 게이트 해제 후 착수 가능)
 
 ## 작업 원장 — RQ 구현

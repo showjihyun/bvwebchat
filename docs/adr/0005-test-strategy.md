@@ -23,7 +23,8 @@ TDD(Red→Green→Refactor)가 헌법 규칙이고 tdd-workflow 파이프라인
    프로세스 안에서 기동하고 socket.io-client로 접속(실 네트워크 스택 불요).
    fake timer 허용(유예기간 등 시간 의존 로직 — ADR-0003). 모든 대기에
    상한(timeout)을 명시한다. 저장소(인메모리 버퍼)는 실제 구현을 그대로 사용.
-5. **속도 예산**: `check.sh --fast` 5초(변경 파일 lint+typecheck),
+5. **속도 예산**: `check.sh --fast` 5초(변경 파일 lint만 — typecheck는
+   프로그램 그래프 전역이라 파일 단위 분리가 불가능해 전체 검증에 위임),
    CI 게이트 3분(전체 lint+typecheck+test). 초과분은 게이트 밖(수동·야간)으로.
 6. **예외**: 문서·설정·순수 스타일 변경은 TDD 면제. 스파이크(탐색)는
    `spike/*` 브랜치에서만 — 머지 금지, 교훈만 가져와 TDD로 재구현.

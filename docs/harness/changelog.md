@@ -15,3 +15,4 @@
 | 2026-07-16 | 진행 원장(docs/progress.md) 신설 + CLAUDE.md 포인터 인덱스화 + 변경 이력 분리(이 파일) | CLAUDE.md, docs/ | 사용자 지시(최우선 규칙): 요구사항·참조 파일 기록 후 진행, CLAUDE.md 최소화 |
 | 2026-07-16 | 리뷰 후속 반영 — "읽지 않은 파일 단정 금지" 복원, 대화식 규칙에 하드 게이트 위계·이진 예외 명시, ADR 미작성 각주 | CLAUDE.md, docs/progress.md | PR #4·#5 독립 리뷰 지적 (major 1 + minor 2) |
 | 2026-07-17 | 스펙-코드 동행 규칙에 동결·ADR·하네스 전용 PR 예외 명문화 | CLAUDE.md | PR #7 리뷰 M-2 — spec-only PR과의 표면 충돌 해소 |
+| 2026-07-17 | 게이트 실질화 — 스캐폴드(TS/Vitest/ESLint) + check.sh·ci.yml 실명령, 예외 문구 조임(m-4), 스택 문답 기록(m-3) | package.json, scripts/check.sh, ci.yml, CLAUDE.md, answers.md | ADR-0005 승인에 따른 활성화 (실측: fast 1.4초/전체 3.2초) |

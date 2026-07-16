@@ -15,10 +15,9 @@ jobs:
           # 얕은 클론이면 "no merge base" 에러로 게이트가 오작동한다.
           fetch-depth: 0
 
-      # TODO(스택 확정 후): 런타임 셋업. 예)
-      # - uses: actions/setup-node@v4
-      #   with: { node-version: 22, cache: npm }
-      # - run: npm ci
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
 
       - name: 스펙 동결 게이트 (Deep Interview 미완료 시 구현 차단)
         run: |
