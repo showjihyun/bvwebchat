@@ -14,8 +14,9 @@ docs/adr/                      아키텍처 결정 기록 (WHY 박제)
 .claude/
   settings.json                hooks + permissions
   hooks/log_trajectory.py      [스텁①] 트래젝토리 로그 (Stop hook → JSONL)
-  agents/                      TDD 파이프라인 에이전트 (test-writer·coder=Sonnet 5, evaluator=Opus)
+  agents/                      에이전트 (test-writer·coder=Sonnet 5, evaluator·reviewer=Opus)
   skills/tdd-workflow/         RQ 구현 오케스트레이터 (Red→Green→독립 평가, 세션 격리)
+  skills/review-gate/          머지 전 독립 리뷰 게이트 (솔로 체제의 사람 리뷰 대체)
 evals/
   golden/track-a-product.jsonl [스텁②] 제품 행동 골든 케이스
   golden/track-b-harness.jsonl [스텁②] 하네스 행동 골든 태스크
@@ -23,7 +24,9 @@ harness/
   sensor-catalog.md            [스텁③] 센서 카탈로그 (가드레일 지도)
   metrics-baseline.md          [스텁④] 메트릭 베이스라인
 scripts/check.sh               스택 확정 후 채우는 검증 스크립트
+scripts/smoke.sh               배포 후 스모크 (트랙 A 골든 케이스 승격분)
 .github/workflows/ci.yml       PR 게이트 (스택 확정 후 활성화)
+.github/workflows/deploy.yml   CD — main 머지 시 배포 + 스모크 (배포 대상 확정 후)
 ```
 
 ## 사용 순서
@@ -45,6 +48,8 @@ scripts/check.sh               스택 확정 후 채우는 검증 스크립트
    구현은 `tdd-workflow` 스킬로 — test-writer·coder(Sonnet 5)와
    evaluator(Opus)가 **각각 별도 에이전트 세션**에서 Red→Green→독립 평가를
    수행한다. plan mode로 계획 승인 후 진행. 탐색은 서브에이전트에게.
+   **머지 전 `review-gate` 스킬로 reviewer(Opus) APPROVE 필수** (솔로 리뷰
+   게이트). 머지되면 deploy.yml이 배포 + 스모크(트랙 A 승격분)를 실행.
 6. **매 세션 종료 시**: Stop hook이 자동으로 `.harness/logs/`에 기록.
 7. **주간 회고**: 로그에서 이상 세션 발견 → 골든 케이스로 승격 →
    `harness/metrics-baseline.md` 숫자 갱신.

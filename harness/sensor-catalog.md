@@ -25,7 +25,8 @@
 | 테스트-코드 동행 검사 (M3 프록시) | Comp | CI, PR | ci.yml (경고) | ✅ (경로 패턴은 ADR-0005 후 확정) |
 | 독립 평가 에이전트 (evaluator) | Inf | 각 RQ 구현 직후 (tdd-workflow Phase 3) | 오케스트레이터 스킬 | ✅ |
 | 트랙 B rubric 체크 | Inf | 하네스 변경 시·주간 | 사람 (수동) | ✅ 절차만 |
-| 사람 코드 리뷰 | Inf | PR | 브랜치 보호 | 🟡 repo 설정 |
+| PR 리뷰 게이트 (reviewer, 솔로 대체) | Inf | PR 머지 전 (review-gate 스킬) | APPROVE 없이 머지 금지 + 브랜치 보호(status check `gate` 필수) | ✅ |
+| 배포 후 스모크 (트랙 A 승격) | Comp | main 머지 → 배포 직후 | deploy.yml → smoke.sh | 🟡 배포 대상(RQ-17) 확정 후 |
 
 ## 운영 규칙
 

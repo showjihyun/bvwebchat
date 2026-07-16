@@ -44,6 +44,8 @@ room 참여 채팅 + global 채팅을 지원하는 웹 채팅 앱. 마감 7/31.
 
 **트리거:** RQ 구현, 코딩, 테스트 작성·실행, 구현 평가·검증·QA 요청 시
 `tdd-workflow` 스킬을 사용하라. 스펙 인터뷰·ADR 작성·단순 질문은 직접 처리 가능.
+PR 머지 전에는 `review-gate` 스킬로 reviewer(Opus)의 APPROVE를 받는다 —
+솔로 체제의 리뷰 게이트이므로 우회 금지.
 
 **변경 이력:**
 | 날짜 | 변경 내용 | 대상 | 사유 |
@@ -52,3 +54,4 @@ room 참여 채팅 + global 채팅을 지원하는 웹 채팅 앱. 마감 7/31.
 | 2026-07-16 | TDD 파이프라인 하네스 구성 — test-writer·coder(Sonnet 5), evaluator(Opus) | .claude/agents, .claude/skills | 평가·테스트 세션 분리 + 모델 지정 (사용자 지시) |
 | 2026-07-16 | git 저장소 초기화 + hook 인터프리터 수정 (python3→python, bash→Git Bash 절대경로) | .git, .claude/settings.json | Windows에서 hook 무음 실패 (하네스 점검 결함 ②③) |
 | 2026-07-16 | CI fetch-depth:0, check.sh 권한 패턴 `:*`, 골든 파일 ask 게이트 | ci.yml, .claude/settings.json | 하네스 점검 결함 ④⑤⑥ 해소 |
+| 2026-07-16 | 솔로 리뷰 게이트(reviewer+review-gate) + CD 골격(deploy.yml+smoke.sh) + main 브랜치 보호 | .claude/agents, .claude/skills, .github/workflows, scripts | 1인 다역 체제 — 사람 리뷰 불가·CD 부재 보완 |

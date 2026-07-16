@@ -1,0 +1,34 @@
+# CD — main 머지 시 배포 + 배포 후 스모크.
+# 스택(ADR-0001)·배포 대상(RQ-17) 확정 후 TODO를 채우면 활성화된다.
+# 원칙: 배포의 성공 기준은 "프로세스가 떴다"가 아니라
+#       "골든 케이스가 프로덕션에서 통과한다" — 스모크 실패 = 배포 실패.
+name: deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # TODO(RQ-17·ADR-0001 확정 후): 런타임 셋업 + 빌드 + 배포. 예)
+      # - uses: actions/setup-node@v4
+      #   with: { node-version: 22, cache: npm }
+      # - run: npm ci && npm run build
+      # - run: <플랫폼 배포 명령 — fly deploy / vercel --prod / rsync 등>
+      #   (시크릿은 GitHub Secrets로 — 저장소에 커밋 금지)
+      - name: 배포 (미구성)
+        run: echo "[deploy] 배포 대상 미확정 — RQ-17 확정 + ADR 승인 후 이 스텝을 채우세요."
+
+  smoke:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 배포 후 스모크 (트랙 A 승격 케이스)
+        # TODO(배포 후): 저장소 Variables에 DEPLOY_URL 등록
+        run: bash scripts/smoke.sh "${{ vars.DEPLOY_URL || 'unset' }}"
