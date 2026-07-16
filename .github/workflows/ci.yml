@@ -1,0 +1,39 @@
+# PR 게이트 — 스택 확정(ADR-0001) 후 TODO를 채우면 활성화된다.
+# 원칙: 머지 게이트는 결정론적 센서(lint·test)만. 느린/추론적 검사는 게이트 밖.
+name: ci
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # TODO(스택 확정 후): 런타임 셋업. 예)
+      # - uses: actions/setup-node@v4
+      #   with: { node-version: 22, cache: npm }
+      # - run: npm ci
+
+      - name: 스펙-코드 동행 검사 (M2)
+        run: |
+          BASE="origin/${{ github.base_ref }}"
+          git fetch origin ${{ github.base_ref }} --depth=1
+          CHANGED=$(git diff --name-only "$BASE"...HEAD)
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -q '^src/' && ! echo "$CHANGED" | grep -qE '^(specs/|docs/adr/)'; then
+            echo "::warning::코드 변경에 스펙/ADR 변경이 없습니다. 스펙에 이미 있는 항목인지 PR 설명에 RQ-ID를 명시하세요."
+          fi
+
+      - name: 테스트-코드 동행 검사 (M3 프록시)
+        run: |
+          BASE="origin/${{ github.base_ref }}"
+          CHANGED=$(git diff --name-only "$BASE"...HEAD)
+          # TODO(ADR-0005 확정 후): 테스트 경로 패턴을 실제 레이아웃에 맞게 수정
+          if echo "$CHANGED" | grep -q '^src/' && ! echo "$CHANGED" | grep -qE '(^tests?/|\.(test|spec)\.)'; then
+            echo "::warning::구현(src/) 변경에 테스트 변경이 없습니다. TDD(테스트 먼저) 위반인지 확인하고, ADR-0005의 예외에 해당하면 PR 설명에 사유를 적으세요."
+          fi
+
+      - name: 검증 일괄 (lint + test)
+        run: bash scripts/check.sh
