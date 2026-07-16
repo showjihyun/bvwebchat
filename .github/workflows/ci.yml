@@ -10,6 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # three-dot diff(M2·M3)의 merge-base 계산에 전체 이력이 필요.
+          # 얕은 클론이면 "no merge base" 에러로 게이트가 오작동한다.
+          fetch-depth: 0
 
       # TODO(스택 확정 후): 런타임 셋업. 예)
       # - uses: actions/setup-node@v4
@@ -19,7 +23,6 @@ jobs:
       - name: 스펙-코드 동행 검사 (M2)
         run: |
           BASE="origin/${{ github.base_ref }}"
-          git fetch origin ${{ github.base_ref }} --depth=1
           CHANGED=$(git diff --name-only "$BASE"...HEAD)
           echo "$CHANGED"
           if echo "$CHANGED" | grep -q '^src/' && ! echo "$CHANGED" | grep -qE '^(specs/|docs/adr/)'; then

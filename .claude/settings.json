@@ -7,10 +7,12 @@
       "Bash(git status)",
       "Bash(git diff:*)",
       "Bash(git log:*)",
-      "Bash(bash scripts/check.sh)"
+      "Bash(bash scripts/check.sh:*)"
     ],
     "ask": [
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Edit(./evals/golden/**)",
+      "Write(./evals/golden/**)"
     ],
     "deny": [
       "Read(./.env)",

@@ -51,3 +51,4 @@ room 참여 채팅 + global 채팅을 지원하는 웹 채팅 앱. 마감 7/31.
 | 2026-07-16 | 인터뷰 G(테스트)·H(디자인) 섹션, ADR-0005 예약, GB-04/05, CI M3 검사 추가 | specs, docs/adr, evals, ci.yml | TDD 도입 준비 |
 | 2026-07-16 | TDD 파이프라인 하네스 구성 — test-writer·coder(Sonnet 5), evaluator(Opus) | .claude/agents, .claude/skills | 평가·테스트 세션 분리 + 모델 지정 (사용자 지시) |
 | 2026-07-16 | git 저장소 초기화 + hook 인터프리터 수정 (python3→python, bash→Git Bash 절대경로) | .git, .claude/settings.json | Windows에서 hook 무음 실패 (하네스 점검 결함 ②③) |
+| 2026-07-16 | CI fetch-depth:0, check.sh 권한 패턴 `:*`, 골든 파일 ask 게이트 | ci.yml, .claude/settings.json | 하네스 점검 결함 ④⑤⑥ 해소 |
