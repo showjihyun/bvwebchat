@@ -18,6 +18,7 @@
 | 이름 | 실행 | 배치 | 강제 수단 | 상태 |
 |---|---|---|---|---|
 | 트래젝토리 로그 | Comp | 세션 종료(Stop) | hook | ✅ |
+| 골든 정답 수정 승인 게이트 | Comp | evals/golden/** Edit·Write 시 | permissions (ask) | ✅ |
 | 파일 수정 후 빠른 검사 | Comp | 수정 직후(PostToolUse) | hook → check.sh --fast | 🟡 스택 확정 후 |
 | lint / typecheck | Comp | pre-commit·CI | check.sh | 🟡 스택 확정 후 |
 | 단위·통합 테스트 (트랙 A) | Comp | CI, PR 머지 게이트 | ci.yml | 🟡 스택 확정 후 |

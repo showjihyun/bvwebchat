@@ -14,3 +14,5 @@
 주간 회고에서 `.harness/logs/trajectory.jsonl`을 훑고,
 이상했던 세션의 입력을 여기 새 케이스로 추가한다.
 정답(then/rubric)은 반드시 사람이 쓴다 — 에이전트가 자기 정답을 쓰게 하지 않는다.
+(강제 수단: `.claude/settings.json` permissions가 `evals/golden/**` 수정을
+승인(ask) 게이트로 막는다 — 에이전트가 초안을 쓰더라도 사람 승인을 거친다.)
