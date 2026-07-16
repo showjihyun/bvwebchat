@@ -18,6 +18,7 @@
 | 이름 | 실행 | 배치 | 강제 수단 | 상태 |
 |---|---|---|---|---|
 | 트래젝토리 로그 | Comp | 세션 종료(Stop) | hook | ✅ |
+| 스펙 동결 게이트 (🟡 존재 시 구현 차단) | Comp | 구현 파일 수정 직전(PreToolUse) + PR(CI fail) | hook exit 2 + ci.yml | ✅ |
 | 골든 정답 수정 승인 게이트 | Comp | evals/golden/** Edit·Write 시 | permissions (ask) | ✅ |
 | 파일 수정 후 빠른 검사 | Comp | 수정 직후(PostToolUse) | hook → check.sh --fast | 🟡 스택 확정 후 |
 | lint / typecheck | Comp | pre-commit·CI | check.sh | 🟡 스택 확정 후 |

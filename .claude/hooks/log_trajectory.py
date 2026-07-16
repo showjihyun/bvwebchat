@@ -41,9 +41,11 @@ def summarize_transcript(path: str) -> dict:
 
 
 def main() -> None:
+    # stdin을 UTF-8 바이트로 명시 디코딩 — Windows 한국어 로케일(cp949)에서
+    # 한글 포함 페이로드의 디코딩 실패를 방지한다.
     try:
-        payload = json.load(sys.stdin)
-    except json.JSONDecodeError:
+        payload = json.loads(sys.stdin.buffer.read().decode("utf-8", errors="replace"))
+    except (json.JSONDecodeError, OSError):
         payload = {}
 
     record = {

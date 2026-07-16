@@ -29,7 +29,8 @@ Agent 도구 호출 시 `model` 파라미터를 명시한다 (에이전트 front
    - git 저장소가 초기화되어 있다 (커밋 순서 = M3 측정의 전제)
    - ADR-0001(전송/스택)·ADR-0005(테스트 전략)가 승인 상태다
    - `scripts/check.sh`에 실제 테스트 명령이 채워져 있다
-   - 대상 RQ가 ✅ 확정 상태다 (🟡 PENDING이면 Deep Interview가 먼저)
+   - 대상 RQ가 ✅ 확정 상태다 (🟡 PENDING이면 Deep Interview가 먼저 —
+     스펙 동결 게이트 hook·CI가 🟡 존재 시 구현 수정을 물리적으로 차단한다)
 2. **실행 모드 판별**:
    - `_workspace/{RQ-ID}/` 없음 → 초기 실행 (Phase 1부터)
    - 존재 + 부분 수정 요청 → 부분 재실행 (해당 Phase의 에이전트만 재호출,
