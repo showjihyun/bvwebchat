@@ -1,17 +1,22 @@
 #!/usr/bin/env bash
-# 검증 일괄 스크립트 — 스택 확정(ADR-0001~0004) 전까지는 no-op.
-# 확정 후: lint, typecheck, test를 여기에 채운다.
-#   --fast : 파일 수정 직후 hook에서 호출됨. 수 초 내에 끝나는 것만.
-#   (없음) : CI/수동 전체 검증.
+# 검증 일괄 스크립트 — ADR-0005 확정에 따라 실질화 (2026-07-17).
+#   --fast : 파일 수정 직후 hook에서 호출. 예산 5초 — 변경된 TS 파일만 lint.
+#   (없음) : 전체 검증 (lint + typecheck + test). CI 게이트와 동일. 예산 3분.
 set -euo pipefail
 
 if [ "${1:-}" = "--fast" ]; then
-  # TODO(스택 확정 후): 예) npx eslint --cache <변경파일> / ruff check
+  # 클론 직후 등 node_modules 부재 시 조용히 통과 — 환경 문제는 전체 검증이 잡는다
+  [ -d node_modules ] || exit 0
+  CHANGED=$( { git diff --name-only HEAD -- '*.ts' 2>/dev/null;
+               git ls-files --others --exclude-standard -- '*.ts'; } | sort -u )
+  FILES=""
+  for f in $CHANGED; do [ -f "$f" ] && FILES="$FILES $f"; done
+  [ -z "$FILES" ] && exit 0
+  # shellcheck disable=SC2086
+  npx eslint --cache $FILES
   exit 0
 fi
 
-echo "[check] 스택 미확정 — ADR-0001 승인 후 lint/test 명령을 채우세요."
-# TODO(스택 확정 후): 예)
-#   npm run lint
-#   npm test -- --reporter=dot
-exit 0
+npx eslint .
+npx tsc --noEmit
+npx vitest run

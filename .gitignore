@@ -4,3 +4,6 @@ _workspace/
 .env.*
 node_modules/
 __pycache__/
+dist/
+coverage/
+.eslintcache
