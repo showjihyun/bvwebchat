@@ -1,66 +1,45 @@
-# 웹 채팅 앱 — 프로젝트 헌법
+# 웹 채팅 앱 — 프로젝트 헌법 (포인터 인덱스)
 
-room 참여 채팅 + global 채팅을 지원하는 웹 채팅 앱. 마감 7/31.
-이 프로젝트는 하네스 워크플로우 Lesson & Learn을 겸한다.
+room 참여 채팅 + global 채팅 웹 앱. 마감 7/31. 하네스 워크플로우 L&L 겸용.
+이 파일은 최소한의 규칙과 **참조 경로**만 담는다 — 상세는 참조 파일에서 읽는다.
 
-## 진실 공급원 (우선순위 순)
+## 진실 공급원 (충돌 시 위가 이김)
 
-1. `specs/requirements.md` — 요구사항과 인수 기준. 여기 없는 기능은 만들지 않는다.
-2. `docs/adr/` — 아키텍처 결정. ADR과 모순되는 구현 금지. 바꾸려면 새 ADR 먼저.
-3. 이 파일 — 작업 방식 규칙.
+1. `specs/requirements.md` — 요구사항(EARS). 여기 없는 기능은 만들지 않는다.
+2. `docs/adr/` — 아키텍처 결정. 모순 구현 금지, 변경은 새 ADR 먼저.
+3. 이 파일 — 최상위 규칙. 모호하면 추측하지 말고 질문한다.
 
-충돌 시 위가 이긴다. 스펙이 모호하면 추측하지 말고 질문한다.
+## 참조 맵 — 작업 유형별 읽을 파일
 
-## 작업 방식
+| 작업 | 먼저 읽을 파일 |
+|---|---|
+| **모든 개발 작업 시작·완료** | `docs/progress.md` — 진행 원장, 갱신 의무 |
+| 스펙 인터뷰 | `specs/interview/question-bank.md` |
+| RQ 구현·테스트·평가 | `tdd-workflow` 스킬 (.claude/skills/) |
+| PR 머지 전 | `review-gate` 스킬 — APPROVE 없이 머지 금지 |
+| UI 작업 | `docs/design/DESIGN.md` (없으면 인터뷰 H 섹션 먼저) |
+| 골든 케이스·평가 | `evals/README.md` |
+| 하네스 점검·이력 | `harness/sensor-catalog.md`, `docs/harness/changelog.md` |
 
-- 스펙 항목 1개 = 브랜치 1개 = PR 1개. 스펙 변경과 코드 변경은 같은 PR에 담는다.
-- **단계 전환은 대화식으로**: 다음 단계(인터뷰→스펙 동결→ADR→디자인→구현→머지→배포)로
-  넘어가기 전, 사용자에게 선택지를 제시하고 결정을 받는다. 선택지는 **최소 3개**,
-  첫 번째에 권장안을 "(Recommended)"로 명시한다. AskUserQuestion 도구 사용 권장.
-  이유: 솔로 체제에서 방향 결정의 반론자는 사용자뿐이다 — 묻지 않고 진행하면
-  하네스가 사용자의 의도에서 조용히 이탈한다.
-- 3스텝 이상 작업은 plan mode로 계획을 먼저 승인받는다.
-- TDD: `specs/requirements.md`의 인수 기준을 테스트로 먼저 쓴다 (Red → Green → Refactor).
-- 코드베이스 탐색·조사는 서브에이전트에게 위임한다 (메인 컨텍스트 보호).
-- 완료 주장 시 반드시 테스트 실행 출력을 증거로 보여준다.
-- 읽지 않은 파일에 대해 단정하지 않는다.
+## 최상위 규칙
 
-## 명령어
+- **원장 우선**: 작업 시작 전 `docs/progress.md`에 요구사항·참조 파일을 확인·기록(🔄)
+  하고, 완료 시 체크(✅)한다. 원장에 없는 작업은 행을 추가한 뒤 시작한다.
+- **단계 전환은 대화식으로**: 다음 단계 진입 전 최소 3개 선택지를 제시하고
+  결정을 받는다. 첫 번째가 권장안 "(Recommended)". AskUserQuestion 권장.
+- 스펙 항목 1개 = 브랜치 1개 = PR 1개. 스펙 변경은 코드와 같은 PR에.
+- TDD (Red→Green→Refactor). 완료 주장에는 테스트 실행 출력을 증거로.
+- 3스텝 이상 작업은 plan mode 승인 먼저. 탐색·조사는 서브에이전트에게.
+- 하네스 변경 시 `docs/harness/changelog.md`에 기록.
 
-<!-- 스택 확정(ADR-0001~0004) 후 채울 것. 예시: -->
-<!-- 빌드: npm run build / 테스트: npm test / 린트: npm run lint -->
-- 검증 일괄: `bash scripts/check.sh`
-
-## 컨벤션
-
-- 커밋: `feat|fix|chore|test|docs(scope): 설명` (한글 허용)
-- 브랜치: `feat/<스펙ID>-<짧은설명>` 예: `feat/RQ-03-room-join`
-- 시크릿·환경 파일은 절대 읽거나 커밋하지 않는다 (permissions로도 차단됨).
-
-## 금지
+## 금지 (hook·CI·permissions가 강제)
 
 - 스펙에 없는 기능 추가 (스코프 크리프)
-- 실패 테스트를 스킵/삭제로 "해결"
-- ADR 없이 라이브러리·아키텍처 변경
-- Deep Interview 미완료(requirements.md에 🟡 존재) 상태에서 구현(src/tests) 착수
-  — hook(수정 차단)과 CI(머지 차단)가 강제한다
+- Deep Interview 미완료(🟡 존재) 상태의 구현(src/tests) 착수
+- 실패 테스트를 스킵/삭제로 "해결" · ADR 없는 라이브러리/아키텍처 변경
+- 시크릿·환경 파일 읽기/커밋
 
-## 하네스: TDD 구현 파이프라인
+## 명령어·컨벤션
 
-**목표:** 테스트 작성·구현·평가를 별도 에이전트 세션으로 격리해 자기 채점 오염을 차단.
-
-**트리거:** RQ 구현, 코딩, 테스트 작성·실행, 구현 평가·검증·QA 요청 시
-`tdd-workflow` 스킬을 사용하라. 스펙 인터뷰·ADR 작성·단순 질문은 직접 처리 가능.
-PR 머지 전에는 `review-gate` 스킬로 reviewer(Opus)의 APPROVE를 받는다 —
-솔로 체제의 리뷰 게이트이므로 우회 금지.
-
-**변경 이력:**
-| 날짜 | 변경 내용 | 대상 | 사유 |
-|------|----------|------|------|
-| 2026-07-16 | 인터뷰 G(테스트)·H(디자인) 섹션, ADR-0005 예약, GB-04/05, CI M3 검사 추가 | specs, docs/adr, evals, ci.yml | TDD 도입 준비 |
-| 2026-07-16 | TDD 파이프라인 하네스 구성 — test-writer·coder(Sonnet 5), evaluator(Opus) | .claude/agents, .claude/skills | 평가·테스트 세션 분리 + 모델 지정 (사용자 지시) |
-| 2026-07-16 | git 저장소 초기화 + hook 인터프리터 수정 (python3→python, bash→Git Bash 절대경로) | .git, .claude/settings.json | Windows에서 hook 무음 실패 (하네스 점검 결함 ②③) |
-| 2026-07-16 | CI fetch-depth:0, check.sh 권한 패턴 `:*`, 골든 파일 ask 게이트 | ci.yml, .claude/settings.json | 하네스 점검 결함 ④⑤⑥ 해소 |
-| 2026-07-16 | 솔로 리뷰 게이트(reviewer+review-gate) + CD 골격(deploy.yml+smoke.sh) + main 브랜치 보호 | .claude/agents, .claude/skills, .github/workflows, scripts | 1인 다역 체제 — 사람 리뷰 불가·CD 부재 보완 |
-| 2026-07-16 | 스펙 동결 게이트 — 🟡 존재 시 src/tests 수정(hook)·머지(CI) 차단 | .claude/hooks, settings.json, ci.yml | 인터뷰 생략 후 구현 착수 방지 (사용자 지시: 강제) |
-| 2026-07-16 | 단계 전환 대화식 규칙 — Recommended 포함 최소 3개 선택지 제시 | CLAUDE.md 작업 방식 | 사용자 지시: 매 다음 단계를 대화식으로 진행 |
+- 검증 일괄: `bash scripts/check.sh` (스택 확정 후 실질화)
+- 커밋: `feat|fix|chore|test|docs(scope): 설명` · 브랜치: `feat/<RQ-ID>-<설명>`
