@@ -1,15 +1,15 @@
 # ADR 목록
 
-인터뷰(Phase 1) 완료 후 아래 5개 갈림길부터 기록한다.
-번호는 예약만 해둔 것 — 내용은 인터뷰 답변이 결정한다.
+2026-07-17 Deep Interview 완료로 5개 갈림길 전부 승인됨
+(입력: `specs/interview/answers.md`).
 
-| 번호 | 갈림길 | 입력이 되는 질문 |
-|---|---|---|
-| ADR-0001 | 실시간 전송 계층 (WebSocket / SSE / 폴링) | RQ-14, RQ-16 |
-| ADR-0002 | 메시지 영속성 (인메모리 / 파일 / DB) | RQ-11 |
-| ADR-0003 | 사용자 식별·인증 방식 | RQ-10 |
-| ADR-0004 | global 채널 모델링 (특수 room vs 별개) | RQ-04, 질문 12 |
-| ADR-0005 | 테스트 전략 (레벨·더블·속도 예산·TDD 증거 규칙) | 질문 19~25, RQ-14, RQ-16 |
+| 번호 | 갈림길 | 결정 | 상태 |
+|---|---|---|---|
+| [ADR-0001](0001-realtime-transport.md) | 실시간 전송 계층 | Node.js+TS + Socket.IO (FE: React+Vite) | 승인 |
+| [ADR-0002](0002-message-persistence.md) | 메시지 영속성 | 인메모리 링버퍼 (room당 50개) | 승인 |
+| [ADR-0003](0003-user-identity.md) | 사용자 식별 | 닉네임 + 서버 발급 토큰, 퇴장 유예 30초 | 승인 |
+| [ADR-0004](0004-global-channel.md) | global 채널 모델링 | 예약된 상설 room (RQ-12/13 예외 명문화) | 승인 |
+| [ADR-0005](0005-test-strategy.md) | 테스트 전략 | 통합 중심 TDD, Vitest, 전송만 대역 | 승인 |
 
 디자인 스타일은 ADR이 아니라 `docs/design/DESIGN.md`(클로드 디자인
 산출물 — 질문 26~28)가 진실 공급원이다. UI 구현은 이를 이어받는다.

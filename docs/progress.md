@@ -9,8 +9,9 @@
 
 - [x] ✅ **Phase 1 — Deep Interview**: 🟡 8건 → 0건 (2026-07-17 완료,
       결과: `specs/interview/answers.md`)
-- [ ] 🔄 **Phase 2 — 스펙 동결**: requirements v1 확정 — 이 PR 머지 + v1 태그로 완료
-- [ ] **Phase 3 — ADR-0001~0005 승인** (참조: `docs/adr/README.md`, 템플릿 `docs/adr/0000-template.md`)
+- [x] ✅ **Phase 2 — 스펙 동결**: v1 태그 완료 (2026-07-17, PR #7)
+- [x] ✅ **Phase 3 — ADR-0001~0005 승인** (2026-07-17, 스택: Node+TS/Socket.IO/React+Vite —
+      결정 요약: `docs/adr/README.md`)
 - [ ] **Phase 3.5 — DESIGN.md 확보**: 클로드 디자인 산출물 → `docs/design/DESIGN.md` 커밋
 - [ ] **게이트 실질화**: `scripts/check.sh`, `ci.yml` TODO, `deploy.yml` 배포 스텝, `scripts/smoke.sh`
       (참조: ADR-0001/0005, RQ-17)
@@ -19,7 +20,7 @@
 ## 작업 원장 — RQ 구현
 
 > 착수 시 `tdd-workflow` 스킬 사용 (Red→Green→평가→review-gate). 브랜치 `feat/RQ-XX-*`.
-> 참조 컬럼의 ADR-0001~0005는 Phase 3에서 승인 예정 — 현재 미작성 (docs/adr/README.md 예약표 참조).
+> 참조 컬럼의 ADR-0001~0005는 2026-07-17 전부 승인됨 (docs/adr/).
 
 | RQ | 내용 | 상태 | 참조 파일 | 산출물/PR |
 |---|---|---|---|---|
