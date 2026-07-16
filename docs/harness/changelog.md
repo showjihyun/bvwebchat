@@ -13,3 +13,4 @@
 | 2026-07-16 | 스펙 동결 게이트 — 🟡 존재 시 src/tests 수정(hook)·머지(CI) 차단 | .claude/hooks, settings.json, ci.yml | 인터뷰 생략 후 구현 착수 방지 (사용자 지시: 강제) |
 | 2026-07-16 | 단계 전환 대화식 규칙 — Recommended 포함 최소 3개 선택지 제시 | CLAUDE.md 작업 방식 | 사용자 지시: 매 다음 단계를 대화식으로 진행 |
 | 2026-07-16 | 진행 원장(docs/progress.md) 신설 + CLAUDE.md 포인터 인덱스화 + 변경 이력 분리(이 파일) | CLAUDE.md, docs/ | 사용자 지시(최우선 규칙): 요구사항·참조 파일 기록 후 진행, CLAUDE.md 최소화 |
+| 2026-07-16 | 리뷰 후속 반영 — "읽지 않은 파일 단정 금지" 복원, 대화식 규칙에 하드 게이트 위계·이진 예외 명시, ADR 미작성 각주 | CLAUDE.md, docs/progress.md | PR #4·#5 독립 리뷰 지적 (major 1 + minor 2) |
