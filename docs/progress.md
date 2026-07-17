@@ -40,7 +40,7 @@
 | RQ-13 | room 목록 공개·이름 고유 | ⬜ | requirements §2 | |
 | RQ-14 | room 내 순서 보장 | ⬜ | requirements §2, GA-07, ADR-0001(예정) | |
 | RQ-15 | 참여자 목록 표시 | ⬜ | requirements §2 | |
-| RQ-18 | 안 읽음 개수 (참여 room+global, 열면 0, 새로고침 유지) | ⬜ | requirements §2-1, GA-12~16, ADR-0003 | 스펙 v1.1 |
+| RQ-18 | 안 읽음 개수 (활성 room 외 +1, 열면 0, 상한 50) | ⬜ | requirements §2-1, GA-12~18, ADR-0003(활성 room 정의) | 스펙 v1.1 |
 
 > RQ-16(동시 100명)·RQ-17(사내망 단일 서버)은 독립 구현 항목이 아니라
 > ADR-0001과 "게이트 실질화"(deploy.yml·smoke.sh)의 제약 조건으로 반영한다.

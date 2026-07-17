@@ -19,3 +19,4 @@
 | 2026-07-17 | 디자인 hand-off 브리프 + 절차 문서화 (Step 1~4 + 검증 체크리스트) | docs/design/handoff-brief.md, CLAUDE.md 참조 맵 | Phase 3.5 — 클로드 디자인 선행 방식(인터뷰 Q26)의 인수인계 절차 박제 |
 | 2026-07-17 | 디자인 인터뷰(D1~D16) 추가 + 브리프 §3을 구체적 디자인 방향으로 재작성 | specs/interview/design-answers.md, docs/design/handoff-brief.md | 초판 브리프가 요구사항만 담아 몰개성한 산출물 위험 — H섹션이 "어떻게 확보"만 묻고 "어때야 하는지"를 안 물은 공백 |
 | 2026-07-17 | 스펙 v1.1 — RQ-18(안 읽음 개수) 신설, ADR-0003 세션 상태 확장, GA-12~16, D13 개정 | specs/requirements.md, docs/adr/0003, evals/golden, design-answers.md | 사용자 요청: 숫자 배지 채택 — 표시가 아닌 상태 추적이라 스펙 개정이 선행돼야 함 |
+| 2026-07-17 | PR #11 리뷰 처방 반영 — ADR-0003에 활성 room 정의, RQ-18 상한 50·수명 정정, 동행 규칙에 스펙 개정 예외 명문화, M2 측정식 축소, 브리프 3건 정정(폰트·아바타·체크리스트), Q37 교훈 정정·Q38 신설 | requirements, ADR-0003, CLAUDE.md, metrics-baseline, handoff-brief, question-bank, golden | 리뷰 major 6·minor 7 — "보고 있는 room" 미정의로 test-writer가 멈출 상태였음 |
