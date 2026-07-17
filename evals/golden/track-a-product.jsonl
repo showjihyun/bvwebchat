@@ -8,4 +8,9 @@
 {"id":"GA-08","spec":"RQ-11","given":"room-A에 메시지 5개 존재 (인메모리)","when":"user3이 room-A에 새로 참여","then":"최근 50개 한도 내이므로 5개 전부 히스토리로 표시","verify":"integration_test","status":"todo"}
 {"id":"GA-09","spec":"RQ-10","given":"닉네임 미입력(무명) 사용자","when":"room 참여 시도","then":"닉네임 입력 전에는 참여 불가, 닉네임 입력만으로 참여 허용 (계정·비밀번호 불요)","verify":"integration_test","status":"todo"}
 {"id":"GA-11","spec":"RQ-10","given":"user1이 닉네임 alice로 접속 중","when":"다른 브라우저에서 alice로 접속 시도","then":"두 번째 사용자는 자동 접미사가 붙은 고유 닉네임(예: alice-2)을 부여받음","verify":"integration_test","status":"todo"}
+{"id":"GA-12","spec":"RQ-18","given":"user1이 room-A와 room-B에 참여, 현재 room-A를 보고 있음","when":"user2가 room-B에 메시지 2개 전송","then":"user1의 room-B 안 읽음 개수가 2가 됨 (보고 있는 room-A는 0 유지)","verify":"integration_test","status":"todo"}
+{"id":"GA-13","spec":"RQ-18","given":"user1의 room-B 안 읽음 개수가 2인 상태","when":"user1이 room-B를 염","then":"room-B 안 읽음 개수가 0으로 초기화됨","verify":"integration_test","status":"todo"}
+{"id":"GA-14","spec":"RQ-18","given":"user1의 room-B 안 읽음 개수가 2인 상태","when":"user1이 새로고침(동일 세션 토큰으로 재접속)","then":"room-B 안 읽음 개수가 2로 복원됨 (서버 프로세스 유지 중)","verify":"integration_test","status":"todo"}
+{"id":"GA-15","spec":"RQ-18","given":"user1은 room-A에만 참여, room-B에는 미참여 (현재 room-A를 보고 있음)","when":"user2가 room-B에 메시지 전송","then":"user1에게 room-B 안 읽음 개수가 생기지 않음 — 미참여 room은 대상 아님 (RQ-02 격리)","verify":"integration_test","status":"todo"}
+{"id":"GA-16","spec":"RQ-18","given":"user1이 room-A를 보고 있음 (global 자동 참여 상태)","when":"user2가 global에 메시지 전송","then":"user1의 global 안 읽음 개수가 1이 됨 (room-A 대화에는 섞이지 않음)","verify":"integration_test","status":"todo"}
 {"id":"GA-10","spec":"RQ-02","given":"악의적 클라이언트가 미참여 room-A로 직접 전송 시도(서버 API 직접 호출)","when":"전송 요청","then":"서버가 거부 — room 격리는 클라이언트가 아닌 서버가 강제","verify":"integration_test","status":"todo"}
