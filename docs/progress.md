@@ -12,9 +12,10 @@
 - [x] ✅ **Phase 2 — 스펙 동결**: v1 태그 완료 (2026-07-17, PR #7)
 - [x] ✅ **Phase 3 — ADR-0001~0005 승인** (2026-07-17, 스택: Node+TS/Socket.IO/React+Vite —
       결정 요약: `docs/adr/README.md`)
-- [ ] 🔄 **Phase 3.5 — DESIGN.md 확보**: 브리프 준비 완료(2026-07-17,
-      `docs/design/handoff-brief.md`) → **사용자가 클로드 디자인에서 작업** →
-      산출물을 `docs/design/DESIGN.md`로 커밋 (절차: 브리프 문서 §4)
+- [ ] 🔄 **Phase 3.5 — DESIGN.md 확보**: 디자인 인터뷰(D1~D16) + 브리프 완료
+      (2026-07-17, `specs/interview/design-answers.md`, `docs/design/handoff-brief.md`)
+      → **사용자가 클로드 디자인에서 작업** → 산출물을 `docs/design/DESIGN.md`로
+      커밋 (절차: 브리프 §4)
 - [x] ✅ **게이트 실질화(검증)**: check.sh·ci.yml 실명령 + 스캐폴드 (2026-07-17,
       실측: fast 1.4초/전체 3.2초 — ADR-0005 예산 내)
 - [ ] **게이트 실질화(배포)**: deploy.yml 배포 스텝·smoke.sh 구현 — 배포 서버
