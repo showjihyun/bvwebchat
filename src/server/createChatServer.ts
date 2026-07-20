@@ -65,6 +65,12 @@ function handleMessage(io: ChatServer, socket: ChatSocket, payload: MessagePaylo
     return;
   }
 
+  // room 격리는 서버가 강제한다 (RQ-02): 발신 소켓이 payload.room의 실제
+  // 멤버가 아니면 브로드캐스트를 생략한다.
+  if (!socket.rooms.has(payload.room)) {
+    return;
+  }
+
   const message: ChatMessage = {
     room: payload.room,
     nickname,
