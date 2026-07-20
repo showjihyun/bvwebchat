@@ -242,16 +242,6 @@ input,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.room-item.unread .name {
-  font-weight: 600;
-}
-.unread-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-accent);
-  flex: none;
-}
 .rooms-footer {
   flex: none;
   padding: var(--space-4);
@@ -278,10 +268,6 @@ input,
   font-size: 15px;
   font-weight: 700;
 }
-.chat-head-sub {
-  font-size: 12px;
-  color: var(--color-text-muted);
-}
 .msg-list {
   flex: 1;
   overflow-y: auto;
@@ -291,14 +277,14 @@ input,
   justify-content: flex-end;
 }
 .msg-row {
-  padding: var(--space-1) var(--space-6);
+  padding: 3px var(--space-6);
   min-height: 26px;
 }
 .msg-row.grouped {
   padding-left: 56px;
 }
 .msg-row:hover {
-  background: #f6f7f8;
+  background: var(--color-bg-hover);
 }
 .msg-lead {
   padding-top: var(--space-4);
@@ -329,12 +315,6 @@ input,
   background: var(--color-bg-selected);
   border-radius: 3px;
   padding: 1px 5px;
-}
-.sys-row {
-  padding: var(--space-3) var(--space-6);
-  text-align: center;
-  font-size: 12px;
-  color: var(--color-text-muted);
 }
 .empty-room {
   margin: auto;

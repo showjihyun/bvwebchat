@@ -49,6 +49,9 @@ export interface ChatState {
 export function useChat(nickname: string): ChatState {
   const socketRef = useRef<ChatSocket | null>(null);
   const roomsRef = useRef<string[]>([]);
+  // activeRoom을 ref로 미러링 — sendMessage가 상태 업데이터(순수해야 함) 밖에서
+  // 현재 room을 읽어 emit하기 위함. StrictMode 이중 호출로 인한 중복 전송 방지.
+  const activeRoomRef = useRef<string | null>(null);
   const [status, setStatus] = useState<ConnStatus>('connecting');
   const [rooms, setRooms] = useState<string[]>([]);
   const [activeRoom, setActiveRoomState] = useState<string | null>(null);
@@ -93,37 +96,46 @@ export function useChat(nickname: string): ChatState {
     };
   }, [nickname]);
 
+  const selectRoom = useCallback((room: string) => {
+    activeRoomRef.current = room;
+    setActiveRoomState(room);
+  }, []);
+
   const joinRoom = useCallback(
     (room: string) => {
       const name = room.trim();
       if (!name || roomsRef.current.includes(name)) {
-        if (name) setActiveRoomState(name);
+        if (name) selectRoom(name);
         return;
       }
       const socket = socketRef.current;
       socket?.emit('join', { room: name, nickname }, () => undefined);
       roomsRef.current = [...roomsRef.current, name];
       setRooms(roomsRef.current);
-      setActiveRoomState(name);
+      selectRoom(name);
       setMessagesByRoom((prev) => (prev[name] ? prev : { ...prev, [name]: [] }));
     },
-    [nickname],
+    [nickname, selectRoom],
   );
-
-  const setActiveRoom = useCallback((room: string) => setActiveRoomState(room), []);
 
   const sendMessage = useCallback((body: string) => {
     const text = body.trim();
+    const room = activeRoomRef.current;
     const socket = socketRef.current;
-    if (!text || !socket) return;
-    setActiveRoomState((room) => {
-      if (room) socket.emit('message', { room, body: text });
-      return room;
-    });
+    if (!text || !room || !socket) return;
+    socket.emit('message', { room, body: text });
   }, []);
 
   return useMemo(
-    () => ({ status, rooms, activeRoom, messagesByRoom, joinRoom, setActiveRoom, sendMessage }),
-    [status, rooms, activeRoom, messagesByRoom, joinRoom, setActiveRoom, sendMessage],
+    () => ({
+      status,
+      rooms,
+      activeRoom,
+      messagesByRoom,
+      joinRoom,
+      setActiveRoom: selectRoom,
+      sendMessage,
+    }),
+    [status, rooms, activeRoom, messagesByRoom, joinRoom, selectRoom, sendMessage],
   );
 }
