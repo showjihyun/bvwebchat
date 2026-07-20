@@ -2,7 +2,7 @@
 {"id":"GA-02","spec":"RQ-02","given":"user1은 room-A 참여, user2는 어떤 room에도 미참여","when":"user1이 room-A에 메시지 전송","then":"user2는 수신하지 않음","verify":"integration_test","status":"todo"}
 {"id":"GA-03","spec":"RQ-03","given":"user1·user2가 room-A 참여 후 user2가 퇴장","when":"user1이 room-A에 메시지 전송","then":"user2는 수신하지 않음","verify":"integration_test","status":"todo"}
 {"id":"GA-04","spec":"RQ-04","given":"user1은 room-A, user2는 room-B, user3은 room 미참여 (전원 접속 중)","when":"user1이 global에 메시지 전송","then":"user2·user3 모두 수신","verify":"integration_test","status":"todo"}
-{"id":"GA-05","spec":"RQ-01","given":"user1 미참여 상태","when":"user1이 room-A 참여 후 즉시 user2가 room-A에 전송","then":"user1이 수신","verify":"integration_test","status":"todo"}
+{"id":"GA-05","spec":"RQ-01","given":"user1 미참여 상태","when":"user1이 room-A 참여 후 즉시 user2가 room-A에 전송","then":"user1이 수신","verify":"tests/integration/rq-01-room-join.test.ts","status":"done"}
 {"id":"GA-06","spec":"RQ-02","given":"동일 사용자가 두 room(A·B)에 동시 참여","when":"room-A에만 메시지 발생","then":"room-B 화면/스트림에 섞이지 않음","verify":"integration_test","status":"todo"}
 {"id":"GA-07","spec":"RQ-14","given":"user1이 room-A에 연속으로 메시지 3개 전송","when":"room-A 참여자 user2가 수신","then":"서버 도착 순서와 동일한 순서로 3개 수신 (room 내 순서 보장)","verify":"integration_test","status":"todo"}
 {"id":"GA-08","spec":"RQ-11","given":"room-A에 메시지 5개 존재 (인메모리)","when":"user3이 room-A에 새로 참여","then":"최근 50개 한도 내이므로 5개 전부 히스토리로 표시","verify":"integration_test","status":"todo"}
