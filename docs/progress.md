@@ -36,9 +36,9 @@
 | RQ-01 | room 참여 → 수신자 등록 | ✅ | requirements.md §1, GA-05, ADR-0001 | PR #13 머지 · src/server/createChatServer.ts · GA-05 done |
 | RQ-02 | room 메시지 격리 전달 | ✅ | requirements.md §1, GA-01/02/06/10, ADR-0001 | PR #16 머지 · GA-10 이월 구멍 닫음(발신자 `socket.rooms.has` 검증) · GA-01/02/06/10 done |
 | RQ-03 | 퇴장 후 수신 차단 | ✅ | requirements.md §1, GA-03, GB-02 | PR #17 머지 · leave 이벤트(`socket.leave`) · GA-03 done |
-| RQ-04 | global 전체 전달 | 🔄 | requirements.md §1, GA-04, ADR-0004 | PR #18 (Red→Green→평가 PASS) · 접속 시 global 자동 참여 + leave 거부(ADR-0004) · GA-04 done |
+| RQ-04 | global 전체 전달 | ✅ | requirements.md §1, GA-04, ADR-0004 | PR #18 머지 · 접속 시 global 자동 참여 + leave 거부(ADR-0004) · GA-04 done |
 | RQ-05 | 7/31 배포 가능 | ⬜ | deploy.yml, smoke.sh, RQ-17 | |
-| RQ-10 | 닉네임 식별·자동 접미사·새로고침 유지 | ⬜ | requirements §2, GA-09/11, ADR-0003(예정) | |
+| RQ-10 | 닉네임 식별·자동 접미사·새로고침 유지 | 🔄 | requirements §2, GA-09/11, ADR-0003 | PR #19 (Red→Green→평가 PASS) · identify 이벤트(GA-09/11 done) · ⚠️ **미완**: 새로고침 복원(3번째 문장)·세션 토큰·30초 유예·활성 room = ADR-0003 후속(골든 없음+클라 작업 필요). RQ-04 minor-1(global-only 발신) 해소 |
 | RQ-11 | 입장 시 최근 50개 히스토리 (인메모리) | ⬜ | requirements §2, GA-08, ADR-0002(예정) | |
 | RQ-12 | room 자유 생성 + 빈 room 자동 삭제 | ⬜ | requirements §2 | |
 | RQ-13 | room 목록 공개·이름 고유 | ⬜ | requirements §2 | |
