@@ -14,7 +14,9 @@ export const GLOBAL_ROOM: RoomName = 'global';
  */
 export interface ChatMessage {
   room: RoomName;
-  /** 서버가 고유화(자동 접미사)한 닉네임 (RQ-10, ADR-0003) */
+  /** 서버가 join 시 이 소켓에 연결한 발신 닉네임. identify(RQ-10)로 고유화된
+   *  값을 쓰는 것은 클라이언트 관례이며, 서버 발급 토큰으로 강제하는 것은
+   *  ADR-0003 세션 토큰 후속(RQ-10 잔여)에서 닫는다. */
   nickname: string;
   body: string;
 }
