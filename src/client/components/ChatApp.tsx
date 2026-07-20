@@ -15,6 +15,7 @@ export function ChatApp({ nickname }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
 
   const activeMessages = chat.activeRoom ? (chat.messagesByRoom[chat.activeRoom] ?? []) : [];
+  const activeParticipants = chat.activeRoom ? (chat.participantsByRoom[chat.activeRoom] ?? []) : [];
 
   return (
     <div className="app-shell">
@@ -32,7 +33,11 @@ export function ChatApp({ nickname }: Props) {
         onSend={chat.sendMessage}
         onNewRoom={() => setModalOpen(true)}
       />
-      <ParticipantList nickname={nickname} hasRoom={chat.activeRoom !== null} />
+      <ParticipantList
+        nickname={nickname}
+        hasRoom={chat.activeRoom !== null}
+        participants={activeParticipants}
+      />
       {modalOpen && (
         <JoinRoomModal
           existingRooms={chat.rooms}

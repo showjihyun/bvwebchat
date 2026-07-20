@@ -5,6 +5,10 @@ import type { ChatMessage } from '../shared/types';
 // 서버 계약(src/server/createChatServer.ts)과 동일한 이벤트 shape.
 interface ServerToClientEvents {
   message: (payload: ChatMessage) => void;
+  // 참여자 변경(join/leave/disconnect) 시 서버가 room 멤버에게 방송 (RQ-15).
+  // 서버는 founding(0→1) 최초 join은 방송하지 않으므로, 혼자인 사용자의
+  // "본인만" 목록은 클라이언트가 join 시 seed한다 (아래 joinRoom).
+  participants: (payload: { room: string; participants: string[] }) => void;
 }
 interface ClientToServerEvents {
   join: (
@@ -35,6 +39,7 @@ export interface ChatState {
   rooms: string[];
   activeRoom: string | null;
   messagesByRoom: Record<string, ClientMessage[]>;
+  participantsByRoom: Record<string, string[]>;
   joinRoom: (room: string) => void;
   setActiveRoom: (room: string) => void;
   sendMessage: (body: string) => void;
@@ -46,7 +51,8 @@ export interface ChatState {
  *   단위이므로 재연결 = 새 소켓 = 재등록 필요).
  * - 최초 room 참여 시 join ack의 히스토리(최근 50개, RQ-11)를 기존 앞에 prepend.
  *   재연결 재join은 이미 화면에 있는 메시지와 중복을 피해 히스토리를 무시한다.
- * - 참여자 목록·안 읽음·닉네임 고유화는 각각 RQ-15/18/10 서버 기능이 필요해 범위 밖이다.
+ * - 참여자 목록(RQ-15): `participants` 방송을 room별로 반영. 안 읽음·닉네임
+ *   고유화 UI는 각각 RQ-18/10 서버 기능이 필요해 범위 밖이다.
  */
 export function useChat(nickname: string): ChatState {
   const socketRef = useRef<ChatSocket | null>(null);
@@ -58,6 +64,7 @@ export function useChat(nickname: string): ChatState {
   const [rooms, setRooms] = useState<string[]>([]);
   const [activeRoom, setActiveRoomState] = useState<string | null>(null);
   const [messagesByRoom, setMessagesByRoom] = useState<Record<string, ClientMessage[]>>({});
+  const [participantsByRoom, setParticipantsByRoom] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     // Vite proxy(/socket.io → :3001)를 통해 same-origin으로 접속.
@@ -90,6 +97,11 @@ export function useChat(nickname: string): ChatState {
         ...prev,
         [msg.room]: [...(prev[msg.room] ?? []), msg],
       }));
+    });
+
+    socket.on('participants', (payload) => {
+      // 서버가 보낸 목록이 권위 있는 상태 — seed/이전 값을 대체.
+      setParticipantsByRoom((prev) => ({ ...prev, [payload.room]: payload.participants }));
     });
 
     return () => {
@@ -126,6 +138,9 @@ export function useChat(nickname: string): ChatState {
       setRooms(roomsRef.current);
       selectRoom(name);
       setMessagesByRoom((prev) => (prev[name] ? prev : { ...prev, [name]: [] }));
+      // 혼자 입장(founding join)은 서버가 방송하지 않으므로 본인을 seed —
+      // 두 번째 참여자가 오면 서버 방송(participants)이 권위 목록으로 대체한다.
+      setParticipantsByRoom((prev) => (prev[name] ? prev : { ...prev, [name]: [nickname] }));
     },
     [nickname, selectRoom],
   );
@@ -144,10 +159,11 @@ export function useChat(nickname: string): ChatState {
       rooms,
       activeRoom,
       messagesByRoom,
+      participantsByRoom,
       joinRoom,
       setActiveRoom: selectRoom,
       sendMessage,
     }),
-    [status, rooms, activeRoom, messagesByRoom, joinRoom, selectRoom, sendMessage],
+    [status, rooms, activeRoom, messagesByRoom, participantsByRoom, joinRoom, selectRoom, sendMessage],
   );
 }
