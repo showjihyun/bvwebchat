@@ -1,5 +1,7 @@
 .harness/logs/
 _workspace/
+*.zip
+design-handoff*/
 .env
 .env.*
 node_modules/
