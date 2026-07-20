@@ -20,7 +20,8 @@
       실측: fast 1.4초/전체 3.2초 — ADR-0005 예산 내)
 - [ ] **게이트 실질화(배포)**: deploy.yml 배포 스텝·smoke.sh 구현 — 배포 서버
       확정 후 (RQ-17: 사내망, 참조: ADR-0001)
-- [ ] **Phase 4~5 — RQ 구현**: 아래 작업 원장 (스펙 동결 게이트 해제 후 착수 가능)
+- [ ] 🔄 **Phase 4~5 — RQ 구현**: 아래 작업 원장. **RQ-01 ✅ 완료**
+      (2026-07-20, PR #13 — 첫 실제 코드). 다음: RQ-02
 
 ## 작업 원장 — RQ 구현
 
@@ -29,7 +30,7 @@
 
 | RQ | 내용 | 상태 | 참조 파일 | 산출물/PR |
 |---|---|---|---|---|
-| RQ-01 | room 참여 → 수신자 등록 | 🔄 | requirements.md §1, GA-05, ADR-0001 | PR #13 (Red→Green→평가 PASS) · src/server/createChatServer.ts |
+| RQ-01 | room 참여 → 수신자 등록 | ✅ | requirements.md §1, GA-05, ADR-0001 | PR #13 머지 · src/server/createChatServer.ts · GA-05 done |
 | RQ-02 | room 메시지 격리 전달 | ⬜ | requirements.md §1, GA-01/02/06/10, ADR-0001 | ⚠️ 이월(PR #13 리뷰): message 핸들러에 발신자 room 멤버십 검증(`socket.rooms.has`) 추가 필수 — GA-10(서버측 격리 강제) 게이트 |
 | RQ-03 | 퇴장 후 수신 차단 | ⬜ | requirements.md §1, GA-03, GB-02 | |
 | RQ-04 | global 전체 전달 | ⬜ | requirements.md §1, GA-04, ADR-0004 | |

@@ -18,7 +18,14 @@ TDD(Red→Green→Refactor)가 헌법 규칙이고 tdd-workflow 파이프라인
 2. **러너**: **Vitest** — Vite 생태계와 일관, TS 네이티브, fake timer 내장.
    테스트 위치: `tests/integration/`, `tests/unit/`. 테스트 이름에 RQ-ID·GA-ID 포함.
 3. **Red 증거**: 테스트 커밋이 구현 커밋보다 선행 **그리고** PR에 Red 실행
-   출력 첨부 (GB-02 rubric = M3 측정 방식).
+   출력 첨부 (GB-02 rubric = M3 측정 방식). Red 증거는 `vitest run`과
+   **`tsc --noEmit`를 함께** 남긴다. **tsc 오류의 정상 Red 판정**: 오류가
+   구현 대상 모듈의 미해결(TS2307 모듈 없음 / TS2305 export 없음 — 오직 아직
+   만들지 않은 src/ 임포트 대상)에 **국한되면** 정당한 Red다(그린필드 신규 모듈은
+   필연적으로 이 오류를 낸다). 그 외 위치의 타입 오류(테스트 파일 자체 로직·목
+   시그니처 불일치)는 "깨진 테스트"이므로 Red로 인정하지 않는다 — test-writer가
+   고친다. 근거: 2026-07-17 RQ-01의 `disconnect(): this` 목 시그니처 버그가
+   vitest만 돌린 Red를 통과해 coder 단계에서 발견됨(=테스트 파일 자체 타입 오류).
 4. **테스트 더블**: 전송 계층만 대체 허용 — Socket.IO 서버를 테스트
    프로세스 안에서 기동하고 socket.io-client로 접속(실 네트워크 스택 불요).
    fake timer 허용(유예기간 등 시간 의존 로직 — ADR-0003). 모든 대기에
