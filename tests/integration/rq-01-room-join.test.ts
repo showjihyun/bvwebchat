@@ -97,8 +97,12 @@ describe('RQ-01 / GA-05: room 참여 직후 도착한 메시지를 수신한다'
 
     const user1 = ioClient(url, { forceNew: true });
     const user2 = ioClient(url, { forceNew: true });
-    cleanupFns.push(() => user1.disconnect());
-    cleanupFns.push(() => user2.disconnect());
+    cleanupFns.push(() => {
+      user1.disconnect();
+    });
+    cleanupFns.push(() => {
+      user2.disconnect();
+    });
     cleanupFns.push(() => new Promise<void>((resolve) => io.close(() => resolve())));
 
     // given: user1 미참여 상태 → user1이 room-A에 참여
