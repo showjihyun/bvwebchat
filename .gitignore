@@ -2,6 +2,7 @@
 _workspace/
 *.zip
 design-handoff*/
+docs/design/Design handoff for webchat/
 .env
 .env.*
 node_modules/

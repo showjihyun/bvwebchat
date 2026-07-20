@@ -22,3 +22,5 @@
 | 2026-07-17 | PR #11 리뷰 처방 반영 — ADR-0003에 활성 room 정의, RQ-18 상한 50·수명 정정, 동행 규칙에 스펙 개정 예외 명문화, M2 측정식 축소, 브리프 3건 정정(폰트·아바타·체크리스트), Q37 교훈 정정·Q38 신설 | requirements, ADR-0003, CLAUDE.md, metrics-baseline, handoff-brief, question-bank, golden | 리뷰 major 6·minor 7 — "보고 있는 room" 미정의로 test-writer가 멈출 상태였음 |
 | 2026-07-20 | 재리뷰 처방 반영 — 게이트 정의 단일화(CLAUDE.md 유일 정의처)·근거 문서(design-answers) 동기화·GA-17 정정·ADR·하네스·디자인 카브아웃 복원(PR #7 포섭) | CLAUDE.md, requirements, metrics-baseline, design-answers, ADR-0003, handoff-brief, golden | 재리뷰 major 3·minor 5 — 처방 커밋이 근거 문서를 빠뜨려 근거가 RQ와 모순한 상태였음 |
 | 2026-07-20 | Red 증거에 `tsc --noEmit` 포함 의무화 (test-writer 정의 + ADR-0005) | .claude/agents/test-writer.md, docs/adr/0005 | RQ-01 파이프라인이 드러낸 공백 — vitest만 캡처한 Red가 테스트 파일 타입 버그를 놓쳐 coder 단계에서 발견됨 |
+| 2026-07-20 | DESIGN.md 진실 공급원 등재(4번) + Phase 3.5 완료 + export 폴더 gitignore | CLAUDE.md, docs/design/DESIGN.md, docs/progress.md | 클로드 디자인 hand-off 수령 — UI 구현의 진실 공급원 확정 |
+| 2026-07-20 | FE 토대(React+Vite+TS) + RQ-01 UI 수직 슬라이스 | vite/vitest config, tsconfig, src/client/**, src/server/main.ts, eslint globals | 사용자 지시: DESIGN.md 기반 UI 구현. 서버 지원 범위(RQ-01)만 실동작, 나머지는 해당 RQ에서 확장 |
