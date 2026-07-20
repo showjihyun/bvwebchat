@@ -43,7 +43,7 @@
 | RQ-12 | room 자유 생성 + 빈 room 자동 삭제 | ⬜ | requirements §2 | |
 | RQ-13 | room 목록 공개·이름 고유 | ⬜ | requirements §2 | |
 | RQ-14 | room 내 순서 보장 | ⬜ | requirements §2, GA-07, ADR-0001(예정) | |
-| RQ-15 | 참여자 목록 표시 | 🔄 | requirements §2, GA-19/20, ADR-0001 | 착수(feat/RQ-15-participants) · 골든 GA-19(join 방송)/GA-20(leave·disconnect 갱신) 신설 · 온라인/타이핑은 비범위(§비범위) |
+| RQ-15 | 참여자 목록 표시 | 🔄 | requirements §2, GA-19/20, ADR-0001 | PR #21-pending (Red→Green→평가 PASS) · 서버 `participants` 방송(join순, RQ-02 격리) + 클라 렌더(ParticipantList, 본인 seed로 solo 간극 보완) · GA-19/20 done · 온라인/타이핑 비범위 |
 | RQ-18 | 안 읽음 개수 (활성 room 외 +1, 열면 0, 상한 50) | ⬜ | requirements §2-1, GA-12~18, ADR-0003(활성 room 정의) | 스펙 v1.1 · ⚠️ **드리프트**: DESIGN.md §5는 "점, 숫자 배지 없음"(RQ-18 이전 브리프 기반) ↔ RQ-18은 숫자 배지 요구. requirements(1번)>DESIGN.md(4번)이므로 RQ-18이 이김 — RQ-18 UI 착수 전 DESIGN.md §5 개정 필요 |
 
 > RQ-16(동시 100명)·RQ-17(사내망 단일 서버)은 독립 구현 항목이 아니라
