@@ -12,16 +12,19 @@
 - [x] ✅ **Phase 2 — 스펙 동결**: v1 태그 완료 (2026-07-17, PR #7)
 - [x] ✅ **Phase 3 — ADR-0001~0005 승인** (2026-07-17, 스택: Node+TS/Socket.IO/React+Vite —
       결정 요약: `docs/adr/README.md`)
-- [ ] 🔄 **Phase 3.5 — DESIGN.md 확보**: 디자인 인터뷰(D1~D16) + 브리프 완료
-      (2026-07-17, `specs/interview/design-answers.md`, `docs/design/handoff-brief.md`)
-      → **사용자가 클로드 디자인에서 작업** → 산출물을 `docs/design/DESIGN.md`로
-      커밋 (절차: 브리프 §4)
+- [x] ✅ **Phase 3.5 — DESIGN.md 확보**: 디자인 인터뷰(D1~D16) → 클로드 디자인
+      산출 → `docs/design/DESIGN.md` 커밋 + 진실 공급원 4번 등재 (2026-07-20).
+      브리프는 입력 기록으로 동결, 이후 디자인 변경은 DESIGN.md에서.
 - [x] ✅ **게이트 실질화(검증)**: check.sh·ci.yml 실명령 + 스캐폴드 (2026-07-17,
       실측: fast 1.4초/전체 3.2초 — ADR-0005 예산 내)
 - [ ] **게이트 실질화(배포)**: deploy.yml 배포 스텝·smoke.sh 구현 — 배포 서버
       확정 후 (RQ-17: 사내망, 참조: ADR-0001)
 - [ ] 🔄 **Phase 4~5 — RQ 구현**: 아래 작업 원장. **RQ-01 ✅ 완료**
-      (2026-07-20, PR #13 — 첫 실제 코드). 다음: RQ-02
+      (2026-07-20, PR #13 — 첫 실제 코드).
+- [x] ✅ **FE 토대 + RQ-01 UI 슬라이스** (2026-07-20): React+Vite+TS, DESIGN.md
+      토큰/레이아웃, 입장→단일 room 채팅(실 Socket.IO). `npm run dev:server` +
+      `npm run dev`. 참여자 목록·안 읽음·히스토리·global·닉네임 고유화 UI는
+      각 서버 RQ(15/18/11/04/10) 구현 시 확장. 다음: RQ-02
 
 ## 작업 원장 — RQ 구현
 
@@ -41,7 +44,7 @@
 | RQ-13 | room 목록 공개·이름 고유 | ⬜ | requirements §2 | |
 | RQ-14 | room 내 순서 보장 | ⬜ | requirements §2, GA-07, ADR-0001(예정) | |
 | RQ-15 | 참여자 목록 표시 | ⬜ | requirements §2 | |
-| RQ-18 | 안 읽음 개수 (활성 room 외 +1, 열면 0, 상한 50) | ⬜ | requirements §2-1, GA-12~18, ADR-0003(활성 room 정의) | 스펙 v1.1 |
+| RQ-18 | 안 읽음 개수 (활성 room 외 +1, 열면 0, 상한 50) | ⬜ | requirements §2-1, GA-12~18, ADR-0003(활성 room 정의) | 스펙 v1.1 · ⚠️ **드리프트**: DESIGN.md §5는 "점, 숫자 배지 없음"(RQ-18 이전 브리프 기반) ↔ RQ-18은 숫자 배지 요구. requirements(1번)>DESIGN.md(4번)이므로 RQ-18이 이김 — RQ-18 UI 착수 전 DESIGN.md §5 개정 필요 |
 
 > RQ-16(동시 100명)·RQ-17(사내망 단일 서버)은 독립 구현 항목이 아니라
 > ADR-0001과 "게이트 실질화"(deploy.yml·smoke.sh)의 제약 조건으로 반영한다.

@@ -1,0 +1,456 @@
+/* DESIGN.md 시맨틱 토큰 — 라이트 전용, 다크 확장 가능 구조 (§2/§3/§6). */
+:root {
+  /* 컬러 */
+  --color-bg-app: #f5f5f6;
+  --color-bg-surface: #ffffff;
+  --color-bg-hover: #ecedef;
+  --color-bg-selected: #e5eafb;
+  --color-border: #d9dce1;
+  --color-text-primary: #1f2328;
+  --color-text-secondary: #5b616b;
+  --color-text-muted: #6e7681;
+  --color-accent: #3b5bdb;
+  --color-accent-hover: #2f4bc0;
+  --color-accent-contrast: #ffffff;
+  --color-danger: #b42318;
+  --color-focus-ring: #3b5bdb;
+
+  /* 간격 (§6, 컴팩트) */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 20px;
+  --space-7: 24px;
+
+  --radius-control: 6px;
+  --radius-modal: 10px;
+
+  /* 타이포 (§3) — 웹폰트·CDN 없음, OS 선탑재 우선 */
+  --font-stack: "Pretendard Variable", Pretendard, -apple-system,
+    BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-stack);
+  letter-spacing: -0.01em;
+  color: var(--color-text-primary);
+  background: var(--color-bg-app);
+}
+
+/* 한글 본문 기준 (§3) */
+.msg-body,
+.input {
+  line-height: 1.5;
+  word-break: keep-all;
+}
+
+/* 모든 인터랙티브 요소 포커스 링 (§6) */
+button:focus-visible,
+input:focus-visible,
+.room-item:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* 모션 최소 (§1-5): hover/상태 전환만 120ms */
+button,
+input,
+.room-item,
+.msg-row {
+  transition: background-color 0.12s ease, border-color 0.12s ease,
+    opacity 0.12s ease;
+}
+
+/* ── 입장 화면 (§5 입장) ── */
+.entry-screen {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-surface);
+}
+.entry-form {
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.entry-title {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.input {
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--color-text-primary);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+}
+.input:focus {
+  border-color: var(--color-accent);
+}
+.input.error {
+  border-color: var(--color-danger);
+}
+.caption {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+.caption.error {
+  color: var(--color-danger);
+}
+.btn-primary {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  border: none;
+  border-radius: var(--radius-control);
+  padding: 9px var(--space-4);
+  cursor: pointer;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+}
+.btn-primary:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
+
+/* ── 메인 3단 레이아웃 (§4) ── */
+.app-shell {
+  height: 100%;
+  display: flex;
+  background: var(--color-bg-surface);
+}
+.col-rooms {
+  width: 240px;
+  flex: none;
+  background: var(--color-bg-app);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+}
+.col-chat {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-surface);
+}
+.col-people {
+  width: 200px;
+  flex: none;
+  background: var(--color-bg-app);
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+}
+
+.col-header {
+  height: 44px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+.brand {
+  font-size: 15px;
+  font-weight: 700;
+}
+.overline {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+}
+
+/* room 목록 (§5 room 목록 항목) */
+.rooms-body {
+  padding: var(--space-4) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  overflow-y: auto;
+}
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+  padding: 0 var(--space-3) var(--space-2);
+}
+.room-item {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-text-primary);
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+}
+.room-item:hover {
+  background: var(--color-bg-hover);
+}
+.room-item.selected {
+  background: var(--color-bg-selected);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+.room-item .hash {
+  color: var(--color-text-muted);
+}
+.room-item.selected .hash {
+  color: var(--color-accent);
+}
+.room-item .name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rooms-footer {
+  flex: none;
+  padding: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+.btn-outline {
+  width: 100%;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  padding: 7px 0;
+  cursor: pointer;
+}
+.btn-outline:hover {
+  background: var(--color-bg-hover);
+}
+
+/* 채팅 (§5 메시지) */
+.chat-head-name {
+  font-size: 15px;
+  font-weight: 700;
+}
+.msg-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-5) 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.msg-row {
+  padding: 3px var(--space-6);
+  min-height: 26px;
+}
+.msg-row.grouped {
+  padding-left: 56px;
+}
+.msg-row:hover {
+  background: var(--color-bg-hover);
+}
+.msg-lead {
+  padding-top: var(--space-4);
+  display: flex;
+  gap: 10px;
+}
+.msg-meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.msg-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+.msg-time {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.msg-body {
+  font-size: 14px;
+  color: var(--color-text-primary);
+}
+.me-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: var(--color-bg-selected);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+.empty-room {
+  margin: auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-7);
+}
+.empty-room .title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.empty-room .hint {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  max-width: 320px;
+}
+
+/* 아바타 (§5) */
+.avatar {
+  flex: none;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.avatar.lg {
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+}
+.avatar.sm {
+  width: 20px;
+  height: 20px;
+  font-size: 10px;
+}
+
+/* 입력창 (§5 입력창) */
+.composer {
+  flex: none;
+  padding: var(--space-4) var(--space-6) var(--space-5);
+  display: flex;
+  gap: var(--space-3);
+}
+.composer .input {
+  flex: 1;
+}
+.composer .btn-primary {
+  padding: 0 var(--space-5);
+}
+
+/* 참여자 패널 (§5) */
+.people-body {
+  padding: 10px var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow-y: auto;
+}
+.person {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-control);
+  font-size: 13px;
+}
+.pending-note {
+  padding: var(--space-4);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+/* 재연결 배너 (§5) */
+.reconnect-bar {
+  height: 28px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-6);
+  background: var(--color-bg-app);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+.reconnect-bar .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+}
+
+/* room 참여 모달 (§5 room 생성 모달) */
+.modal-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(31, 35, 40, 0.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal {
+  width: 360px;
+  background: var(--color-bg-surface);
+  border-radius: var(--radius-modal);
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+.btn-ghost {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-control);
+  padding: 9px var(--space-4);
+  cursor: pointer;
+}
+.btn-ghost:hover {
+  background: var(--color-bg-hover);
+}
