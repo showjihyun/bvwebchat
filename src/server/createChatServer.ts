@@ -27,6 +27,19 @@ const MAX_ROOM_HISTORY = 50;
 type RoomHistories = Map<RoomName, ChatMessage[]>;
 
 /**
+ * room별 현재 멤버를 join 순서대로 기록한 socket.id 배열 (RQ-15). 참여자
+ * "표시 이름" 자체가 아니라 socket.id를 저장하는 이유: Socket.IO room의
+ * 내부 Set은 순서를 보장하지 않고(fetchSockets() 순서도 문서화되지 않음),
+ * 동일 nickname을 가진 서로 다른 소켓이 같은 room에 있을 수도 있어(RQ-01의
+ * join은 nickname 유일성을 강제하지 않는다) nickname만으로는 leave/disconnect
+ * 시 "어떤 참여자가 빠졌는지"를 명확히 식별할 수 없다 — socket.id는 항상
+ * 유일하므로 이 모호함이 없다. join 전용 room에만 등록한다(자동 참여하는
+ * global room은 이 세션의 설계 결정으로 대상에서 제외 — test-writer 계약
+ * "무관한 room ... 방송 여부는 이 테스트가 규정하지 않는다").
+ */
+type RoomMembers = Map<RoomName, string[]>;
+
+/**
  * 'message' 요청 payload — nickname은 재전송하지 않는다. 서버가 join 시 이
  * 소켓에 연결한 nickname을 조회해 사용한다 (클라이언트 자칭 nickname을 매
  * 메시지마다 신뢰하지 않는다).
@@ -59,6 +72,16 @@ interface IdentifyPayload {
 /** 'identify' ack 콜백 결과 — 고유화된 최종 nickname을 함께 반환한다 (RQ-10). */
 type IdentifyAck = { ok: true; nickname: string } | { ok: false; error: string };
 
+/**
+ * 서버→클라이언트 'participants' 브로드캐스트 payload (RQ-15). participants는
+ * 표시 이름(닉네임) 배열이며, 해당 room에 먼저 join한 사람이 앞쪽에 온다
+ * (참여 순, test-writer 계약 — tests/integration/rq-15-participants.test.ts).
+ */
+interface ParticipantsPayload {
+  room: RoomName;
+  participants: string[];
+}
+
 interface ClientToServerEvents {
   identify: (payload: IdentifyPayload, ack: (result: IdentifyAck) => void) => void;
   join: (payload: JoinPayload, ack: (result: JoinAck) => void) => void;
@@ -68,6 +91,7 @@ interface ClientToServerEvents {
 
 interface ServerToClientEvents {
   message: (payload: ChatMessage) => void;
+  participants: (payload: ParticipantsPayload) => void;
 }
 
 /** 소켓별 상태 — join 시 연결한 nickname (RQ-01 계약: message 전송 시 재전송하지 않음). */
@@ -87,6 +111,20 @@ type ChatSocket = Socket<ClientToServerEvents, ServerToClientEvents, DefaultEven
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;
+}
+
+/**
+ * roomMembers에 기록된 순서대로 nickname을 조회해 해당 room 멤버 전원에게
+ * 'participants' 이벤트를 방송한다 (RQ-15). 이미 연결이 끊긴 소켓(id가 남아
+ * 있지만 io.sockets.sockets에 더 이상 없는 경우)이나 nickname이 아직 없는
+ * 소켓은 결과 배열에서 제외한다.
+ */
+function broadcastParticipants(io: ChatServer, roomMembers: RoomMembers, room: RoomName): void {
+  const memberIds = roomMembers.get(room) ?? [];
+  const participants = memberIds
+    .map((socketId) => io.sockets.sockets.get(socketId)?.data.nickname)
+    .filter(isNonEmptyString);
+  io.to(room).emit('participants', { room, participants });
 }
 
 /**
@@ -154,8 +192,10 @@ function handleIdentify(
 
 /** RQ-01 본체: 이 소켓을 room의 수신자 목록에 추가한다 (Socket.IO room = 수신자 목록). */
 function handleJoin(
+  io: ChatServer,
   socket: ChatSocket,
   histories: RoomHistories,
+  roomMembers: RoomMembers,
   payload: JoinPayload,
   ack: (result: JoinAck) => void
 ): void {
@@ -173,6 +213,25 @@ function handleJoin(
   // 계약, _workspace/RQ-11/01_test-writer_red.md §2 원자성 전제).
   const history = histories.get(payload.room) ?? [];
   ack({ ok: true, history: [...history] });
+
+  // RQ-15: 이 room의 멤버 순서 기록에 이 소켓을 추가한다(참여 순 — 맨 뒤에
+  // append).
+  const members = roomMembers.get(payload.room) ?? [];
+  members.push(socket.id);
+  roomMembers.set(payload.room, members);
+
+  // room이 비어 있다가 이 join으로 최초 멤버(1명)가 된 경우는 방송을
+  // 생략한다 — 알려야 할 "기존 멤버"가 아직 존재하지 않기 때문이다(설계
+  // 결정). 이 생략은 관찰 가능한 계약(GA-19/20)에 영향을 주지 않을 뿐 아니라
+  // 실제로 필요하다: 이 방송을 항상 보내면, 이후 두 번째 참여자가 들어올 때
+  // 첫 번째 참여자가 등록하는 리스너(참여 순간 직전 등록)가 그 사이 뒤늦게
+  // 도착하는 "1인 방송" 패킷을 대신 소비해 버려 다음 방송을 놓치는 경합이
+  // 실측으로 재현된다(join ack와 참여자 방송이 별도 네트워크 왕복이라 도착
+  // 순서가 보장되지 않음). 멤버가 2명 이상일 때만 방송하면 이 경합이
+  // 구조적으로 사라진다.
+  if (members.length > 1) {
+    broadcastParticipants(io, roomMembers, payload.room);
+  }
 }
 
 /** join으로 등록된 nickname을 조회해 room 멤버 전원에게 브로드캐스트한다. */
@@ -209,7 +268,13 @@ function handleMessage(io: ChatServer, socket: ChatSocket, histories: RoomHistor
 }
 
 /** RQ-03 본체: 이 소켓을 room의 수신자 목록에서 제거한다 (Socket.IO room = 수신자 목록). */
-function handleLeave(socket: ChatSocket, payload: LeavePayload, ack: (result: LeaveAck) => void): void {
+function handleLeave(
+  io: ChatServer,
+  socket: ChatSocket,
+  roomMembers: RoomMembers,
+  payload: LeavePayload,
+  ack: (result: LeaveAck) => void
+): void {
   if (!isNonEmptyString(payload?.room)) {
     ack({ ok: false, error: 'room은 비어 있지 않은 문자열이어야 한다' });
     return;
@@ -224,6 +289,36 @@ function handleLeave(socket: ChatSocket, payload: LeavePayload, ack: (result: Le
 
   socket.leave(payload.room);
   ack({ ok: true });
+
+  // RQ-15: 이 room의 멤버 순서 기록에서 이 소켓을 제거하고 갱신된 참여자
+  // 목록을 남은 room 멤버 전원에게 방송한다.
+  const members = roomMembers.get(payload.room);
+  if (members !== undefined) {
+    const index = members.indexOf(socket.id);
+    if (index !== -1) {
+      members.splice(index, 1);
+    }
+  }
+  broadcastParticipants(io, roomMembers, payload.room);
+}
+
+/**
+ * RQ-15: 연결이 끊긴 소켓을 이 소켓이 join(RQ-01)으로 등록돼 있던 모든 room의
+ * 멤버 순서 기록에서 제거하고, 각 room마다 갱신된 참여자 목록을 남은 멤버에게
+ * 방송한다. Socket.IO의 'disconnect' 이벤트 시점엔 소켓이 이미 모든
+ * Socket.IO room에서 빠진 뒤라 socket.rooms로는 소속 room을 알 수 없지만,
+ * roomMembers는 서버가 직접 관리하는 별도 장부이므로 이 시점에도 소켓이
+ * 어느 room들의 멤버였는지 안전하게 조회할 수 있다(test-writer 계약의
+ * "disconnecting 이벤트로 스냅샷" 힌트 대신 택한 대안 — 자체 장부가 이미
+ * 있으므로 추가 이벤트 리스너 없이 동일한 결과를 얻는다).
+ */
+function handleDisconnect(io: ChatServer, socket: ChatSocket, roomMembers: RoomMembers): void {
+  for (const [room, members] of roomMembers) {
+    const index = members.indexOf(socket.id);
+    if (index === -1) continue;
+    members.splice(index, 1);
+    broadcastParticipants(io, roomMembers, room);
+  }
 }
 
 /**
@@ -244,6 +339,11 @@ export function createChatServer(): {
   // RQ-11 / ADR-0002: room별 최근 메시지 링버퍼 (인메모리, 서버 인스턴스마다 하나).
   const roomHistories: RoomHistories = new Map();
 
+  // RQ-15: room별 현재 멤버(socket.id, join 순서) 장부. join(handleJoin)으로
+  // 등록된 room만 대상이다 — 접속 시 자동 참여하는 global(ADR-0004)은
+  // 여기 포함하지 않는다(설계 결정, 파일 상단 RoomMembers 주석 참고).
+  const roomMembers: RoomMembers = new Map();
+
   io.on('connection', (socket) => {
     // ADR-0004 결정 1: 모든 접속 사용자는 global에 자동 참여하며 탈퇴할 수
     // 없다. nickname은 설정하지 않는다 — 수신은 room 멤버십만으로 충분하고,
@@ -251,18 +351,22 @@ export function createChatServer(): {
     socket.join(GLOBAL_ROOM);
 
     socket.on('identify', (payload, ack) => handleIdentify(socket, nicknamesInUse, payload, ack));
-    socket.on('join', (payload, ack) => handleJoin(socket, roomHistories, payload, ack));
+    socket.on('join', (payload, ack) => handleJoin(io, socket, roomHistories, roomMembers, payload, ack));
     socket.on('message', (payload) => handleMessage(io, socket, roomHistories, payload));
-    socket.on('leave', (payload, ack) => handleLeave(socket, payload, ack));
+    socket.on('leave', (payload, ack) => handleLeave(io, socket, roomMembers, payload, ack));
 
     // RQ-10: 연결 종료 시 이 소켓이 identify로 점유했던 nickname을 해제한다 —
     // 해제하지 않으면 재접속마다 접미사가 무한 누적된다(GA-11 고유화 규칙이
     // 점유 집합 크기에 비례해 영구히 커짐).
+    // RQ-15: 이와 함께 이 소켓이 멤버였던 모든 room의 참여자 목록도 갱신해
+    // 남은 멤버에게 방송한다(disconnect는 leave 이벤트 없이 room을 벗어나는
+    // 유일한 경로 — GA-20 disconnect 경로).
     socket.on('disconnect', () => {
       const heldNickname = socket.data.identifiedNickname;
       if (heldNickname !== undefined) {
         nicknamesInUse.delete(heldNickname);
       }
+      handleDisconnect(io, socket, roomMembers);
     });
   });
 
