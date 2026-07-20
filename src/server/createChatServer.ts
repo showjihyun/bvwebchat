@@ -25,9 +25,22 @@ interface MessagePayload {
   body: string;
 }
 
+/**
+ * 'leave' 요청 payload (RQ-03) — nickname은 재전송하지 않는다. join으로 이미
+ * socket.data에 연결된 nickname은 leave 후에도 유지된다(leave는 room
+ * 멤버십만 해제한다).
+ */
+interface LeavePayload {
+  room: RoomName;
+}
+
+/** 'leave' ack 콜백 결과 — join과 동일한 shape으로 일관성을 유지한다. */
+type LeaveAck = { ok: true } | { ok: false; error: string };
+
 interface ClientToServerEvents {
   join: (payload: JoinPayload, ack: (result: JoinAck) => void) => void;
   message: (payload: MessagePayload) => void;
+  leave: (payload: LeavePayload, ack: (result: LeaveAck) => void) => void;
 }
 
 interface ServerToClientEvents {
@@ -79,6 +92,17 @@ function handleMessage(io: ChatServer, socket: ChatSocket, payload: MessagePaylo
   io.to(payload.room).emit('message', message);
 }
 
+/** RQ-03 본체: 이 소켓을 room의 수신자 목록에서 제거한다 (Socket.IO room = 수신자 목록). */
+function handleLeave(socket: ChatSocket, payload: LeavePayload, ack: (result: LeaveAck) => void): void {
+  if (!isNonEmptyString(payload?.room)) {
+    ack({ ok: false, error: 'room은 비어 있지 않은 문자열이어야 한다' });
+    return;
+  }
+
+  socket.leave(payload.room);
+  ack({ ok: true });
+}
+
 /**
  * RQ-01 서버 계약. 반환된 httpServer는 listen()되지 않은 상태다 — 포트 결정은
  * 호출자 책임 (테스트는 0을 지정해 임의 포트를 배정받는다).
@@ -93,6 +117,7 @@ export function createChatServer(): {
   io.on('connection', (socket) => {
     socket.on('join', (payload, ack) => handleJoin(socket, payload, ack));
     socket.on('message', (payload) => handleMessage(io, socket, payload));
+    socket.on('leave', (payload, ack) => handleLeave(socket, payload, ack));
   });
 
   return { httpServer, io };
