@@ -6,8 +6,8 @@
 {"id":"GA-06","spec":"RQ-02","given":"동일 사용자가 두 room(A·B)에 동시 참여","when":"room-A에만 메시지 발생","then":"room-B 화면/스트림에 섞이지 않음","verify":"tests/integration/rq-02-message-isolation.test.ts","status":"done"}
 {"id":"GA-07","spec":"RQ-14","given":"user1이 room-A에 연속으로 메시지 3개 전송","when":"room-A 참여자 user2가 수신","then":"서버 도착 순서와 동일한 순서로 3개 수신 (room 내 순서 보장)","verify":"integration_test","status":"todo"}
 {"id":"GA-08","spec":"RQ-11","given":"room-A에 메시지 5개 존재 (인메모리)","when":"user3이 room-A에 새로 참여","then":"최근 50개 한도 내이므로 5개 전부 히스토리로 표시","verify":"integration_test","status":"todo"}
-{"id":"GA-09","spec":"RQ-10","given":"닉네임 미입력(무명) 사용자","when":"room 참여 시도","then":"닉네임 입력 전에는 참여 불가, 닉네임 입력만으로 참여 허용 (계정·비밀번호 불요)","verify":"integration_test","status":"todo"}
-{"id":"GA-11","spec":"RQ-10","given":"user1이 닉네임 alice로 접속 중","when":"다른 브라우저에서 alice로 접속 시도","then":"두 번째 사용자는 자동 접미사가 붙은 고유 닉네임(예: alice-2)을 부여받음","verify":"integration_test","status":"todo"}
+{"id":"GA-09","spec":"RQ-10","given":"닉네임 미입력(무명) 사용자","when":"room 참여 시도","then":"닉네임 입력 전에는 참여 불가, 닉네임 입력만으로 참여 허용 (계정·비밀번호 불요)","verify":"tests/integration/rq-10-nickname-identity.test.ts","status":"done"}
+{"id":"GA-11","spec":"RQ-10","given":"user1이 닉네임 alice로 접속 중","when":"다른 브라우저에서 alice로 접속 시도","then":"두 번째 사용자는 자동 접미사가 붙은 고유 닉네임(예: alice-2)을 부여받음","verify":"tests/integration/rq-10-nickname-identity.test.ts","status":"done"}
 {"id":"GA-12","spec":"RQ-18","given":"user1이 room-A와 room-B에 참여, 활성 room을 room-A로 통지한 상태(ADR-0003 결정 4)","when":"user2가 room-B에 메시지 2개 전송","then":"user1의 room-B 안 읽음 개수가 2가 됨 (활성 room인 room-A는 0 유지)","verify":"integration_test","status":"todo"}
 {"id":"GA-13","spec":"RQ-18","given":"user1의 room-B 안 읽음 개수가 2인 상태 (활성 room은 room-A)","when":"user1이 활성 room을 room-B로 통지","then":"room-B 안 읽음 개수가 0으로 초기화됨","verify":"integration_test","status":"todo"}
 {"id":"GA-14","spec":"RQ-18","given":"user1의 room-B 안 읽음 개수가 2인 상태","when":"user1이 새로고침 후 동일 세션 토큰으로 재접속 (퇴장 유예 30초 내)","then":"room-B 안 읽음 개수가 2로 복원됨","verify":"integration_test","status":"todo"}
