@@ -12,8 +12,19 @@ interface JoinPayload {
   nickname: string;
 }
 
-/** 'join' ack 콜백 결과. */
-type JoinAck = { ok: true } | { ok: false; error: string };
+/**
+ * 'join' ack 콜백 결과. RQ-11: 성공 시 해당 room의 최근 메시지 히스토리
+ * (오래된 것 → 최신 순)를 함께 반환한다. 참여 자체가 거부된 경우(ok:false)는
+ * history가 없다 — 참여하지 못했으므로 히스토리도 없다 (test-writer 계약,
+ * _workspace/RQ-11/01_test-writer_red.md §4).
+ */
+type JoinAck = { ok: true; history: ChatMessage[] } | { ok: false; error: string };
+
+/** RQ-11 / ADR-0002: room당 보관할 최근 메시지 상한 (링버퍼, 초과 시 오래된 것부터 폐기). */
+const MAX_ROOM_HISTORY = 50;
+
+/** room별 최근 메시지 히스토리 (인메모리, ADR-0002 — 서버 재시작 시 소실 허용). */
+type RoomHistories = Map<RoomName, ChatMessage[]>;
 
 /**
  * 'message' 요청 payload — nickname은 재전송하지 않는다. 서버가 join 시 이
@@ -142,7 +153,12 @@ function handleIdentify(
 }
 
 /** RQ-01 본체: 이 소켓을 room의 수신자 목록에 추가한다 (Socket.IO room = 수신자 목록). */
-function handleJoin(socket: ChatSocket, payload: JoinPayload, ack: (result: JoinAck) => void): void {
+function handleJoin(
+  socket: ChatSocket,
+  histories: RoomHistories,
+  payload: JoinPayload,
+  ack: (result: JoinAck) => void
+): void {
   if (!isNonEmptyString(payload?.room) || !isNonEmptyString(payload?.nickname)) {
     ack({ ok: false, error: 'room과 nickname은 비어 있지 않은 문자열이어야 한다' });
     return;
@@ -150,11 +166,17 @@ function handleJoin(socket: ChatSocket, payload: JoinPayload, ack: (result: Join
 
   socket.join(payload.room);
   socket.data.nickname = payload.nickname;
-  ack({ ok: true });
+  // RQ-11: socket.join 직후 await 없이 동기적으로 히스토리 스냅샷을 읽어
+  // ack에 포함한다. Node.js 이벤트 루프는 단일 스레드이므로 이 사이에 다른
+  // 소켓의 'message' 핸들러가 끼어들 수 없다 — 히스토리 스냅샷과 이후 라이브
+  // 브로드캐스트 사이에 누락·중복 창이 구조적으로 생기지 않는다 (test-writer
+  // 계약, _workspace/RQ-11/01_test-writer_red.md §2 원자성 전제).
+  const history = histories.get(payload.room) ?? [];
+  ack({ ok: true, history: [...history] });
 }
 
 /** join으로 등록된 nickname을 조회해 room 멤버 전원에게 브로드캐스트한다. */
-function handleMessage(io: ChatServer, socket: ChatSocket, payload: MessagePayload): void {
+function handleMessage(io: ChatServer, socket: ChatSocket, histories: RoomHistories, payload: MessagePayload): void {
   const nickname = socket.data.nickname;
   if (!isNonEmptyString(nickname) || !isNonEmptyString(payload?.room)) {
     return;
@@ -172,6 +194,18 @@ function handleMessage(io: ChatServer, socket: ChatSocket, payload: MessagePaylo
     body: payload.body,
   };
   io.to(payload.room).emit('message', message);
+
+  // RQ-11 / ADR-0002: 브로드캐스트에 부가해 room당 최근 50개 링버퍼에
+  // 저장한다 (기존 브로드캐스트 로직은 변경하지 않는다).
+  const history = histories.get(payload.room);
+  if (history === undefined) {
+    histories.set(payload.room, [message]);
+  } else {
+    history.push(message);
+    if (history.length > MAX_ROOM_HISTORY) {
+      history.shift();
+    }
+  }
 }
 
 /** RQ-03 본체: 이 소켓을 room의 수신자 목록에서 제거한다 (Socket.IO room = 수신자 목록). */
@@ -207,6 +241,9 @@ export function createChatServer(): {
   // 서버 프로세스 생존 동안만 유지, 재시작 시 소실). 서버 인스턴스마다 하나.
   const nicknamesInUse = new Set<string>();
 
+  // RQ-11 / ADR-0002: room별 최근 메시지 링버퍼 (인메모리, 서버 인스턴스마다 하나).
+  const roomHistories: RoomHistories = new Map();
+
   io.on('connection', (socket) => {
     // ADR-0004 결정 1: 모든 접속 사용자는 global에 자동 참여하며 탈퇴할 수
     // 없다. nickname은 설정하지 않는다 — 수신은 room 멤버십만으로 충분하고,
@@ -214,8 +251,8 @@ export function createChatServer(): {
     socket.join(GLOBAL_ROOM);
 
     socket.on('identify', (payload, ack) => handleIdentify(socket, nicknamesInUse, payload, ack));
-    socket.on('join', (payload, ack) => handleJoin(socket, payload, ack));
-    socket.on('message', (payload) => handleMessage(io, socket, payload));
+    socket.on('join', (payload, ack) => handleJoin(socket, roomHistories, payload, ack));
+    socket.on('message', (payload) => handleMessage(io, socket, roomHistories, payload));
     socket.on('leave', (payload, ack) => handleLeave(socket, payload, ack));
 
     // RQ-10: 연결 종료 시 이 소켓이 identify로 점유했던 nickname을 해제한다 —
