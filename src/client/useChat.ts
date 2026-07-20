@@ -9,7 +9,8 @@ interface ServerToClientEvents {
 interface ClientToServerEvents {
   join: (
     payload: { room: string; nickname: string },
-    ack: (result: { ok: true } | { ok: false; error: string }) => void,
+    // ack.history: 입장 시점의 room 히스토리 (최근 50개, RQ-11).
+    ack: (result: { ok: true; history: ChatMessage[] } | { ok: false; error: string }) => void,
   ) => void;
   message: (payload: { room: string; body: string }) => void;
 }
@@ -40,11 +41,12 @@ export interface ChatState {
 }
 
 /**
- * RQ-01 수직 슬라이스의 클라이언트 상태.
+ * 클라이언트 채팅 상태 (RQ-01 슬라이스 + RQ-11 히스토리).
  * - 소켓 재연결 시 참여 중이던 room을 전부 재join한다 (서버 멤버십은 소켓 연결
  *   단위이므로 재연결 = 새 소켓 = 재등록 필요).
- * - 참여자 목록·안 읽음·히스토리·닉네임 고유화는 각각 RQ-15/18/11/10 서버 기능이
- *   필요해 이 슬라이스 범위 밖이다.
+ * - 최초 room 참여 시 join ack의 히스토리(최근 50개, RQ-11)를 기존 앞에 prepend.
+ *   재연결 재join은 이미 화면에 있는 메시지와 중복을 피해 히스토리를 무시한다.
+ * - 참여자 목록·안 읽음·닉네임 고유화는 각각 RQ-15/18/10 서버 기능이 필요해 범위 밖이다.
  */
 export function useChat(nickname: string): ChatState {
   const socketRef = useRef<ChatSocket | null>(null);
@@ -109,7 +111,17 @@ export function useChat(nickname: string): ChatState {
         return;
       }
       const socket = socketRef.current;
-      socket?.emit('join', { room: name, nickname }, () => undefined);
+      // 최초 join: ack의 히스토리(RQ-11)를 기존 앞에 prepend. 서버가 히스토리와
+      // 라이브의 무중복을 보장하므로(한 메시지는 둘 중 하나에만), ack 전 도착한
+      // 라이브가 있어도 prepend로 순서(과거→현재) 유지하며 잃지 않는다.
+      socket?.emit('join', { room: name, nickname }, (result) => {
+        if (!result.ok) return;
+        const historyMsgs: ClientMessage[] = result.history.map((m) => {
+          msgSeq += 1;
+          return { id: `h${msgSeq}`, room: m.room, nickname: m.nickname, body: m.body, at: Date.now() };
+        });
+        setMessagesByRoom((prev) => ({ ...prev, [name]: [...historyMsgs, ...(prev[name] ?? [])] }));
+      });
       roomsRef.current = [...roomsRef.current, name];
       setRooms(roomsRef.current);
       selectRoom(name);
