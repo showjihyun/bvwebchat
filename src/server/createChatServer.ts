@@ -4,7 +4,7 @@
 
 import { createServer, type Server as HttpServer } from 'node:http';
 import { Server as SocketIOServer, type DefaultEventsMap, type Socket } from 'socket.io';
-import type { ChatMessage, RoomName } from '../shared/types';
+import { GLOBAL_ROOM, type ChatMessage, type RoomName } from '../shared/types';
 
 /** 'join' 요청 payload — 참여할 room과 자칭 nickname을 선언한다 (RQ-01). */
 interface JoinPayload {
@@ -99,6 +99,13 @@ function handleLeave(socket: ChatSocket, payload: LeavePayload, ack: (result: Le
     return;
   }
 
+  // ADR-0004 결정 1: global은 예약된 상설 room이며 탈퇴할 수 없다. 멤버십은
+  // 유지한 채 ack만 거부해 클라이언트가 "나갔다"고 오인하지 않게 한다.
+  if (payload.room === GLOBAL_ROOM) {
+    ack({ ok: false, error: 'global room은 탈퇴할 수 없다' });
+    return;
+  }
+
   socket.leave(payload.room);
   ack({ ok: true });
 }
@@ -115,6 +122,11 @@ export function createChatServer(): {
   const io: ChatServer = new SocketIOServer(httpServer);
 
   io.on('connection', (socket) => {
+    // ADR-0004 결정 1: 모든 접속 사용자는 global에 자동 참여하며 탈퇴할 수
+    // 없다. nickname은 설정하지 않는다 — 수신은 room 멤버십만으로 충분하고,
+    // nickname은 발신(handleMessage)에만 필요하다.
+    socket.join(GLOBAL_ROOM);
+
     socket.on('join', (payload, ack) => handleJoin(socket, payload, ack));
     socket.on('message', (payload) => handleMessage(io, socket, payload));
     socket.on('leave', (payload, ack) => handleLeave(socket, payload, ack));
