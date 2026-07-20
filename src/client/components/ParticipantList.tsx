@@ -3,29 +3,29 @@ import { Avatar } from './Avatar';
 interface Props {
   nickname: string;
   hasRoom: boolean;
+  participants: string[];
 }
 
 /**
- * 참여자 패널 (DESIGN.md §5, 상시 노출). RQ-01 슬라이스: 서버가 참여자 목록을
- * 제공하지 않으므로(RQ-15 미구현) 본인만 표시하고 나머지는 RQ-15에서 채운다.
- * — 없는 데이터를 지어내지 않는다.
+ * 참여자 패널 (DESIGN.md §5, 상시 노출). RQ-15: 서버 `participants` 방송으로
+ * 받은 현재 room 참여자를 표시한다. 본인은 "나" 배지로 구분한다.
+ * 참여자 순서는 서버가 정한 join 순서를 그대로 따른다.
  */
-export function ParticipantList({ nickname, hasRoom }: Props) {
+export function ParticipantList({ nickname, hasRoom, participants }: Props) {
   return (
     <div className="col-people">
-      <div className="col-header overline">참여자</div>
+      <div className="col-header overline">
+        참여자{hasRoom && participants.length > 0 ? ` (${participants.length})` : ''}
+      </div>
       <div className="people-body">
         {hasRoom ? (
-          <>
-            <div className="person">
-              <Avatar nickname={nickname} size="sm" />
-              <span>{nickname}</span>
-              <span className="me-badge">나</span>
+          participants.map((name) => (
+            <div className="person" key={name}>
+              <Avatar nickname={name} size="sm" />
+              <span>{name}</span>
+              {name === nickname && <span className="me-badge">나</span>}
             </div>
-            <div className="pending-note">
-              다른 참여자 목록은 RQ-15(참여자 목록 표시) 구현 시 표시됩니다.
-            </div>
-          </>
+          ))
         ) : (
           <div className="pending-note">room에 참여하면 표시됩니다.</div>
         )}
