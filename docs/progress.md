@@ -34,8 +34,8 @@
 | RQ | 내용 | 상태 | 참조 파일 | 산출물/PR |
 |---|---|---|---|---|
 | RQ-01 | room 참여 → 수신자 등록 | ✅ | requirements.md §1, GA-05, ADR-0001 | PR #13 머지 · src/server/createChatServer.ts · GA-05 done |
-| RQ-02 | room 메시지 격리 전달 | 🔄 | requirements.md §1, GA-01/02/06/10, ADR-0001 | PR #16 (Red→Green→평가 PASS) · GA-10 이월 구멍 닫음(발신자 `socket.rooms.has` 검증) · GA-01/02/06/10 done |
-| RQ-03 | 퇴장 후 수신 차단 | ⬜ | requirements.md §1, GA-03, GB-02 | |
+| RQ-02 | room 메시지 격리 전달 | ✅ | requirements.md §1, GA-01/02/06/10, ADR-0001 | PR #16 머지 · GA-10 이월 구멍 닫음(발신자 `socket.rooms.has` 검증) · GA-01/02/06/10 done |
+| RQ-03 | 퇴장 후 수신 차단 | 🔄 | requirements.md §1, GA-03, GB-02 | PR #17 (Red→Green→평가 PASS) · leave 이벤트(`socket.leave`) · GA-03 done |
 | RQ-04 | global 전체 전달 | ⬜ | requirements.md §1, GA-04, ADR-0004 | |
 | RQ-05 | 7/31 배포 가능 | ⬜ | deploy.yml, smoke.sh, RQ-17 | |
 | RQ-10 | 닉네임 식별·자동 접미사·새로고침 유지 | ⬜ | requirements §2, GA-09/11, ADR-0003(예정) | |
