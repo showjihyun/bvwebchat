@@ -242,6 +242,23 @@ input,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* RQ-18 (DESIGN §5 개정): 안 읽음 숫자 배지 — 액센트 배경 + 대비 텍스트, 상한 50 */
+.room-item.unread .name {
+  font-weight: 600;
+}
+.unread-badge {
+  flex: none;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
 .rooms-footer {
   flex: none;
   padding: var(--space-4);
