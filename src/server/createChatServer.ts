@@ -1,8 +1,13 @@
 // RQ-01 서버 계약 구현 — room 참여 시 수신자 목록 등록 (ADR-0001: Socket.IO).
 // 계약 출처: tests/integration/rq-01-room-join.test.ts,
 // _workspace/RQ-01/01_test-writer_red.md
+//
+// RQ-18(안 읽음 개수) / ADR-0003(사용자 식별 — 닉네임 + 서버 발급 세션
+// 토큰) 계약 추가. 계약 출처: tests/integration/rq-18-unread.test.ts,
+// _workspace/RQ-18/01_test-writer_red.md, docs/adr/0003-user-identity.md.
 
 import { createServer, type Server as HttpServer } from 'node:http';
+import { randomUUID } from 'node:crypto';
 import { Server as SocketIOServer, type DefaultEventsMap, type Socket } from 'socket.io';
 import { GLOBAL_ROOM, type ChatMessage, type RoomName } from '../shared/types';
 
@@ -69,8 +74,46 @@ interface IdentifyPayload {
   nickname: string;
 }
 
-/** 'identify' ack 콜백 결과 — 고유화된 최종 nickname을 함께 반환한다 (RQ-10). */
-type IdentifyAck = { ok: true; nickname: string } | { ok: false; error: string };
+/**
+ * 'identify' ack 콜백 결과 — 고유화된 최종 nickname을 함께 반환한다 (RQ-10).
+ * RQ-18 / ADR-0003 결정1-2: 성공 시 서버가 새로 발급한 불투명 세션 토큰을
+ * 함께 반환한다. 기존(RQ-10) 계약은 그대로 유지되고 token 필드만 추가됐다.
+ */
+type IdentifyAck = { ok: true; nickname: string; token: string } | { ok: false; error: string };
+
+/**
+ * 'resume' 요청 payload (RQ-18 / ADR-0003 결정1-2·5) — identify가 발급한
+ * 세션 토큰을 제시해 살아있는 세션(연결 중 또는 퇴장 유예 30초 이내)을
+ * 이 소켓에 재바인딩한다.
+ */
+interface ResumePayload {
+  token: string;
+}
+
+/** 'resume' ack 콜백 결과 — 복원된 세션의 전체 상태를 담아 반환한다 (RQ-18). */
+type ResumeAck =
+  | { ok: true; nickname: string; rooms: RoomName[]; activeRoom: RoomName | null; unread: Record<RoomName, number> }
+  | { ok: false; error: string };
+
+/**
+ * 'activeRoom' 요청 payload (RQ-18 / ADR-0003 결정4) — 클라이언트가 현재
+ * 보고 있는 room을 서버에 통지한다.
+ */
+interface ActiveRoomPayload {
+  room: string;
+}
+
+/** 'activeRoom' ack 콜백 결과 — 참여하지 않은 room이면 거부한다 (RQ-18). */
+type ActiveRoomAck = { ok: true } | { ok: false; error: string };
+
+/**
+ * 서버→클라이언트 'unread' 유니캐스트 payload (RQ-18) — 그 세션의 현재
+ * 소켓에만 전달된다(room 전체 브로드캐스트가 아니다 — 사적 UI 상태).
+ */
+interface UnreadPayload {
+  room: RoomName;
+  count: number;
+}
 
 /**
  * 서버→클라이언트 'participants' 브로드캐스트 payload (RQ-15). participants는
@@ -97,12 +140,15 @@ interface ClientToServerEvents {
   join: (payload: JoinPayload, ack: (result: JoinAck) => void) => void;
   message: (payload: MessagePayload) => void;
   leave: (payload: LeavePayload, ack: (result: LeaveAck) => void) => void;
+  resume: (payload: ResumePayload, ack: (result: ResumeAck) => void) => void;
+  activeRoom: (payload: ActiveRoomPayload, ack: (result: ActiveRoomAck) => void) => void;
 }
 
 interface ServerToClientEvents {
   message: (payload: ChatMessage) => void;
   participants: (payload: ParticipantsPayload) => void;
   rooms: (payload: RoomsPayload) => void;
+  unread: (payload: UnreadPayload) => void;
 }
 
 /** 소켓별 상태 — join 시 연결한 nickname (RQ-01 계약: message 전송 시 재전송하지 않음). */
@@ -115,7 +161,47 @@ interface SocketData {
    * join의 nickname과 분리해 추적한다.
    */
   identifiedNickname?: string;
+  /**
+   * RQ-18 / ADR-0003: 이 소켓에 identify(또는 resume)로 바인딩된 세션 토큰.
+   * join/leave/message/activeRoom 핸들러가 이 값으로 세션 상태를 조회한다.
+   * identify를 호출한 적 없는 소켓은 undefined로 유지되며, 이 경우 세션·
+   * 안 읽음 집계 로직은 그냥 건너뛴다(세션리스 소켓 회귀 방지, 기존
+   * RQ-01~15 동작 무변경).
+   */
+  token?: string;
 }
+
+/**
+ * RQ-18 / ADR-0003: identify로 발급된 세션의 서버측 상태. 토큰이 진실
+ * 공급원이며(결정3), 소켓은 이 상태에 대한 일시적 바인딩일 뿐이다 —
+ * resume은 동일 세션을 다른 소켓에 재바인딩한다.
+ */
+interface SessionState {
+  nickname: string;
+  /** 이 세션이 참여 중인 room 집합 — global은 identify 시점부터 항상 포함(ADR-0004 결정1). */
+  rooms: Set<RoomName>;
+  /** ADR-0003 결정4: 세션당 활성 room은 하나, 첫 통지 전엔 null. */
+  activeRoom: RoomName | null;
+  /** room별 안 읽음 개수 — 아직 이벤트가 없던 room은 키가 없고 0으로 취급한다(지연 초기화). */
+  unread: Map<RoomName, number>;
+  /**
+   * 이 세션에 마지막으로 바인딩된 socket.id. 유예(30초) 중에는 이미 끊긴
+   * 소켓의 id가 그대로 남아 있을 수 있다 — connected로 "지금 살아있는
+   * 연결을 가리키는가"를 구분하고, resume 시 roomMembers에서 이 값을 새
+   * socket.id로 교체하는 데 쓴다.
+   */
+  socketId: string;
+  /** socketId가 현재 살아있는(바인딩된) 연결을 가리키는지 여부. */
+  connected: boolean;
+  /** 유예(30초) 타이머 — resume이 도착하면 취소한다. 유예 중이 아니면 undefined. */
+  graceTimer: NodeJS.Timeout | undefined;
+}
+
+/** 토큰별 세션 상태 장부 (인메모리, 서버 인스턴스마다 하나 — ADR-0002/0003과 일관). */
+type Sessions = Map<string, SessionState>;
+
+/** ADR-0003 결정5: 퇴장 유예 30초 — 모든 socket disconnect에 적용되는 일반 규칙. */
+const GRACE_PERIOD_MS = 30_000;
 
 type ChatServer = SocketIOServer<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, SocketData>;
 type ChatSocket = Socket<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, SocketData>;
@@ -200,6 +286,7 @@ function generateUniqueNickname(base: string, nicknamesInUse: ReadonlySet<string
 function handleIdentify(
   socket: ChatSocket,
   nicknamesInUse: Set<string>,
+  sessions: Sessions,
   payload: IdentifyPayload,
   ack: (result: IdentifyAck) => void
 ): void {
@@ -216,11 +303,37 @@ function handleIdentify(
     nicknamesInUse.delete(previouslyHeld);
   }
 
+  // RQ-18: 이 소켓이 이전에 이미 세션(토큰)을 발급받았다면(동일 소켓에서
+  // identify 재호출) 그 세션은 더 이상 어떤 소켓에서도 재개될 수 없으므로
+  // 버린다 — "새 신원 발급"은 항상 새 세션을 만든다는 의도적 분리
+  // (ADR-0003 결정1-2, resume과의 유일한 차이).
+  const previousToken = socket.data.token;
+  if (previousToken !== undefined) {
+    sessions.delete(previousToken);
+  }
+
   const assigned = generateUniqueNickname(payload.nickname, nicknamesInUse);
   nicknamesInUse.add(assigned);
   socket.data.identifiedNickname = assigned;
   socket.data.nickname = assigned;
-  ack({ ok: true, nickname: assigned });
+
+  // RQ-18 / ADR-0003 결정1-2: 서버 발급 불투명 세션 토큰을 부여하고 세션
+  // 상태를 초기화한다. global은 모든 소켓이 접속 즉시 자동 참여하므로
+  // (ADR-0004 결정1) 세션의 참여 room 집합에도 처음부터 포함시킨다 —
+  // GA-16이 요구하는 "global도 안 읽음 집계 대상"의 전제.
+  const token = randomUUID();
+  socket.data.token = token;
+  sessions.set(token, {
+    nickname: assigned,
+    rooms: new Set([GLOBAL_ROOM]),
+    activeRoom: null,
+    unread: new Map(),
+    socketId: socket.id,
+    connected: true,
+    graceTimer: undefined,
+  });
+
+  ack({ ok: true, nickname: assigned, token });
 }
 
 /** RQ-01 본체: 이 소켓을 room의 수신자 목록에 추가한다 (Socket.IO room = 수신자 목록). */
@@ -229,6 +342,7 @@ function handleJoin(
   socket: ChatSocket,
   histories: RoomHistories,
   roomMembers: RoomMembers,
+  sessions: Sessions,
   payload: JoinPayload,
   ack: (result: JoinAck) => void
 ): void {
@@ -254,6 +368,19 @@ function handleJoin(
   // 계약, _workspace/RQ-11/01_test-writer_red.md §2 원자성 전제).
   const history = histories.get(payload.room) ?? [];
   ack({ ok: true, history: [...history] });
+
+  // RQ-18 / ADR-0003: 이 소켓에 바인딩된 세션이 있으면(identify를 호출한
+  // 소켓만) 이 room을 세션의 참여 room 집합에 추가한다 — 이후 이 room에
+  // 도착하는 메시지가 안 읽음 집계 대상이 된다(활성 room이 아닐 때).
+  // 세션 없는 소켓(identify 미호출)은 이 로직을 건너뛰어 기존 RQ-01~15
+  // 동작을 그대로 유지한다(세션리스 소켓 회귀 방지).
+  const joinToken = socket.data.token;
+  if (joinToken !== undefined) {
+    const session = sessions.get(joinToken);
+    if (session !== undefined) {
+      session.rooms.add(payload.room);
+    }
+  }
 
   // RQ-15: 이 room의 멤버 순서 기록에 이 소켓을 추가한다(참여 순 — 맨 뒤에
   // append). RQ-13: 이 join 직전에 멤버가 0명(키 부재 포함)이었는지를 먼저
@@ -287,7 +414,13 @@ function handleJoin(
 }
 
 /** join으로 등록된 nickname을 조회해 room 멤버 전원에게 브로드캐스트한다. */
-function handleMessage(io: ChatServer, socket: ChatSocket, histories: RoomHistories, payload: MessagePayload): void {
+function handleMessage(
+  io: ChatServer,
+  socket: ChatSocket,
+  histories: RoomHistories,
+  sessions: Sessions,
+  payload: MessagePayload
+): void {
   const nickname = socket.data.nickname;
   if (!isNonEmptyString(nickname) || !isNonEmptyString(payload?.room)) {
     return;
@@ -307,14 +440,33 @@ function handleMessage(io: ChatServer, socket: ChatSocket, histories: RoomHistor
   io.to(payload.room).emit('message', message);
 
   // RQ-11 / ADR-0002: 브로드캐스트에 부가해 room당 최근 50개 링버퍼에
-  // 저장한다 (기존 브로드캐스트 로직은 변경하지 않는다).
-  const history = histories.get(payload.room);
+  // 저장한다 (기존 브로드캐스트 로직은 변경하지 않는다). history 변수를
+  // 그대로 재사용해(신규 room이든 기존이든) 아래 RQ-18 상한 계산이 별도
+  // map 재조회 없이 항상 최신 길이를 참조하게 한다.
+  let history = histories.get(payload.room);
   if (history === undefined) {
-    histories.set(payload.room, [message]);
-  } else {
-    history.push(message);
-    if (history.length > MAX_ROOM_HISTORY) {
-      history.shift();
+    history = [];
+    histories.set(payload.room, history);
+  }
+  history.push(message);
+  if (history.length > MAX_ROOM_HISTORY) {
+    history.shift();
+  }
+
+  // RQ-18 / ADR-0003 결정4: 이 room에 참여 중인(global 포함) 세션 중 이
+  // room이 활성 room이 아닌 세션의 안 읽음을 1 증가시켜 유니캐스트로
+  // 통지한다. 상한(범위 제약 ②, GA-17)은 이 room이 현재 보관한 메시지 수
+  // (방금 갱신한 링버퍼 길이, ADR-0002 상한 50)로 클램프한다 — 열었을 때
+  // 이미 밀려나 볼 수 없는 메시지는 세지 않는다는 요구와 일치한다.
+  const cap = history.length;
+  for (const session of sessions.values()) {
+    if (!session.rooms.has(payload.room)) continue;
+    if (session.activeRoom === payload.room) continue;
+    const current = session.unread.get(payload.room) ?? 0;
+    const next = Math.min(current + 1, cap);
+    session.unread.set(payload.room, next);
+    if (session.connected) {
+      io.to(session.socketId).emit('unread', { room: payload.room, count: next });
     }
   }
 }
@@ -325,6 +477,7 @@ function handleLeave(
   socket: ChatSocket,
   histories: RoomHistories,
   roomMembers: RoomMembers,
+  sessions: Sessions,
   payload: LeavePayload,
   ack: (result: LeaveAck) => void
 ): void {
@@ -342,6 +495,21 @@ function handleLeave(
 
   socket.leave(payload.room);
   ack({ ok: true });
+
+  // RQ-18 / ADR-0003 결정4: 이 소켓에 세션이 있으면 참여 room 집합·안 읽음
+  // 기록에서 이 room을 제거한다. 이 room이 활성 room이었다면 활성 room은
+  // 다시 없음(null)으로 되돌아간다(파생 테스트로 검증).
+  const leaveToken = socket.data.token;
+  if (leaveToken !== undefined) {
+    const session = sessions.get(leaveToken);
+    if (session !== undefined) {
+      session.rooms.delete(payload.room);
+      session.unread.delete(payload.room);
+      if (session.activeRoom === payload.room) {
+        session.activeRoom = null;
+      }
+    }
+  }
 
   // RQ-15: 이 room의 멤버 순서 기록에서 이 소켓을 제거하고 갱신된 참여자
   // 목록을 남은 room 멤버 전원에게 방송한다. RQ-13: 이 제거로 멤버가 0명이
@@ -422,6 +590,172 @@ function handleDisconnect(io: ChatServer, socket: ChatSocket, histories: RoomHis
 }
 
 /**
+ * RQ-18 본체 — activeRoom(payload:{room}, ack) (ADR-0003 결정4). 세션이 없는
+ * 소켓(identify 미호출)에는 활성 room 개념 자체가 성립하지 않으므로 거부한다.
+ * 참여하지 않은 room을 통지하면 거부하고 활성 room은 불변이다(GA-18, GA-10과
+ * 동일 원칙 — 격리는 서버가 강제한다).
+ */
+function handleActiveRoom(
+  socket: ChatSocket,
+  sessions: Sessions,
+  payload: ActiveRoomPayload,
+  ack: (result: ActiveRoomAck) => void
+): void {
+  const token = socket.data.token;
+  if (token === undefined) {
+    ack({ ok: false, error: '세션이 없다 — 먼저 identify로 세션을 발급받아야 한다' });
+    return;
+  }
+  const session = sessions.get(token);
+  if (session === undefined) {
+    ack({ ok: false, error: '세션을 찾을 수 없다' });
+    return;
+  }
+  if (!isNonEmptyString(payload?.room) || !session.rooms.has(payload.room)) {
+    ack({ ok: false, error: '참여하지 않은 room은 활성 room으로 설정할 수 없다' });
+    return;
+  }
+
+  // ADR-0003 결정4: 참여 room이면 활성 room을 갱신하고 그 room의 안 읽음을
+  // 0으로 초기화한 뒤 unread 이벤트로 통지한다(GA-13).
+  session.activeRoom = payload.room;
+  session.unread.set(payload.room, 0);
+  ack({ ok: true });
+  socket.emit('unread', { room: payload.room, count: 0 });
+}
+
+/**
+ * RQ-18 본체 — resume(payload:{token}, ack) (ADR-0003 결정1-2·5). 살아있는
+ * 세션(연결 중 또는 유예 30초 이내)이면 이 소켓에 세션을 재바인딩하고,
+ * 참여 중이던 모든 room(global 포함)에 이 소켓을 실제로 재합류(socket.join)
+ * 시켜 이후 메시지 라우팅·참여자 목록(RQ-15)이 끊김 없이 이어지게 한다.
+ * 대기 중인 퇴장 확정 타이머(scheduleDeparture)를 취소한다.
+ */
+function handleResume(
+  socket: ChatSocket,
+  sessions: Sessions,
+  roomMembers: RoomMembers,
+  payload: ResumePayload,
+  ack: (result: ResumeAck) => void
+): void {
+  const token = payload?.token;
+  if (!isNonEmptyString(token)) {
+    ack({ ok: false, error: 'token은 비어 있지 않은 문자열이어야 한다' });
+    return;
+  }
+  const session = sessions.get(token);
+  if (session === undefined) {
+    ack({ ok: false, error: '세션을 찾을 수 없다(만료되었거나 존재하지 않는다)' });
+    return;
+  }
+
+  // 대기 중이던 퇴장 확정 타이머를 취소한다 — 유예 내 재접속이므로 즉시
+  // 퇴장 처리는 전혀 실행되지 않는다.
+  if (session.graceTimer !== undefined) {
+    clearTimeout(session.graceTimer);
+    session.graceTimer = undefined;
+  }
+
+  const previousSocketId = session.socketId;
+  session.socketId = socket.id;
+  session.connected = true;
+  socket.data.token = token;
+  socket.data.nickname = session.nickname;
+  socket.data.identifiedNickname = session.nickname;
+
+  // 참여 중이던 모든 room에 이 새 소켓을 실제로 재합류시킨다. global은
+  // roomMembers 장부 대상이 아니므로(RQ-15 설계 결정) socket.join만 하고
+  // 장부 갱신은 건너뛴다. user room은 이전(죽은) socket.id를 이 새
+  // socket.id로 교체해 참여자 목록(RQ-15)이 끊김 없이 이어지게 한다 — 유예
+  // 중엔 handleDisconnect가 아직 실행되지 않아 죽은 소켓 id가 그대로 남아
+  // 있으므로, 교체하지 않으면 이후 broadcastParticipants가 그 id를 조회하지
+  // 못해(io.sockets.sockets에 없음) 이 참여자가 사라진 것으로 잘못 표시된다.
+  for (const room of session.rooms) {
+    socket.join(room);
+    if (room === GLOBAL_ROOM) continue;
+    const members = roomMembers.get(room);
+    if (members === undefined) {
+      roomMembers.set(room, [socket.id]);
+      continue;
+    }
+    const staleIndex = members.indexOf(previousSocketId);
+    if (staleIndex !== -1) {
+      members[staleIndex] = socket.id;
+    } else if (!members.includes(socket.id)) {
+      members.push(socket.id);
+    }
+  }
+
+  const unread: Record<RoomName, number> = {};
+  for (const room of session.rooms) {
+    unread[room] = session.unread.get(room) ?? 0;
+  }
+
+  ack({ ok: true, nickname: session.nickname, rooms: [...session.rooms], activeRoom: session.activeRoom, unread });
+}
+
+/**
+ * RQ-18 / ADR-0003 결정5: 모든 socket disconnect에 적용되는 30초 퇴장
+ * 유예를 스케줄한다 — 기존 즉시 퇴장 처리(nickname 해제·handleDisconnect)를
+ * 곧바로 실행하지 않고 이 타이머 만료 시점(finalizeDeparture)으로 미룬다.
+ * 세션이 있는 소켓(identify 완료)이면 세션을 "연결 끊김" 상태로 표시하고
+ * 타이머를 세션에 보관해 resume이 취소할 수 있게 한다. 세션이 없는 소켓
+ * (identify 미호출)도 유예 자체는 동일하게 적용되지만, 취소할 세션이 없으므로
+ * 타이머는 무조건 만료된다(세션리스 소켓도 유예 대상이라는 계약, 파일 상단
+ * 테스트 주석 "세션리스 소켓 회귀 방지" 참고).
+ * timer.unref()로 이 타이머가 프로세스 종료를 막지 않게 한다 — 유예를 취소
+ * 하지 않는 시나리오(예: GA-27)에서 테스트/프로세스가 실제 30초를 불필요하게
+ * 기다리지 않도록 하기 위함이며, 타이머가 실행되는 시점·동작에는 영향이 없다.
+ */
+function scheduleDeparture(
+  io: ChatServer,
+  socket: ChatSocket,
+  histories: RoomHistories,
+  roomMembers: RoomMembers,
+  nicknamesInUse: Set<string>,
+  sessions: Sessions
+): void {
+  const token = socket.data.token;
+  const session = token !== undefined ? sessions.get(token) : undefined;
+
+  const timer = setTimeout(() => {
+    finalizeDeparture(io, socket, histories, roomMembers, nicknamesInUse, sessions, token);
+  }, GRACE_PERIOD_MS);
+  timer.unref();
+
+  if (session !== undefined) {
+    session.connected = false;
+    session.graceTimer = timer;
+  }
+}
+
+/**
+ * 퇴장 유예(30초)가 resume 없이 만료됐을 때 실행되는 확정 처리 —
+ * 기존(RQ-01~15) 즉시 퇴장 처리(nickname 해제·handleDisconnect)를 그대로
+ * 수행하고, 세션이 있었다면 그 세션(안 읽음 개수 포함)을 완전히 버린다
+ * (ADR-0003 결정5 마지막 문장 — RQ-18 범위는 "참여 중인 room"이므로 퇴장이
+ * 확정되면 더 이상 참여 중이 아니다).
+ */
+function finalizeDeparture(
+  io: ChatServer,
+  socket: ChatSocket,
+  histories: RoomHistories,
+  roomMembers: RoomMembers,
+  nicknamesInUse: Set<string>,
+  sessions: Sessions,
+  token: string | undefined
+): void {
+  const heldNickname = socket.data.identifiedNickname;
+  if (heldNickname !== undefined) {
+    nicknamesInUse.delete(heldNickname);
+  }
+  handleDisconnect(io, socket, histories, roomMembers);
+  if (token !== undefined) {
+    sessions.delete(token);
+  }
+}
+
+/**
  * RQ-01 서버 계약. 반환된 httpServer는 listen()되지 않은 상태다 — 포트 결정은
  * 호출자 책임 (테스트는 0을 지정해 임의 포트를 배정받는다).
  */
@@ -444,6 +778,11 @@ export function createChatServer(): {
   // 여기 포함하지 않는다(설계 결정, 파일 상단 RoomMembers 주석 참고).
   const roomMembers: RoomMembers = new Map();
 
+  // RQ-18 / ADR-0003: 토큰별 세션 상태(닉네임·참여 room·활성 room·안 읽음·
+  // 유예 타이머) 장부. 인메모리, 서버 인스턴스마다 하나 — ADR-0002/0003과
+  // 일관(서버 재시작 시 소실).
+  const sessions: Sessions = new Map();
+
   io.on('connection', (socket) => {
     // ADR-0004 결정 1: 모든 접속 사용자는 global에 자동 참여하며 탈퇴할 수
     // 없다. nickname은 설정하지 않는다 — 수신은 room 멤버십만으로 충분하고,
@@ -455,23 +794,23 @@ export function createChatServer(): {
     // 비지 않으므로 조건 없이 항상 보낸다.
     socket.emit('rooms', { rooms: computeRoomsList(roomMembers) });
 
-    socket.on('identify', (payload, ack) => handleIdentify(socket, nicknamesInUse, payload, ack));
-    socket.on('join', (payload, ack) => handleJoin(io, socket, roomHistories, roomMembers, payload, ack));
-    socket.on('message', (payload) => handleMessage(io, socket, roomHistories, payload));
-    socket.on('leave', (payload, ack) => handleLeave(io, socket, roomHistories, roomMembers, payload, ack));
+    socket.on('identify', (payload, ack) => handleIdentify(socket, nicknamesInUse, sessions, payload, ack));
+    socket.on('join', (payload, ack) => handleJoin(io, socket, roomHistories, roomMembers, sessions, payload, ack));
+    socket.on('message', (payload) => handleMessage(io, socket, roomHistories, sessions, payload));
+    socket.on('leave', (payload, ack) => handleLeave(io, socket, roomHistories, roomMembers, sessions, payload, ack));
+    // RQ-18: 활성 room 통지(ADR-0003 결정4)·세션 복원(결정1-2·5) — 세션이
+    // 없는 소켓(identify 미호출)에서 호출되면 각 핸들러가 ok:false로 거부한다.
+    socket.on('activeRoom', (payload, ack) => handleActiveRoom(socket, sessions, payload, ack));
+    socket.on('resume', (payload, ack) => handleResume(socket, sessions, roomMembers, payload, ack));
 
-    // RQ-10: 연결 종료 시 이 소켓이 identify로 점유했던 nickname을 해제한다 —
-    // 해제하지 않으면 재접속마다 접미사가 무한 누적된다(GA-11 고유화 규칙이
-    // 점유 집합 크기에 비례해 영구히 커짐).
-    // RQ-15: 이와 함께 이 소켓이 멤버였던 모든 room의 참여자 목록도 갱신해
-    // 남은 멤버에게 방송한다(disconnect는 leave 이벤트 없이 room을 벗어나는
-    // 유일한 경로 — GA-20 disconnect 경로).
+    // RQ-10/RQ-15(기존) + RQ-18/ADR-0003 결정5(신설): 연결 종료 시 기존 즉시
+    // 퇴장 처리(nickname 해제·participants/rooms 갱신·RQ-12 빈 room 삭제)를
+    // 곧바로 실행하지 않고 30초 유예를 둔다 — 그 안에 동일 세션 토큰으로
+    // resume이 오면 타이머가 취소되어 이 처리가 전혀 실행되지 않는다(GA-14).
+    // 유예가 만료되면 finalizeDeparture가 기존 즉시 처리 전체를 실행하고,
+    // 세션이 있었다면 그 안 읽음 개수까지 함께 버린다(ADR-0003 결정5).
     socket.on('disconnect', () => {
-      const heldNickname = socket.data.identifiedNickname;
-      if (heldNickname !== undefined) {
-        nicknamesInUse.delete(heldNickname);
-      }
-      handleDisconnect(io, socket, roomHistories, roomMembers);
+      scheduleDeparture(io, socket, roomHistories, roomMembers, nicknamesInUse, sessions);
     });
   });
 
