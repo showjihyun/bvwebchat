@@ -41,7 +41,7 @@
 | RQ-10 | 닉네임 식별·자동 접미사·새로고침 유지 | 🔄 | requirements §2, GA-09/11, ADR-0003 | PR #19 (Red→Green→평가 PASS) · identify 이벤트(GA-09/11 done) · ⚠️ **미완**: 새로고침 복원(3번째 문장)·세션 토큰·30초 유예·활성 room = ADR-0003 후속(골든 없음+클라 작업 필요). RQ-04 minor-1(global-only 발신) 해소 |
 | RQ-11 | 입장 시 최근 50개 히스토리 (인메모리) | ✅ | requirements §2, GA-08, ADR-0002 | PR #20 머지 · 서버 링버퍼(50)+join ack 히스토리 + 클라 소비(end-to-end 표시) · GA-08 done |
 | RQ-12 | room 자유 생성 + 빈 room 자동 삭제 | ⬜ | requirements §2 | |
-| RQ-13 | room 목록 공개·이름 고유 | 🔄 | requirements §2, GA-21/22/23/24, ADR-0001, **ADR-0004**(global 예외) | 착수(feat/RQ-13-room-list) · 골든 GA-21(목록 전역 방송)/GA-22(이름 고유=동일 room 합류)/GA-23(빈 user room 제외, global 존속)/GA-24(예약 이름 'global' 거부) · **ADR-0004 준수**: global 항상 목록 포함(결과)·예약 이름(결정 3). 메모리 삭제는 RQ-12, 비공개 room 비범위 |
+| RQ-13 | room 목록 공개·이름 고유 | 🔄 | requirements §2, GA-21/22/23/24, ADR-0001, **ADR-0004**(global 예외) | PR #22-pending (Red→Green→평가 PASS) · 서버 `rooms` 전역 방송([global]+멤버≥1 user room 생성순)+예약 이름 거부 + 클라 소비(JoinRoomModal room 디렉토리, end-to-end) · GA-21~24 done · **ADR-0004 준수**: global 상시 포함·예약 이름 거부. 테스트 3커밋(최초→ADR정합→관찰교정). 메모리 삭제는 RQ-12, global 조회 탭은 RQ-04, 비공개 room 비범위 |
 | RQ-14 | room 내 순서 보장 | ⬜ | requirements §2, GA-07, ADR-0001(예정) | |
 | RQ-15 | 참여자 목록 표시 | ✅ | requirements §2, GA-19/20, ADR-0001 | PR #21 머지 · 서버 `participants` 방송(join순, RQ-02 격리) + 클라 렌더(ParticipantList, 본인 seed로 solo 간극 보완) · GA-19/20 done · 온라인/타이핑 비범위 |
 | RQ-18 | 안 읽음 개수 (활성 room 외 +1, 열면 0, 상한 50) | ⬜ | requirements §2-1, GA-12~18, ADR-0003(활성 room 정의) | 스펙 v1.1 · ⚠️ **드리프트**: DESIGN.md §5는 "점, 숫자 배지 없음"(RQ-18 이전 브리프 기반) ↔ RQ-18은 숫자 배지 요구. requirements(1번)>DESIGN.md(4번)이므로 RQ-18이 이김 — RQ-18 UI 착수 전 DESIGN.md §5 개정 필요 |
