@@ -323,6 +323,7 @@ function handleMessage(io: ChatServer, socket: ChatSocket, histories: RoomHistor
 function handleLeave(
   io: ChatServer,
   socket: ChatSocket,
+  histories: RoomHistories,
   roomMembers: RoomMembers,
   payload: LeavePayload,
   ack: (result: LeaveAck) => void
@@ -361,6 +362,19 @@ function handleLeave(
   if (becameEmptyUserRoom) {
     broadcastRooms(io, roomMembers);
   }
+
+  // RQ-12 / ADR-0004 예외 2: 이 leave로 room이 완전히 비면(마지막 멤버 이탈)
+  // roomMembers·roomHistories에서 이 room의 엔트리를 완전히 삭제한다(빈
+  // 배열/빈 이력을 남기던 기존 동작 대체 — RQ-11 히스토리 잔존, RQ-15
+  // minor-3 빈 배열 잔존 해소). GLOBAL_ROOM은 이 함수 상단에서 이미 별도
+  // 분기로 거부돼 여기 도달하지 않으므로(ADR-0004 결정 1) 별도 예외 처리
+  // 없이도 이 삭제 대상에서 자동으로 제외된다. 위 방송 호출(순서·조건)은
+  // 그대로 두고 그 뒤에만 상태를 정리한다 — 방송 시점엔 이미 멤버 배열이
+  // 비어 있어(length === 0) 삭제 전후로 방송 결과가 달라지지 않는다.
+  if (becameEmptyUserRoom) {
+    roomMembers.delete(payload.room);
+    histories.delete(payload.room);
+  }
 }
 
 /**
@@ -373,8 +387,12 @@ function handleLeave(
  * "disconnecting 이벤트로 스냅샷" 힌트 대신 택한 대안 — 자체 장부가 이미
  * 있으므로 추가 이벤트 리스너 없이 동일한 결과를 얻는다).
  */
-function handleDisconnect(io: ChatServer, socket: ChatSocket, roomMembers: RoomMembers): void {
+function handleDisconnect(io: ChatServer, socket: ChatSocket, histories: RoomHistories, roomMembers: RoomMembers): void {
   let userRoomSetChanged = false;
+  // RQ-12: 이 disconnect로 완전히 빈 room이 된 것들을 모아 뒀다가 루프 종료
+  // 후 한 번에 삭제한다(순회 중인 Map을 직접 변형하지 않기 위함 — 한 소켓이
+  // 여러 room의 마지막 멤버였을 수 있다).
+  const emptiedRooms: RoomName[] = [];
   for (const [room, members] of roomMembers) {
     const index = members.indexOf(socket.id);
     if (index === -1) continue;
@@ -386,10 +404,20 @@ function handleDisconnect(io: ChatServer, socket: ChatSocket, roomMembers: RoomM
     // 루프 종료 후 한 번만 보낸다).
     if (members.length === 0) {
       userRoomSetChanged = true;
+      emptiedRooms.push(room);
     }
   }
   if (userRoomSetChanged) {
     broadcastRooms(io, roomMembers);
+  }
+
+  // RQ-12 / ADR-0004 예외 2: 위 방송이 모두 끝난 뒤 완전히 빈 room의 서버
+  // 상태(roomMembers·roomHistories)를 삭제한다. GLOBAL_ROOM은 roomMembers
+  // 순회 대상에 애초에 등록되지 않으므로(RQ-15 설계 결정) 이 루프 자체에
+  // 나타나지 않아 삭제 대상에서 구조적으로 제외된다.
+  for (const room of emptiedRooms) {
+    roomMembers.delete(room);
+    histories.delete(room);
   }
 }
 
@@ -430,7 +458,7 @@ export function createChatServer(): {
     socket.on('identify', (payload, ack) => handleIdentify(socket, nicknamesInUse, payload, ack));
     socket.on('join', (payload, ack) => handleJoin(io, socket, roomHistories, roomMembers, payload, ack));
     socket.on('message', (payload) => handleMessage(io, socket, roomHistories, payload));
-    socket.on('leave', (payload, ack) => handleLeave(io, socket, roomMembers, payload, ack));
+    socket.on('leave', (payload, ack) => handleLeave(io, socket, roomHistories, roomMembers, payload, ack));
 
     // RQ-10: 연결 종료 시 이 소켓이 identify로 점유했던 nickname을 해제한다 —
     // 해제하지 않으면 재접속마다 접미사가 무한 누적된다(GA-11 고유화 규칙이
@@ -443,7 +471,7 @@ export function createChatServer(): {
       if (heldNickname !== undefined) {
         nicknamesInUse.delete(heldNickname);
       }
-      handleDisconnect(io, socket, roomMembers);
+      handleDisconnect(io, socket, roomHistories, roomMembers);
     });
   });
 
