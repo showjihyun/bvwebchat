@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 0
 
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm }
+        with: { node-version: 24, cache: npm }
       - run: npm ci
 
       - name: 스펙 동결 게이트 (Deep Interview 미완료 시 구현 차단)
