@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
-# 배포 후 스모크 테스트 — 트랙 A 골든 케이스의 프로덕션 승격분.
-# 새 테스트를 만들지 않는다: evals/golden/track-a-product.jsonl에서
-# 핵심 케이스를 골라 실제 배포 환경에 대해 재실행하는 것이 원칙.
-#
-# 승격 대상 (스택 확정 후 구현):
-#   - 헬스체크: 배포 URL 접속·응답 확인
+# 배포 후 스모크 테스트 — 트랙 A 골든 케이스의 프로덕션 승격분 (RQ-05/ADR-0006).
+# 새 테스트를 만들지 않는다: evals/golden/track-a-product.jsonl의 핵심 케이스를
+# 실제 배포 환경(BASE_URL)에 대해 socket.io-client로 재실행한다.
+#   - 헬스체크: 배포 URL /health 응답
 #   - GA-01: room 격리 — room-A 메시지가 room-B 참여자에게 새지 않는다
 #   - GA-04: global 전파 — 접속 중인 전원이 수신한다
 # 이 스크립트가 실패하면 배포는 실패다 (deploy.yml의 smoke 잡이 붉어진다).
@@ -12,15 +10,34 @@ set -euo pipefail
 
 BASE_URL="${1:-}"
 if [ -z "$BASE_URL" ] || [ "$BASE_URL" = "unset" ]; then
-  echo "[smoke] DEPLOY_URL 미설정 — 배포 대상(RQ-17) 확정 후 저장소 Variables에 등록하세요."
-  echo "[smoke] 사용법: bash scripts/smoke.sh <BASE_URL>"
-  exit 0  # 배포 골격 단계에서는 게이트를 막지 않는다. URL 등록 후 아래 TODO를 채우면 실검사로 전환.
+  echo "[smoke] BASE_URL 미설정 — 사용법: bash scripts/smoke.sh <BASE_URL>"
+  echo "[smoke] (deploy.yml은 CI에서 컨테이너를 기동한 뒤 그 URL로 이 스크립트를 호출한다.)"
+  exit 2
 fi
 
 echo "[smoke] 대상: $BASE_URL"
-# TODO(배포 대상 확정 후): 예)
-#   curl -fsS "$BASE_URL/health" > /dev/null && echo "[smoke] 헬스체크 OK"
-#   node scripts/smoke/ga01-room-isolation.mjs "$BASE_URL"
-#   node scripts/smoke/ga04-global-broadcast.mjs "$BASE_URL"
-echo "[smoke] 스모크 케이스 미구현 — GA-01/GA-04 승격 구현을 채우세요."
-exit 0
+
+# 1) 헬스체크 — 서버가 뜨고 정적 서빙 준비됐는지.
+if curl -fsS "$BASE_URL/health" > /dev/null; then
+  echo "[smoke] 헬스체크 OK"
+else
+  echo "[smoke] FAIL — 헬스체크 응답 없음 ($BASE_URL/health)"
+  exit 1
+fi
+
+# 2) 잘못된 요청에도 서버가 생존하는지(무인증 DoS 회귀 가드, PR #26 리뷰 B-1).
+#    잘못된 퍼센트 인코딩 '/%'는 400이어야 하고, 직후 헬스가 여전히 200이어야 한다.
+#    --path-as-is: curl이 '%'를 자체 정규화/거부하지 않고 그대로 전송해 실제 디코드
+#    경로를 타격하게 한다(가드가 크래시 경로를 확실히 검사).
+bad=$(curl -s --path-as-is -o /dev/null -w '%{http_code}' "$BASE_URL/%" || true)
+if ! curl -fsS "$BASE_URL/health" > /dev/null; then
+  echo "[smoke] FAIL — 잘못된 요청('/%') 후 서버가 죽었다 (DoS 회귀)"
+  exit 1
+fi
+echo "[smoke] 견고성 OK — 잘못된 요청('/%'→$bad)에도 서버 생존"
+
+# 3) 골든 승격 — 실제 소켓 동작 검증. 하나라도 실패하면 set -e로 전체 실패.
+node scripts/smoke/ga01-room-isolation.mjs "$BASE_URL"
+node scripts/smoke/ga04-global-broadcast.mjs "$BASE_URL"
+
+echo "[smoke] 전체 통과 — 배포 아티팩트가 GA-01·GA-04를 프로덕션에서 충족"

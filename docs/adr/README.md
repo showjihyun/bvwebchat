@@ -10,6 +10,10 @@
 | [ADR-0003](0003-user-identity.md) | 사용자 식별 | 닉네임 + 서버 발급 토큰, 퇴장 유예 30초 | 승인 |
 | [ADR-0004](0004-global-channel.md) | global 채널 모델링 | 예약된 상설 room (RQ-12/13 예외 명문화) | 승인 |
 | [ADR-0005](0005-test-strategy.md) | 테스트 전략 | 통합 중심 TDD, Vitest, 전송만 대역 | 승인 |
+| [ADR-0006](0006-deployment.md) | 배포 (RQ-05/17) | Docker 단일 컨테이너 — 정적 클라 + Socket.IO 단일 서버, 스모크=골든 승격 | 승인 |
+
+> ADR-0001~0005는 2026-07-17 Deep Interview로 일괄 승인. ADR-0006은
+> 2026-07-21 RQ-05 착수 시 배포 방식 결정(사용자 선택: Docker).
 
 디자인 스타일은 ADR이 아니라 `docs/design/DESIGN.md`(클로드 디자인
 산출물 — 질문 26~28)가 진실 공급원이다. UI 구현은 이를 이어받는다.

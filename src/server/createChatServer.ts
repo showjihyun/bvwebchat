@@ -6,7 +6,7 @@
 // 토큰) 계약 추가. 계약 출처: tests/integration/rq-18-unread.test.ts,
 // _workspace/RQ-18/01_test-writer_red.md, docs/adr/0003-user-identity.md.
 
-import { createServer, type Server as HttpServer } from 'node:http';
+import { createServer, type Server as HttpServer, type RequestListener } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { Server as SocketIOServer, type DefaultEventsMap, type Socket } from 'socket.io';
 import { GLOBAL_ROOM, type ChatMessage, type RoomName } from '../shared/types';
@@ -758,12 +758,16 @@ function finalizeDeparture(
 /**
  * RQ-01 서버 계약. 반환된 httpServer는 listen()되지 않은 상태다 — 포트 결정은
  * 호출자 책임 (테스트는 0을 지정해 임의 포트를 배정받는다).
+ *
+ * `requestListener`(RQ-05/ADR-0006): Socket.IO 경로(/socket.io/) 외의 HTTP 요청을
+ * 처리할 핸들러. 프로덕션에서 정적 클라이언트 서빙을 주입하는 용도다. 생략하면
+ * 기존 동작(비-소켓 요청 무응답 — 테스트는 socket.io-client만 사용)과 동일하다.
  */
-export function createChatServer(): {
+export function createChatServer(requestListener?: RequestListener): {
   httpServer: HttpServer;
   io: ChatServer;
 } {
-  const httpServer = createServer();
+  const httpServer = createServer(requestListener);
   const io: ChatServer = new SocketIOServer(httpServer);
 
   // RQ-10: 현재 identify로 점유된 nickname 집합 (인메모리, ADR-0002와 일관 —
