@@ -41,6 +41,7 @@ export function ChatApp({ nickname }: Props) {
       {modalOpen && (
         <JoinRoomModal
           existingRooms={chat.rooms}
+          availableRooms={chat.availableRooms}
           onCancel={() => setModalOpen(false)}
           onJoin={(room) => {
             chat.joinRoom(room);

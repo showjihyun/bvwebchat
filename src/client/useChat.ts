@@ -9,6 +9,9 @@ interface ServerToClientEvents {
   // 서버는 founding(0→1) 최초 join은 방송하지 않으므로, 혼자인 사용자의
   // "본인만" 목록은 클라이언트가 join 시 seed한다 (아래 joinRoom).
   participants: (payload: { room: string; participants: string[] }) => void;
+  // 존재하는 모든 room의 목록 (RQ-13). global 상시 포함(ADR-0004), user room은
+  // 멤버≥1인 것만, 변화 시 전 접속자에게 방송 + 신규 접속 시 초기 전달.
+  rooms: (payload: { rooms: string[] }) => void;
 }
 interface ClientToServerEvents {
   join: (
@@ -40,6 +43,7 @@ export interface ChatState {
   activeRoom: string | null;
   messagesByRoom: Record<string, ClientMessage[]>;
   participantsByRoom: Record<string, string[]>;
+  availableRooms: string[];
   joinRoom: (room: string) => void;
   setActiveRoom: (room: string) => void;
   sendMessage: (body: string) => void;
@@ -51,8 +55,10 @@ export interface ChatState {
  *   단위이므로 재연결 = 새 소켓 = 재등록 필요).
  * - 최초 room 참여 시 join ack의 히스토리(최근 50개, RQ-11)를 기존 앞에 prepend.
  *   재연결 재join은 이미 화면에 있는 메시지와 중복을 피해 히스토리를 무시한다.
- * - 참여자 목록(RQ-15): `participants` 방송을 room별로 반영. 안 읽음·닉네임
- *   고유화 UI는 각각 RQ-18/10 서버 기능이 필요해 범위 밖이다.
+ * - 참여자 목록(RQ-15): `participants` 방송을 room별로 반영.
+ * - 존재 room 목록(RQ-13): `rooms` 방송을 availableRooms로 반영(참여 모달의
+ *   room 디렉토리). 안 읽음·닉네임 고유화 UI는 각각 RQ-18/10 서버 기능이
+ *   필요해 범위 밖이다.
  */
 export function useChat(nickname: string): ChatState {
   const socketRef = useRef<ChatSocket | null>(null);
@@ -65,6 +71,7 @@ export function useChat(nickname: string): ChatState {
   const [activeRoom, setActiveRoomState] = useState<string | null>(null);
   const [messagesByRoom, setMessagesByRoom] = useState<Record<string, ClientMessage[]>>({});
   const [participantsByRoom, setParticipantsByRoom] = useState<Record<string, string[]>>({});
+  const [availableRooms, setAvailableRooms] = useState<string[]>([]);
 
   useEffect(() => {
     // Vite proxy(/socket.io → :3001)를 통해 same-origin으로 접속.
@@ -102,6 +109,11 @@ export function useChat(nickname: string): ChatState {
     socket.on('participants', (payload) => {
       // 서버가 보낸 목록이 권위 있는 상태 — seed/이전 값을 대체.
       setParticipantsByRoom((prev) => ({ ...prev, [payload.room]: payload.participants }));
+    });
+
+    socket.on('rooms', (payload) => {
+      // 존재 room 목록(RQ-13) — 서버가 유일 권위. 접속 시 초기 + 변화 시 방송.
+      setAvailableRooms(payload.rooms);
     });
 
     return () => {
@@ -160,10 +172,21 @@ export function useChat(nickname: string): ChatState {
       activeRoom,
       messagesByRoom,
       participantsByRoom,
+      availableRooms,
       joinRoom,
       setActiveRoom: selectRoom,
       sendMessage,
     }),
-    [status, rooms, activeRoom, messagesByRoom, participantsByRoom, joinRoom, selectRoom, sendMessage],
+    [
+      status,
+      rooms,
+      activeRoom,
+      messagesByRoom,
+      participantsByRoom,
+      availableRooms,
+      joinRoom,
+      selectRoom,
+      sendMessage,
+    ],
   );
 }

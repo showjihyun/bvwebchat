@@ -82,6 +82,16 @@ interface ParticipantsPayload {
   participants: string[];
 }
 
+/**
+ * 서버→클라이언트 'rooms' 브로드캐스트/유니캐스트 payload (RQ-13). 배열 0번
+ * 인덱스는 항상 GLOBAL_ROOM, 이어서 사용자 생성 room 중 현재 멤버 ≥ 1인 것을
+ * 생성순으로 나열한다 (test-writer 계약 — tests/integration/rq-13-room-list.test.ts
+ * 파일 상단 주석 §1, §5).
+ */
+interface RoomsPayload {
+  rooms: RoomName[];
+}
+
 interface ClientToServerEvents {
   identify: (payload: IdentifyPayload, ack: (result: IdentifyAck) => void) => void;
   join: (payload: JoinPayload, ack: (result: JoinAck) => void) => void;
@@ -92,6 +102,7 @@ interface ClientToServerEvents {
 interface ServerToClientEvents {
   message: (payload: ChatMessage) => void;
   participants: (payload: ParticipantsPayload) => void;
+  rooms: (payload: RoomsPayload) => void;
 }
 
 /** 소켓별 상태 — join 시 연결한 nickname (RQ-01 계약: message 전송 시 재전송하지 않음). */
@@ -125,6 +136,28 @@ function broadcastParticipants(io: ChatServer, roomMembers: RoomMembers, room: R
     .map((socketId) => io.sockets.sockets.get(socketId)?.data.nickname)
     .filter(isNonEmptyString);
   io.to(room).emit('participants', { room, participants });
+}
+
+/**
+ * 존재 room 목록을 구성한다 (RQ-13). GLOBAL_ROOM은 roomMembers 장부 조회 없이
+ * 무조건 0번 인덱스에 고정한다(ADR-0004 결과 — 접속자 수·user room 존재
+ * 여부와 무관하게 상시 포함). 이어서 roomMembers 장부의 키 중 현재 멤버가
+ * 1명 이상인 것만 Map 삽입 순서(= 생성순)로 덧붙인다 — 마지막 멤버가 떠나도
+ * 장부에서 키 자체를 지우지는 않으므로(메모리 삭제는 RQ-12 스코프) 여기서
+ * 멤버 수 필터로 "목록"에서만 제외한다.
+ */
+function computeRoomsList(roomMembers: RoomMembers): RoomName[] {
+  const userRooms = [...roomMembers.entries()].filter(([, members]) => members.length > 0).map(([room]) => room);
+  return [GLOBAL_ROOM, ...userRooms];
+}
+
+/**
+ * 존재 room 목록을 접속 중인 모든 소켓에게 방송한다 (RQ-13, 신설 계약 2-a).
+ * room 한정 방송인 broadcastParticipants와 달리 io.emit으로 전 접속자에게
+ * 보낸다 — GA-21의 "room 미참여자도 수신"이 이를 요구한다.
+ */
+function broadcastRooms(io: ChatServer, roomMembers: RoomMembers): void {
+  io.emit('rooms', { rooms: computeRoomsList(roomMembers) });
 }
 
 /**
@@ -204,6 +237,14 @@ function handleJoin(
     return;
   }
 
+  // ADR-0004 결정 3 / RQ-13 GA-24: 'global'은 대소문자 무관 예약 이름 — 사용자의
+  // room 생성 요청에서 거부한다. socket.join·roomMembers 갱신·'rooms' 방송
+  // 모두 발생시키지 않는다("사용자 생성 room 집합"이 전혀 바뀌지 않으므로).
+  if (payload.room.toLowerCase() === GLOBAL_ROOM) {
+    ack({ ok: false, error: `'${GLOBAL_ROOM}'은 예약된 이름이라 room 생성에 사용할 수 없다` });
+    return;
+  }
+
   socket.join(payload.room);
   socket.data.nickname = payload.nickname;
   // RQ-11: socket.join 직후 await 없이 동기적으로 히스토리 스냅샷을 읽어
@@ -215,8 +256,12 @@ function handleJoin(
   ack({ ok: true, history: [...history] });
 
   // RQ-15: 이 room의 멤버 순서 기록에 이 소켓을 추가한다(참여 순 — 맨 뒤에
-  // append).
-  const members = roomMembers.get(payload.room) ?? [];
+  // append). RQ-13: 이 join 직전에 멤버가 0명(키 부재 포함)이었는지를 먼저
+  // 확인해 둔다 — "사용자 생성 room 집합"에 새로 추가되는 순간(0→1 전이)인지
+  // 판단하는 데 쓴다(신설 계약 3번).
+  const existingMembers = roomMembers.get(payload.room);
+  const isNewUserRoom = existingMembers === undefined || existingMembers.length === 0;
+  const members = existingMembers ?? [];
   members.push(socket.id);
   roomMembers.set(payload.room, members);
 
@@ -231,6 +276,13 @@ function handleJoin(
   // 구조적으로 사라진다.
   if (members.length > 1) {
     broadcastParticipants(io, roomMembers, payload.room);
+  }
+
+  // RQ-13: 이 join으로 "사용자 생성 room 집합"이 바뀌었다면(0→1 전이) 존재
+  // room 목록을 전 접속자에게 방송한다(GA-21). participants와 달리 room
+  // 미참여자도 대상이므로 broadcastParticipants와 별개로 io.emit 경로를 쓴다.
+  if (isNewUserRoom) {
+    broadcastRooms(io, roomMembers);
   }
 }
 
@@ -291,15 +343,24 @@ function handleLeave(
   ack({ ok: true });
 
   // RQ-15: 이 room의 멤버 순서 기록에서 이 소켓을 제거하고 갱신된 참여자
-  // 목록을 남은 room 멤버 전원에게 방송한다.
+  // 목록을 남은 room 멤버 전원에게 방송한다. RQ-13: 이 제거로 멤버가 0명이
+  // 됐다면("사용자 생성 room 집합"에서 제거되는 1→0 전이) 존재 room 목록도
+  // 전 접속자에게 방송한다(GA-23, 신설 계약 3번).
   const members = roomMembers.get(payload.room);
+  let becameEmptyUserRoom = false;
   if (members !== undefined) {
     const index = members.indexOf(socket.id);
     if (index !== -1) {
       members.splice(index, 1);
+      if (members.length === 0) {
+        becameEmptyUserRoom = true;
+      }
     }
   }
   broadcastParticipants(io, roomMembers, payload.room);
+  if (becameEmptyUserRoom) {
+    broadcastRooms(io, roomMembers);
+  }
 }
 
 /**
@@ -313,11 +374,22 @@ function handleLeave(
  * 있으므로 추가 이벤트 리스너 없이 동일한 결과를 얻는다).
  */
 function handleDisconnect(io: ChatServer, socket: ChatSocket, roomMembers: RoomMembers): void {
+  let userRoomSetChanged = false;
   for (const [room, members] of roomMembers) {
     const index = members.indexOf(socket.id);
     if (index === -1) continue;
     members.splice(index, 1);
     broadcastParticipants(io, roomMembers, room);
+    // RQ-13: 이 room이 이 disconnect로 0명이 됐다면 "사용자 생성 room 집합"이
+    // 바뀐 것이다(1→0 전이) — 존재 room 목록 방송이 필요하다는 표시만 남기고
+    // 계속 순회한다(한 소켓이 여러 room의 마지막 멤버였을 수 있으므로 방송은
+    // 루프 종료 후 한 번만 보낸다).
+    if (members.length === 0) {
+      userRoomSetChanged = true;
+    }
+  }
+  if (userRoomSetChanged) {
+    broadcastRooms(io, roomMembers);
   }
 }
 
@@ -349,6 +421,11 @@ export function createChatServer(): {
     // 없다. nickname은 설정하지 않는다 — 수신은 room 멤버십만으로 충분하고,
     // nickname은 발신(handleMessage)에만 필요하다.
     socket.join(GLOBAL_ROOM);
+
+    // RQ-13 신설 계약 2-b: 신규 접속자에게 그 순간의 존재 room 목록 스냅샷을
+    // 유니캐스트로 즉시 전달한다. GLOBAL_ROOM이 항상 포함돼 목록이 결코
+    // 비지 않으므로 조건 없이 항상 보낸다.
+    socket.emit('rooms', { rooms: computeRoomsList(roomMembers) });
 
     socket.on('identify', (payload, ack) => handleIdentify(socket, nicknamesInUse, payload, ack));
     socket.on('join', (payload, ack) => handleJoin(io, socket, roomHistories, roomMembers, payload, ack));

@@ -435,6 +435,23 @@ input,
   font-size: 18px;
   font-weight: 700;
 }
+/* RQ-13: 참여 모달의 존재 room 디렉토리 (많으면 스크롤) */
+.room-directory {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 180px;
+  overflow-y: auto;
+}
+.room-directory .section-label {
+  padding-left: 0;
+}
+.room-directory .room-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+}
 .modal-actions {
   display: flex;
   justify-content: flex-end;
