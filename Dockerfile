@@ -3,7 +3,7 @@
 # runtime은 프로덕션 의존성 + dist만 담아 `node dist/server/main.js`로 뜬다.
 
 # ── builder ──
-FROM node:22-slim AS builder
+FROM node:24-slim AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -11,7 +11,7 @@ COPY . .
 RUN npm run build:client && npm run build:server
 
 # ── runtime ──
-FROM node:22-slim AS runtime
+FROM node:24-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 COPY package.json package-lock.json ./

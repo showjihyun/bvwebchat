@@ -8,3 +8,8 @@ claudedocs
 *.log
 *.zip
 .DS_Store
+# 시크릿 방어 — builder의 COPY . .가 실수로 반입하지 않도록.
+.env
+.env.*
+*.pem
+*.key
