@@ -26,3 +26,13 @@ export function avatarInitial(nickname: string): string {
   const first = [...nickname][0];
   return first ?? '?';
 }
+
+/**
+ * 채팅 표시용 닉네임 — 전체를 보여주되 10자를 넘으면 10자 + '…'로 축약한다.
+ * (코드포인트 기준으로 잘라 한글·이모지가 중간에서 깨지지 않게 한다.)
+ * 원본은 title 속성으로 노출해 hover 시 전체를 확인할 수 있게 한다.
+ */
+export function displayNickname(nickname: string): string {
+  const chars = [...nickname];
+  return chars.length > 10 ? chars.slice(0, 10).join('') + '…' : nickname;
+}

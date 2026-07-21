@@ -24,6 +24,10 @@
       (RQ-01/02/03/04/10/11/12/13/14/15/18) + 배포 RQ-05, 모두 tdd-workflow
       (Red→Green→독립평가) + review-gate 통과. RQ-16/17은 ADR-0001/0006·게이트
       제약으로 반영. 각 RQ 상세는 아래 작업 원장.
+- [x] ✅ **UI 수정 (2026-07-21, PR #29)**: 브라우저 수동 테스트 사용자 피드백 —
+      메시지 겹침(`.msg-row flex-shrink:0`)·세로 스크롤(justify-content 제거+자동
+      하단 스크롤)·입장 닉네임 최소 2자·닉네임 10자 초과 축약(…). 클라 전용,
+      DESIGN §5 동기화, review-gate APPROVE. 서버·스펙·골든 무변경.
 - [x] ✅ **FE 토대 + RQ-01 UI 슬라이스** (2026-07-20): React+Vite+TS, DESIGN.md
       토큰/레이아웃, 입장→단일 room 채팅(실 Socket.IO). `npm run dev:server` +
       `npm run dev`. 참여자 목록·안 읽음·히스토리·global·닉네임 고유화 UI는
