@@ -27,8 +27,9 @@ fi
 
 # 2) 잘못된 요청에도 서버가 생존하는지(무인증 DoS 회귀 가드, PR #26 리뷰 B-1).
 #    잘못된 퍼센트 인코딩 '/%'는 400이어야 하고, 직후 헬스가 여전히 200이어야 한다.
-code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/%25" || true)  # '%25'는 인코딩된 '%'
-bad=$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/%" || true)      # 원 '%' — 디코드 실패 유발
+#    --path-as-is: curl이 '%'를 자체 정규화/거부하지 않고 그대로 전송해 실제 디코드
+#    경로를 타격하게 한다(가드가 크래시 경로를 확실히 검사).
+bad=$(curl -s --path-as-is -o /dev/null -w '%{http_code}' "$BASE_URL/%" || true)
 if ! curl -fsS "$BASE_URL/health" > /dev/null; then
   echo "[smoke] FAIL — 잘못된 요청('/%') 후 서버가 죽었다 (DoS 회귀)"
   exit 1
