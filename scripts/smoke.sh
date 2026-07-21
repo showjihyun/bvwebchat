@@ -25,7 +25,17 @@ else
   exit 1
 fi
 
-# 2) 골든 승격 — 실제 소켓 동작 검증. 하나라도 실패하면 set -e로 전체 실패.
+# 2) 잘못된 요청에도 서버가 생존하는지(무인증 DoS 회귀 가드, PR #26 리뷰 B-1).
+#    잘못된 퍼센트 인코딩 '/%'는 400이어야 하고, 직후 헬스가 여전히 200이어야 한다.
+code=$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/%25" || true)  # '%25'는 인코딩된 '%'
+bad=$(curl -s -o /dev/null -w '%{http_code}' "$BASE_URL/%" || true)      # 원 '%' — 디코드 실패 유발
+if ! curl -fsS "$BASE_URL/health" > /dev/null; then
+  echo "[smoke] FAIL — 잘못된 요청('/%') 후 서버가 죽었다 (DoS 회귀)"
+  exit 1
+fi
+echo "[smoke] 견고성 OK — 잘못된 요청('/%'→$bad)에도 서버 생존"
+
+# 3) 골든 승격 — 실제 소켓 동작 검증. 하나라도 실패하면 set -e로 전체 실패.
 node scripts/smoke/ga01-room-isolation.mjs "$BASE_URL"
 node scripts/smoke/ga04-global-broadcast.mjs "$BASE_URL"
 
