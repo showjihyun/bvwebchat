@@ -1,4 +1,5 @@
 import { Avatar } from './Avatar';
+import { displayNickname } from '../avatar';
 
 interface Props {
   nickname: string;
@@ -22,7 +23,9 @@ export function ParticipantList({ nickname, hasRoom, participants }: Props) {
           participants.map((name) => (
             <div className="person" key={name}>
               <Avatar nickname={name} size="sm" />
-              <span>{name}</span>
+              <span className="person-name" title={name}>
+                {displayNickname(name)}
+              </span>
               {name === nickname && <span className="me-badge">나</span>}
             </div>
           ))

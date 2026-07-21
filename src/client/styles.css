@@ -291,11 +291,19 @@ input,
   padding: var(--space-5) 0;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+}
+/* 메시지가 짧으면 아래로 정렬(채팅 느낌), 넘치면 margin이 0으로 접혀 스크롤이
+   상단을 자르지 않는다. justify-content: flex-end는 오버플로우 상단을 잘라
+   과거 메시지 스크롤을 막으므로 쓰지 않는다. */
+.msg-list > .msg-row:first-child {
+  margin-top: auto;
 }
 .msg-row {
-  padding: 3px var(--space-6);
+  padding: 4px var(--space-6);
   min-height: 26px;
+  /* .msg-list가 flex column이라 행이 flex 아이템으로 압축(shrink)되면 본문이
+     min-height를 넘쳐 다음 행과 겹친다 — shrink를 막아 행이 콘텐츠 높이로 자라게 한다. */
+  flex-shrink: 0;
 }
 .msg-row.grouped {
   padding-left: 56px;
@@ -303,10 +311,14 @@ input,
 .msg-row:hover {
   background: var(--color-bg-hover);
 }
+/* 발신자가 바뀌는 행은 위에 여백을 더 둬 이전 사람 메시지와 확실히 구분한다. */
 .msg-lead {
-  padding-top: var(--space-4);
+  padding-top: var(--space-5);
   display: flex;
   gap: 10px;
+}
+.msg-lead .msg-body {
+  margin-top: 2px;
 }
 .msg-meta {
   display: flex;
@@ -402,6 +414,13 @@ input,
   padding: 0 var(--space-3);
   border-radius: var(--radius-control);
   font-size: 13px;
+}
+/* 닉네임은 10자+…로 축약되지만, 좁은 패널에서 넘칠 때를 대비해 말줄임 안전장치. */
+.person-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .pending-note {
   padding: var(--space-4);

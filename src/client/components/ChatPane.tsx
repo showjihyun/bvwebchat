@@ -1,5 +1,7 @@
+import { useEffect, useRef } from 'react';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
+import { displayNickname } from '../avatar';
 import type { ClientMessage, ConnStatus } from '../useChat';
 
 interface Props {
@@ -20,6 +22,14 @@ function formatTime(ms: number): string {
 
 /** 채팅 영역 (DESIGN.md §4/§5). 재연결 배너, 플랫 메시지 리스트, 입력창. */
 export function ChatPane({ room, nickname, messages, status, onSend, onNewRoom }: Props) {
+  const listRef = useRef<HTMLDivElement>(null);
+  // 새 메시지가 오거나 room을 바꾸면 목록을 맨 아래로 스크롤(최신 메시지 노출).
+  // 위로 스크롤하면 과거 대화를 볼 수 있고, 새 메시지 도착 시 다시 하단으로 붙는다.
+  useEffect(() => {
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages, room]);
+
   if (room === null) {
     return (
       <div className="col-chat">
@@ -47,7 +57,7 @@ export function ChatPane({ room, nickname, messages, status, onSend, onNewRoom }
           <span>연결이 끊겼습니다 — 재연결 중…</span>
         </div>
       )}
-      <div className="msg-list">
+      <div className="msg-list" ref={listRef}>
         {messages.length === 0 ? (
           <div className="empty-room">
             <div className="title"># {room}</div>
@@ -70,7 +80,9 @@ export function ChatPane({ room, nickname, messages, status, onSend, onNewRoom }
                 <Avatar nickname={msg.nickname} />
                 <div style={{ minWidth: 0 }}>
                   <div className="msg-meta">
-                    <span className="msg-name">{msg.nickname}</span>
+                    <span className="msg-name" title={msg.nickname}>
+                      {displayNickname(msg.nickname)}
+                    </span>
                     {isMe && <span className="me-badge">나</span>}
                     <span className="msg-time">{formatTime(msg.at)}</span>
                   </div>
