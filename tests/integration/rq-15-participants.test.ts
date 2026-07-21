@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import type { AddressInfo } from 'node:net';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import { createChatServer } from '../../src/server/createChatServer';
@@ -28,6 +28,17 @@ import type { RoomName } from '../../src/shared/types';
  *   → GA-20은 "leave 또는 disconnect" 두 경로를 모두 요구한다. 아래
  *     describe 블록에 두 개의 it()(leave 경로 / disconnect 경로)로 나누어
  *     둘 다 검증한다 — 둘 다 같은 GA-20에 매핑된다.
+ *
+ * ── RQ-18 정합 (2026-07-21, team-lead 지시) — disconnect 경로만 변경 ──
+ * ADR-0003 결정5(RQ-18 스코프)는 "연결 종료 시 즉시 퇴장 처리하지 않고 30초
+ * 유예를 둔다"를 세션 유무와 무관하게 모든 socket disconnect에 적용한다.
+ * 이 파일의 disconnect 경로 테스트는 원래 disconnect 직후 즉시 'participants'
+ * 갱신을 기대했으나, 이는 결정5와 충돌한다. **단언(참여자 목록이 결국
+ * [alice]로 갱신된다)은 그대로 두고, 타이밍만 "즉시" → "유예(30초) 경과
+ * 후"로 교정**했다(vi.useFakeTimers + vi.advanceTimersByTimeAsync, ADR-0005
+ * 결정4). leave 경로 테스트(위 GA-20 첫 번째 it())는 leave가 유예 대상이
+ * 아니므로(유예는 연결 종료에만 적용) 변경하지 않았다. 상세는
+ * _workspace/RQ-18/01_test-writer_red.md 참고.
  *
  * ── 서버 계약 — 신설 (이 테스트가 정의한다. 아직 미구현, coder의 구현 대상) ──
  *
@@ -186,6 +197,59 @@ function connectClient(url: string, cleanupFns: Array<() => void | Promise<void>
   return socket;
 }
 
+/**
+ * startServer와 동일하지만 io도 함께 반환한다 — RQ-18 정합(위 파일 상단
+ * 주석 참고): disconnect 경로 테스트가 서버 측 소켓의 실제 'disconnect'
+ * 이벤트를 직접 관찰해 fake timer 진행 시점을 동기화해야 하기 때문
+ * (rq-12 GA-27의 io 직접 조회 패턴과 동일 근거).
+ */
+async function startServerWithIo(
+  cleanupFns: Array<() => void | Promise<void>>
+): Promise<{ url: string; io: ReturnType<typeof createChatServer>['io'] }> {
+  const { httpServer, io } = createChatServer();
+  await new Promise<void>((resolve) => httpServer.listen(0, resolve));
+  const port = (httpServer.address() as AddressInfo).port;
+  cleanupFns.push(() => new Promise<void>((resolve) => io.close(() => resolve())));
+  return { url: `http://localhost:${port}`, io };
+}
+
+/** 연결된 클라이언트 소켓의 id를 안전하게 읽는다(연결 전이면 에러). */
+function requireSocketId(socket: ClientSocket): string {
+  if (!socket.id) {
+    throw new Error('클라이언트 소켓이 아직 연결되지 않아 id가 없다');
+  }
+  return socket.id;
+}
+
+/**
+ * 서버 측 소켓(clientSocketId와 동일 id)이 실제로 'disconnect'를 발생시킬
+ * 때까지 기다린다. 유예(30초) fake timer를 진행시키기 전에, 서버가 이
+ * disconnect를 인지해 유예 타이머를 실제로 스케줄한 시점과 동기화하기 위한
+ * 헬퍼다(RQ-18 rq-18-unread.test.ts와 동일 헬퍼).
+ */
+function waitForServerSocketDisconnect(
+  io: ReturnType<typeof createChatServer>['io'],
+  clientSocketId: string,
+  timeoutMs = 2000
+): Promise<void> {
+  const serverSocket = io.sockets.sockets.get(clientSocketId);
+  if (!serverSocket) {
+    return Promise.reject(new Error(`서버 측 소켓(id=${clientSocketId})을 찾을 수 없다`));
+  }
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`서버가 소켓(id=${clientSocketId})의 disconnect를 ${timeoutMs}ms 내에 인지하지 못했다`));
+    }, timeoutMs);
+    serverSocket.once('disconnect', () => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+}
+
+/** ADR-0003 결정5: 퇴장 유예 30초 — 경계값 해석은 파일 상단 "RQ-18 정합" 주석 참고. */
+const GRACE_PERIOD_MS = 30_000;
+
 describe('RQ-15 / GA-19: room에 새 참여자가 들어오면 기존·신규 참여자 모두 갱신된 참여자 목록을 받는다', () => {
   const cleanupFns: Array<() => void | Promise<void>> = [];
 
@@ -278,9 +342,9 @@ describe('RQ-15 / GA-20: 참여자가 room을 떠나면(leave) 또는 연결이 
   );
 
   it(
-    'user1(alice)·user2(bob)가 room-A 참여 후 user2의 연결이 끊기면(disconnect), user1은 room-A 참여자 목록 [alice]를 수신하고 room-A 비참여자는 이를 알 수 없다 (RQ-15, GA-20 disconnect 경로)',
+    'user1(alice)·user2(bob)가 room-A 참여 후 user2의 연결이 끊기면(disconnect), 퇴장 유예(30초, ADR-0003 결정5) 경과 후 user1은 room-A 참여자 목록 [alice]를 수신하고 room-A 비참여자는 이를 알 수 없다 (RQ-15, GA-20 disconnect 경로 — RQ-18 정합, 파일 상단 주석 참고)',
     async () => {
-      const url = await startServer(cleanupFns);
+      const { url, io } = await startServerWithIo(cleanupFns);
       const user1 = connectClient(url, cleanupFns);
       const user2 = connectClient(url, cleanupFns);
       const outsider = connectClient(url, cleanupFns);
@@ -293,17 +357,48 @@ describe('RQ-15 / GA-20: 참여자가 room을 떠나면(leave) 또는 연결이 
       await expect(bothJoinedBroadcast).resolves.toEqual(expectedBothJoined);
 
       // when: user2의 연결이 강제 종료된다 (leave 이벤트 없이 소켓 자체가 끊김).
-      // 트리거(disconnect) 직전에 관찰자를 등록한다.
-      const user1SeesAfterDisconnect = waitForParticipantsEvent(user1, 'room-A');
-      const outsiderNeverSeesRoomA = assertNoParticipantsEventForRoom(outsider, 'room-A');
-      user2.disconnect();
+      // 트리거(disconnect) 직전에 관찰자를 등록한다. user1SeesAfterDisconnect의
+      // 타임아웃(35000ms)은 아래에서 fake timer로 30초+α를 진행시키는 동안
+      // 자체 타임아웃이 먼저 발동해 거짓 실패하지 않도록 유예보다 넉넉히 크게
+      // 잡는다.
+      const user1SeesAfterDisconnect = waitForParticipantsEvent(user1, 'room-A', 35000);
+      // "즉시 처리되지 않는다"를 직접 확인하는 부정 단언 — 이게 없으면 유예를
+      // 전혀 구현하지 않아도(기존처럼 즉시 처리해도) 이 테스트가 우연히
+      // 통과해버린다(회귀를 못 잡는 무의미한 Red/Green이 된다).
+      const noImmediateUpdateForUser1 = assertNoParticipantsEventForRoom(user1, 'room-A', 1000);
+      const outsiderNeverSeesRoomA = assertNoParticipantsEventForRoom(outsider, 'room-A', 1000);
+      // Red 상태에서는 위 두 부정 단언이 (아래에서 실제로 await하기 전에) 이미
+      // reject할 수 있다 — Node의 unhandledRejection 경고를 막기 위해 즉시
+      // no-op catch를 붙여둔다(원본 promise 참조는 그대로 두어 아래에서 실제
+      // 결과를 검증한다).
+      noImmediateUpdateForUser1.catch(() => {});
+      outsiderNeverSeesRoomA.catch(() => {});
 
-      // then: user1이 [alice]를 수신한다.
-      const expectedAfterDisconnect: ParticipantsPayload = { room: 'room-A', participants: ['alice'] };
-      await expect(user1SeesAfterDisconnect).resolves.toEqual(expectedAfterDisconnect);
+      // ADR-0003 결정5(RQ-18 스코프): 연결 종료는 즉시 퇴장 처리되지 않고
+      // 30초 유예를 둔다 — fake timer로 유예를 진행시켜야 참여자 목록 갱신이
+      // 트리거된다. 서버가 disconnect를 실제로 인지한(유예 타이머를 스케줄한)
+      // 시점과 동기화한 뒤에만 fake timer를 진행시킨다(레이스 방지).
+      const user2SocketId = requireSocketId(user2);
+      vi.useFakeTimers();
+      try {
+        const serverObservedDisconnect = waitForServerSocketDisconnect(io, user2SocketId);
+        user2.disconnect();
+        await serverObservedDisconnect;
 
-      // RQ-02 격리: room-A 비참여자는 이 참여자 변경을 전혀 알 수 없다.
-      await expect(outsiderNeverSeesRoomA).resolves.toBeUndefined();
+        // 유예 초반(1초 시점)에는 아직 즉시 처리되지 않아야 한다.
+        await vi.advanceTimersByTimeAsync(1000);
+        await expect(noImmediateUpdateForUser1).resolves.toBeUndefined();
+        await expect(outsiderNeverSeesRoomA).resolves.toBeUndefined();
+
+        // 남은 유예를 마저 진행시켜 30초를 넘긴다.
+        await vi.advanceTimersByTimeAsync(GRACE_PERIOD_MS - 1000 + 1);
+
+        // then: 유예 경과 후에는 user1이 [alice]를 수신한다.
+        const expectedAfterDisconnect: ParticipantsPayload = { room: 'room-A', participants: ['alice'] };
+        await expect(user1SeesAfterDisconnect).resolves.toEqual(expectedAfterDisconnect);
+      } finally {
+        vi.useRealTimers();
+      }
     }
   );
 });

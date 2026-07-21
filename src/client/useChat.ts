@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
-import type { ChatMessage } from '../shared/types';
+import { GLOBAL_ROOM, type ChatMessage } from '../shared/types';
 
 // 서버 계약(src/server/createChatServer.ts)과 동일한 이벤트 shape.
 interface ServerToClientEvents {
@@ -12,8 +12,22 @@ interface ServerToClientEvents {
   // 존재하는 모든 room의 목록 (RQ-13). global 상시 포함(ADR-0004), user room은
   // 멤버≥1인 것만, 변화 시 전 접속자에게 방송 + 신규 접속 시 초기 전달.
   rooms: (payload: { rooms: string[] }) => void;
+  // 안 읽음 개수 유니캐스트 (RQ-18) — 이 세션 소켓에만. 비활성 room에 메시지
+  // 도착 시 +1(상한 50), 활성 전환 시 0.
+  unread: (payload: { room: string; count: number }) => void;
 }
+type IdentifyAck = { ok: true; nickname: string; token: string } | { ok: false; error: string };
+type ResumeAck =
+  | { ok: true; nickname: string; rooms: string[]; activeRoom: string | null; unread: Record<string, number> }
+  | { ok: false; error: string };
+type ActiveRoomAck = { ok: true } | { ok: false; error: string };
 interface ClientToServerEvents {
+  // RQ-10/RQ-18: 닉네임 제출 → 서버가 세션 토큰 발급(ADR-0003 결정1).
+  identify: (payload: { nickname: string }, ack: (result: IdentifyAck) => void) => void;
+  // RQ-18: 유예(30초) 내 토큰 제시로 세션(참여 room·활성 room·안읽음) 복원(ADR-0003 결정5).
+  resume: (payload: { token: string }, ack: (result: ResumeAck) => void) => void;
+  // RQ-18: 현재 보고 있는 room 통지(ADR-0003 결정4). 미참여 room이면 서버가 거부.
+  activeRoom: (payload: { room: string }, ack: (result: ActiveRoomAck) => void) => void;
   join: (
     payload: { room: string; nickname: string },
     // ack.history: 입장 시점의 room 히스토리 (최근 50개, RQ-11).
@@ -35,6 +49,9 @@ export interface ClientMessage {
 
 export type ConnStatus = 'connecting' | 'connected' | 'reconnecting';
 
+// RQ-18/ADR-0003: 세션 토큰을 localStorage에 보관 — 새로고침·재연결 시 resume에 제시.
+const TOKEN_KEY = 'bvwebchat.sessionToken';
+
 let msgSeq = 0;
 
 export interface ChatState {
@@ -44,6 +61,7 @@ export interface ChatState {
   messagesByRoom: Record<string, ClientMessage[]>;
   participantsByRoom: Record<string, string[]>;
   availableRooms: string[];
+  unreadByRoom: Record<string, number>;
   joinRoom: (room: string) => void;
   setActiveRoom: (room: string) => void;
   sendMessage: (body: string) => void;
@@ -56,9 +74,11 @@ export interface ChatState {
  * - 최초 room 참여 시 join ack의 히스토리(최근 50개, RQ-11)를 기존 앞에 prepend.
  *   재연결 재join은 이미 화면에 있는 메시지와 중복을 피해 히스토리를 무시한다.
  * - 참여자 목록(RQ-15): `participants` 방송을 room별로 반영.
- * - 존재 room 목록(RQ-13): `rooms` 방송을 availableRooms로 반영(참여 모달의
- *   room 디렉토리). 안 읽음·닉네임 고유화 UI는 각각 RQ-18/10 서버 기능이
- *   필요해 범위 밖이다.
+ * - 존재 room 목록(RQ-13): `rooms` 방송을 availableRooms로 반영(참여 모달의 디렉토리).
+ * - 세션·안 읽음(RQ-18/ADR-0003): 접속 시 identify로 세션 토큰 발급(localStorage 보관),
+ *   재연결·새로고침 시 resume으로 세션(참여 room·활성·안읽음) 복원. room 열람 시
+ *   activeRoom 통지 → 그 room 안읽음 0. `unread` 방송을 unreadByRoom(숫자 배지)로 반영.
+ *   (새로고침 시 메시지 히스토리 재생은 범위 밖 — resume은 세션 상태만 복원.)
  */
 export function useChat(nickname: string): ChatState {
   const socketRef = useRef<ChatSocket | null>(null);
@@ -72,6 +92,7 @@ export function useChat(nickname: string): ChatState {
   const [messagesByRoom, setMessagesByRoom] = useState<Record<string, ClientMessage[]>>({});
   const [participantsByRoom, setParticipantsByRoom] = useState<Record<string, string[]>>({});
   const [availableRooms, setAvailableRooms] = useState<string[]>([]);
+  const [unreadByRoom, setUnreadByRoom] = useState<Record<string, number>>({});
 
   useEffect(() => {
     // Vite proxy(/socket.io → :3001)를 통해 same-origin으로 접속.
@@ -84,9 +105,43 @@ export function useChat(nickname: string): ChatState {
       }
     };
 
+    // RQ-18/ADR-0003: 새 세션 발급 — 닉네임 identify → 토큰 저장 → 참여 room 복원.
+    const identifyFresh = () => {
+      socket.emit('identify', { nickname }, (res) => {
+        if (res.ok) localStorage.setItem(TOKEN_KEY, res.token);
+        rejoinAll(); // 최초 연결은 no-op, 재연결/토큰만료 폴백 시 참여 room 재등록
+      });
+    };
+
     socket.on('connect', () => {
       setStatus('connected');
-      rejoinAll(); // 최초 연결·재연결 모두 참여 room 복원
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (token) {
+        // 유예(30초) 내 재연결·새로고침: 토큰으로 세션(참여 room·활성·안읽음) 복원.
+        socket.emit('resume', { token }, (res) => {
+          if (!res.ok) {
+            // 유예 만료·무효 토큰 → 새 세션 발급으로 폴백.
+            localStorage.removeItem(TOKEN_KEY);
+            identifyFresh();
+            return;
+          }
+          // resume이 서버측 room 재합류를 수행하므로 rejoinAll을 다시 하지 않는다.
+          const restored = res.rooms.filter((r) => r !== GLOBAL_ROOM);
+          roomsRef.current = restored;
+          setRooms(restored);
+          setUnreadByRoom(res.unread);
+          for (const room of restored) {
+            setMessagesByRoom((prev) => (prev[room] ? prev : { ...prev, [room]: [] }));
+          }
+          if (res.activeRoom) {
+            // selectRoom은 아래에서 정의되므로 ref/setter를 인라인(활성 room 통지는 이미 서버에 복원됨).
+            activeRoomRef.current = res.activeRoom;
+            setActiveRoomState(res.activeRoom);
+          }
+        });
+      } else {
+        identifyFresh();
+      }
     });
     socket.on('disconnect', () => setStatus('reconnecting'));
     socket.io.on('reconnect_attempt', () => setStatus('reconnecting'));
@@ -116,6 +171,11 @@ export function useChat(nickname: string): ChatState {
       setAvailableRooms(payload.rooms);
     });
 
+    socket.on('unread', (payload) => {
+      // 안 읽음 개수(RQ-18) — 서버가 유일 권위(비활성 +1 / 활성 전환 0).
+      setUnreadByRoom((prev) => ({ ...prev, [payload.room]: payload.count }));
+    });
+
     return () => {
       socket.close();
       socketRef.current = null;
@@ -125,6 +185,10 @@ export function useChat(nickname: string): ChatState {
   const selectRoom = useCallback((room: string) => {
     activeRoomRef.current = room;
     setActiveRoomState(room);
+    // RQ-18: 열람 중인 room을 서버에 통지 → 그 room 안읽음 0 초기화(서버가 unread로 회신).
+    // 낙관적으로 로컬도 0 처리(서버 회신 전 배지 즉시 제거).
+    socketRef.current?.emit('activeRoom', { room }, () => undefined);
+    setUnreadByRoom((prev) => (prev[room] ? { ...prev, [room]: 0 } : prev));
   }, []);
 
   const joinRoom = useCallback(
@@ -173,6 +237,7 @@ export function useChat(nickname: string): ChatState {
       messagesByRoom,
       participantsByRoom,
       availableRooms,
+      unreadByRoom,
       joinRoom,
       setActiveRoom: selectRoom,
       sendMessage,
@@ -184,6 +249,7 @@ export function useChat(nickname: string): ChatState {
       messagesByRoom,
       participantsByRoom,
       availableRooms,
+      unreadByRoom,
       joinRoom,
       selectRoom,
       sendMessage,

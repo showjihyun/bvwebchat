@@ -22,6 +22,7 @@ export function ChatApp({ nickname }: Props) {
       <RoomList
         rooms={chat.rooms}
         activeRoom={chat.activeRoom}
+        unreadByRoom={chat.unreadByRoom}
         onSelect={chat.setActiveRoom}
         onNewRoom={() => setModalOpen(true)}
       />
