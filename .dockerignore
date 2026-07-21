@@ -1,0 +1,10 @@
+node_modules
+dist
+.git
+.github
+_workspace
+_workspace_prev
+claudedocs
+*.log
+*.zip
+.DS_Store
