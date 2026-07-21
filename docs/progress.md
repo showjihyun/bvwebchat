@@ -17,9 +17,9 @@
       브리프는 입력 기록으로 동결, 이후 디자인 변경은 DESIGN.md에서.
 - [x] ✅ **게이트 실질화(검증)**: check.sh·ci.yml 실명령 + 스캐폴드 (2026-07-17,
       실측: fast 1.4초/전체 3.2초 — ADR-0005 예산 내)
-- [ ] 🔄 **게이트 실질화(배포)**: RQ-05로 진행 중 — Docker 단일 컨테이너(ADR-0006),
-      deploy.yml(이미지 빌드→기동→스모크), smoke.sh(GA-01·GA-04 프로덕션 승격) 구현.
-      로컬 빌드·서빙·스모크 검증 완료, 컨테이너 검증 대기(Docker 데몬).
+- [x] ✅ **게이트 실질화(배포)**: RQ-05 — Docker 단일 컨테이너(ADR-0006),
+      deploy.yml(이미지 빌드→기동→스모크), smoke.sh(GA-01·GA-04 프로덕션 승격).
+      **컨테이너 검증 완료**: docker build/run OK, health 1초, 스모크 exit 0.
 - [ ] 🔄 **Phase 4~5 — RQ 구현**: 아래 작업 원장. **RQ-01 ✅ 완료**
       (2026-07-20, PR #13 — 첫 실제 코드).
 - [x] ✅ **FE 토대 + RQ-01 UI 슬라이스** (2026-07-20): React+Vite+TS, DESIGN.md
@@ -38,7 +38,7 @@
 | RQ-02 | room 메시지 격리 전달 | ✅ | requirements.md §1, GA-01/02/06/10, ADR-0001 | PR #16 머지 · GA-10 이월 구멍 닫음(발신자 `socket.rooms.has` 검증) · GA-01/02/06/10 done |
 | RQ-03 | 퇴장 후 수신 차단 | ✅ | requirements.md §1, GA-03, GB-02 | PR #17 머지 · leave 이벤트(`socket.leave`) · GA-03 done |
 | RQ-04 | global 전체 전달 | ✅ | requirements.md §1, GA-04, ADR-0004 | PR #18 머지 · 접속 시 global 자동 참여 + leave 거부(ADR-0004) · GA-04 done |
-| RQ-05 | 7/31 배포 가능 | 🔄 | requirements §1, RQ-17, **ADR-0006**(Docker 단일 컨테이너) | 착수(feat/RQ-05-deploy) · 단일 서버(정적 클라 + Socket.IO 단일 포트, main.ts + staticHandler + createChatServer requestListener) · esbuild 서버 번들 · Dockerfile 멀티스테이지 · smoke.sh(health+GA-01+GA-04 프로덕션 승격) · deploy.yml(이미지 빌드→기동→스모크) · docs/deploy.md(사내망 수동 반입). **로컬 검증**: build+정적서빙+스모크 통과, check 44/44. 컨테이너 검증 대기(Docker 데몬) |
+| RQ-05 | 7/31 배포 가능 | 🔄 | requirements §1, RQ-17, **ADR-0006**(Docker 단일 컨테이너) | 착수(feat/RQ-05-deploy) · 단일 서버(정적 클라 + Socket.IO 단일 포트, main.ts + staticHandler + createChatServer requestListener) · esbuild 서버 번들 · Dockerfile 멀티스테이지 · smoke.sh(health+GA-01+GA-04 프로덕션 승격) · deploy.yml(이미지 빌드→기동→스모크) · docs/deploy.md(사내망 수동 반입). **검증 완료**: build+정적서빙+스모크 통과, check 44/44, **Docker 컨테이너 build/run/스모크(GA-01·GA-04) exit 0** |
 | RQ-10 | 닉네임 식별·자동 접미사·새로고침 유지 | ✅ | requirements §2, GA-09/11, ADR-0003 | PR #19 identify(GA-09/11) + **잔여는 RQ-18(PR #25)이 마감**: 세션 토큰(randomUUID)·resume·30초 유예·활성 room 구현+검증, 클라 identify/resume·localStorage 토큰 배선. 새로고침 시 세션(닉네임·참여 room·활성·안읽음) 복원 ✅ (메시지 히스토리 재생만 범위 밖 — ADR-0002 휘발과 일관) |
 | RQ-11 | 입장 시 최근 50개 히스토리 (인메모리) | ✅ | requirements §2, GA-08, ADR-0002 | PR #20 머지 · 서버 링버퍼(50)+join ack 히스토리 + 클라 소비(end-to-end 표시) · GA-08 done |
 | RQ-12 | room 자유 생성 + 빈 room 자동 삭제 | ✅ | requirements §2, GA-25/26/27, ADR-0001, **ADR-0004**(global 예외 2) | PR #23 머지 · 마지막 참여자 이탈(leave·disconnect) 시 roomMembers·roomHistories 실삭제(RQ-15 minor-3 빈 배열 잔존 해소) · global은 예외 게이팅으로 존속 · GA-25/26/27 done · 서버 전용 · ⚠️ 하네스: vitest fork-pool 워커 크래시 flake(~1/10, RQ-12 무관·Red에서도 관측) 별도 이슈 권고 |
