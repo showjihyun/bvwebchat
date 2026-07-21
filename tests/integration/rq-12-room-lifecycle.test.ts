@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import type { AddressInfo } from 'node:net';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import { createChatServer } from '../../src/server/createChatServer';
@@ -100,6 +100,17 @@ import { GLOBAL_ROOM, type RoomName, type ChatMessage } from '../../src/shared/t
  *   커버한다 — 골든 매핑표에는 포함하지 않는다(RQ-15 GA-20이 leave·
  *   disconnect 두 경로를 같은 골든으로 묶었던 것과 달리, GA-26은 leave만
  *   명시하므로 disconnect 커버리지는 이 세션이 파생으로 추가한다).
+ *
+ * ── RQ-18 정합 (2026-07-21, team-lead 지시) — disconnect 파생 테스트만 변경 ──
+ * ADR-0003 결정5(RQ-18 스코프)는 "연결 종료 시 즉시 퇴장 처리하지 않고 30초
+ * 유예를 둔다"를 세션 유무와 무관하게 모든 socket disconnect에 적용한다.
+ * 바로 위 "disconnect도 동일한 삭제를 트리거해야 한다"는 파생 테스트는 원래
+ * disconnect 직후 즉시 삭제(빈 히스토리)를 기대했으나, 이는 결정5와
+ * 충돌한다. **단언(room-A 상태가 결국 삭제된다)은 그대로 두고, 타이밍만
+ * "즉시" → "유예(30초) 경과 후"로 교정**했다(vi.useFakeTimers +
+ * vi.advanceTimersByTimeAsync, ADR-0005 결정4). GA-26 본체(leave 경로,
+ * 바로 위 describe 블록)는 leave가 유예 대상이 아니므로 변경하지 않았다.
+ * 상세는 _workspace/RQ-18/01_test-writer_red.md 참고.
  *
  * 부정 단언 공통 원칙(ADR-0005): 이 파일은 "수신하지 않는다"류 부정 단언을
  * 쓰지 않는다 — 모든 GA가 "수신함"·"삭제됨(=재입장 시 빈 히스토리)"류
@@ -235,6 +246,35 @@ function waitForRoomsConvergence(
 }
 
 /**
+ * waitForRoomsConvergence의 부정 버전 — notExpected 값으로 수렴하는 'rooms'
+ * 이벤트가 timeoutMs 내에 절대 도착하지 않아야 함을 확인한다(RQ-18 정합,
+ * 파일 상단 주석 참고: "즉시 처리되지 않는다"를 직접 확인하는 부정 단언 —
+ * 이게 없으면 유예를 전혀 구현하지 않아도 이 테스트가 우연히 통과해버린다).
+ */
+function assertRoomsNeverConvergeTo(
+  socket: ClientSocket,
+  notExpected: RoomsPayload,
+  timeoutMs: number
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      socket.off('rooms', onRooms);
+      resolve();
+    }, timeoutMs);
+    function onRooms(payload: RoomsPayload): void {
+      if (JSON.stringify(payload.rooms) === JSON.stringify(notExpected.rooms)) {
+        clearTimeout(timer);
+        socket.off('rooms', onRooms);
+        reject(
+          new Error(`'rooms' 이벤트가 ${JSON.stringify(notExpected.rooms)}로 ${timeoutMs}ms 이내에 너무 일찍 수렴했다`)
+        );
+      }
+    }
+    socket.on('rooms', onRooms);
+  });
+}
+
+/**
  * 서버의 활성 소켓 수가 expected에 도달할 때까지 폴링한다 — 클라이언트의
  * `disconnect()` 호출은 로컬에서 즉시 처리되지만 서버가 그 종료를 실제로
  * 인지하는 시점은 별도의 네트워크 이벤트라 즉시 알 수 없다(GA-27의 "서버
@@ -283,6 +323,43 @@ function connectClient(url: string, cleanupFns: Array<() => void | Promise<void>
   });
   return socket;
 }
+
+/** 연결된 클라이언트 소켓의 id를 안전하게 읽는다(연결 전이면 에러) — RQ-18 정합(파일 상단 주석 참고). */
+function requireSocketId(socket: ClientSocket): string {
+  if (!socket.id) {
+    throw new Error('클라이언트 소켓이 아직 연결되지 않아 id가 없다');
+  }
+  return socket.id;
+}
+
+/**
+ * 서버 측 소켓(clientSocketId와 동일 id)이 실제로 'disconnect'를 발생시킬
+ * 때까지 기다린다. 유예(30초, ADR-0003 결정5) fake timer를 진행시키기 전에,
+ * 서버가 이 disconnect를 인지해 유예 타이머를 실제로 스케줄한 시점과
+ * 동기화하기 위한 헬퍼다(RQ-18 rq-18-unread.test.ts와 동일 헬퍼, RQ-18 정합).
+ */
+function waitForServerSocketDisconnect(
+  io: ReturnType<typeof createChatServer>['io'],
+  clientSocketId: string,
+  timeoutMs = 2000
+): Promise<void> {
+  const serverSocket = io.sockets.sockets.get(clientSocketId);
+  if (!serverSocket) {
+    return Promise.reject(new Error(`서버 측 소켓(id=${clientSocketId})을 찾을 수 없다`));
+  }
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`서버가 소켓(id=${clientSocketId})의 disconnect를 ${timeoutMs}ms 내에 인지하지 못했다`));
+    }, timeoutMs);
+    serverSocket.once('disconnect', () => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+}
+
+/** ADR-0003 결정5: 퇴장 유예 30초 — 경계값 해석은 파일 상단 "RQ-18 정합" 주석 참고. */
+const GRACE_PERIOD_MS = 30_000;
 
 describe('RQ-12 / GA-25: 권한 제한 없이 새 이름의 room을 자유롭게 생성·참여하고 즉시 사용할 수 있다', () => {
   const cleanupFns: Array<() => void | Promise<void>> = [];
@@ -393,9 +470,14 @@ describe('RQ-12 (파생, 골든 아님): 마지막 참여자의 연결 종료(di
   // 정신으로, disconnect도 동일한 삭제를 트리거해야 함을 이 세션이 파생으로
   // 추가 커버한다(task 지시 — "원하면 leave와 disconnect 둘 다 커버").
   it(
-    'room-A에 user1만 참여해 메시지 3개를 보낸 뒤 user1의 연결이 끊기면(disconnect, 마지막 참여자 이탈), room-A의 서버 상태가 삭제되어 이후 참여하는 user2는 빈 히스토리로 시작한다 (RQ-12 파생, 골든 아님)',
+    'room-A에 user1만 참여해 메시지 3개를 보낸 뒤 user1의 연결이 끊기면(disconnect, 마지막 참여자 이탈), 퇴장 유예(30초, ADR-0003 결정5) 경과 후 room-A의 서버 상태가 삭제되어 이후 참여하는 user2는 빈 히스토리로 시작한다 (RQ-12 파생, 골든 아님 — RQ-18 정합, 파일 상단 주석 참고)',
     async () => {
-      const url = await startServer(cleanupFns);
+      const { httpServer, io } = createChatServer();
+      await new Promise<void>((resolve) => httpServer.listen(0, resolve));
+      const port = (httpServer.address() as AddressInfo).port;
+      const url = `http://localhost:${port}`;
+      cleanupFns.push(() => new Promise<void>((resolve) => io.close(() => resolve())));
+
       const user1 = connectClient(url, cleanupFns);
 
       expect((await waitForJoinAck(user1, { room: 'room-A', nickname: 'user1' })).ok).toBe(true);
@@ -412,19 +494,54 @@ describe('RQ-12 (파생, 골든 아님): 마지막 참여자의 연결 종료(di
       // waitForRoomsConvergence가 초기 스냅샷을 오인 소비하지 않는다
       // (rq-13-room-list.test.ts의 동일 경합 회피 기법).
       const user2 = connectClient(url, cleanupFns);
-      const roomARemoved = waitForRoomsConvergence(user2, { rooms: [GLOBAL_ROOM] });
+      // user2의 접속 핸드셰이크가 완전히 끝난 뒤에만 fake timer를 켠다 —
+      // 핸드셰이크가 아직 진행 중일 때 fake timer가 활성화되면 그 완료가
+      // 무기한 지연될 위험이 있다(RQ-18 정합 작업 중 실측된 문제). 초기
+      // 'rooms' 스냅샷을 실제로 수신함으로써 접속 완료를 확인한다.
+      const initialSnapshot = await waitForRoomsEvent(user2);
+      const expectedInitialSnapshot: RoomsPayload = { rooms: [GLOBAL_ROOM, 'room-A'] };
+      expect(initialSnapshot).toEqual(expectedInitialSnapshot);
+
+      // "즉시 처리되지 않는다"를 직접 확인하는 부정 단언 — 이게 없으면 유예를
+      // 전혀 구현하지 않아도(기존처럼 즉시 삭제해도) 이 테스트가 우연히
+      // 통과해버린다(RQ-18 정합, 파일 상단 주석 참고).
+      const roomANeverRemovedEarly = assertRoomsNeverConvergeTo(user2, { rooms: [GLOBAL_ROOM] }, 1000);
+      // 아래에서 fake timer로 30초+α를 진행시키는 동안 자체 타임아웃이 먼저
+      // 발동해 거짓 실패하지 않도록 유예보다 넉넉히 크게 잡는다.
+      const roomARemovedEventually = waitForRoomsConvergence(user2, { rooms: [GLOBAL_ROOM] }, 35000);
+      // Red 상태에서는 위 부정 단언이 (아래에서 실제로 await하기 전에) 이미
+      // reject할 수 있다 — Node의 unhandledRejection 경고를 막기 위해 즉시
+      // no-op catch를 붙여둔다(원본 promise 참조는 그대로 두어 아래에서 실제
+      // 결과를 검증한다).
+      roomANeverRemovedEarly.catch(() => {});
 
       // when: user1의 연결이 강제 종료된다(leave 이벤트 없이 소켓이 끊김,
-      // 마지막 참여자 이탈).
-      user1.disconnect();
+      // 마지막 참여자 이탈). ADR-0003 결정5(RQ-18 스코프): 연결 종료는 즉시
+      // 퇴장 처리되지 않고 30초 유예를 둔다 — fake timer로 유예를 진행시켜야
+      // room-A 삭제(=빈 room 확정)가 트리거된다. 서버가 disconnect를 실제로
+      // 인지한(유예 타이머를 스케줄한) 시점과 동기화한 뒤에만 fake timer를
+      // 진행시킨다(레이스 방지).
+      const user1SocketId = requireSocketId(user1);
+      vi.useFakeTimers();
+      try {
+        const serverObservedDisconnect = waitForServerSocketDisconnect(io, user1SocketId);
+        user1.disconnect();
+        await serverObservedDisconnect;
 
-      // 서버가 disconnect를 처리해 room-A가 roomMembers에서 비워지면(기존
-      // RQ-13 handleDisconnect가 이미 이 시점에 'rooms' 방송을 트리거한다)
-      // 그 방송이 [global]로 수렴할 때까지 기다려 "서버가 이 disconnect
-      // 처리를 완전히 끝냈다"는 동기화 지점으로 삼는다. RQ-12의 삭제 로직이
-      // 같은 동기 핸들러 안에 추가된다는 전제(coder 구현 대상) 하에, 이
-      // 수렴 시점 이후에는 삭제도 이미 끝나 있어야 한다.
-      await roomARemoved;
+        // 유예 초반(1초 시점)에는 아직 즉시 삭제되지 않아야 한다.
+        await vi.advanceTimersByTimeAsync(1000);
+        await expect(roomANeverRemovedEarly).resolves.toBeUndefined();
+
+        // 남은 유예를 마저 진행시켜 30초를 넘긴다. 서버가 유예 만료로 퇴장을
+        // 확정해 room-A가 roomMembers에서 비워지면(RQ-13 handleDisconnect/
+        // 삭제 로직이 이 시점에 'rooms' 방송을 트리거한다) 그 방송이
+        // [global]로 수렴할 때까지 기다려 "서버가 이 삭제 처리를 완전히
+        // 끝냈다"는 동기화 지점으로 삼는다.
+        await vi.advanceTimersByTimeAsync(GRACE_PERIOD_MS - 1000 + 1);
+        await roomARemovedEventually;
+      } finally {
+        vi.useRealTimers();
+      }
 
       // then: room-A 서버 상태가 삭제되어 user2가 재참여 시 빈 히스토리로
       // 시작해야 한다.
@@ -433,7 +550,8 @@ describe('RQ-12 (파생, 골든 아님): 마지막 참여자의 연결 종료(di
         throw new Error(`join 실패: ${joinAck2.error}`);
       }
       expect(joinAck2.history).toEqual([]);
-    }
+    },
+    10000
   );
 });
 
