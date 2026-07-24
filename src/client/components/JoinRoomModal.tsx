@@ -3,7 +3,7 @@ import { useState, type FormEvent } from 'react';
 interface Props {
   existingRooms: string[];
   availableRooms: string[];
-  onJoin: (room: string) => void;
+  onJoin: (room: string) => Promise<string | null>;
   onCancel: () => void;
 }
 
@@ -19,6 +19,7 @@ const RESERVED = 'global'; // ADR-0004: 예약 이름 (특수 room은 RQ-04에�
  */
 export function JoinRoomModal({ existingRooms, availableRooms, onJoin, onCancel }: Props) {
   const [value, setValue] = useState('');
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const name = value.trim();
 
   // 참여 가능한 기존 room 디렉토리: global(예약)·이미 참여 중인 room 제외.
@@ -34,9 +35,18 @@ export function JoinRoomModal({ existingRooms, availableRooms, onJoin, onCancel 
   }
   const canJoin = name.length > 0 && error === null;
 
+  const attemptJoin = async (room: string) => {
+    const joinError = await onJoin(room);
+    if (joinError) {
+      setSubmitError(joinError);
+      return;
+    }
+    onCancel();
+  };
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    if (canJoin) onJoin(name);
+    if (canJoin) void attemptJoin(name);
   };
 
   return (
@@ -51,7 +61,7 @@ export function JoinRoomModal({ existingRooms, availableRooms, onJoin, onCancel 
                 key={room}
                 type="button"
                 className="room-item"
-                onClick={() => onJoin(room)}
+                onClick={() => void attemptJoin(room)}
               >
                 <span className="hash">#</span>
                 <span className="name">{room}</span>
@@ -66,9 +76,13 @@ export function JoinRoomModal({ existingRooms, availableRooms, onJoin, onCancel 
             value={value}
             autoFocus
             aria-label="room 이름"
-            onChange={(e) => setValue(e.target.value)}
+            onChange={(e) => {
+              setValue(e.target.value);
+              setSubmitError(null);
+            }}
           />
           {name && error && <div className="caption error">{error}</div>}
+          {submitError && <div className="caption error">{submitError}</div>}
         </div>
         <div className="modal-actions">
           <button className="btn-ghost" type="button" onClick={onCancel}>

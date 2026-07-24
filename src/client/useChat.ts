@@ -16,11 +16,19 @@ interface ServerToClientEvents {
   // 도착 시 +1(상한 50), 활성 전환 시 0.
   unread: (payload: { room: string; count: number }) => void;
 }
-type IdentifyAck = { ok: true; nickname: string; token: string } | { ok: false; error: string };
+type IdentifyAck = { ok: true; nickname: string; token: string; globalHistory: ChatMessage[] } | { ok: false; error: string };
 type ResumeAck =
-  | { ok: true; nickname: string; rooms: string[]; activeRoom: string | null; unread: Record<string, number> }
+  | {
+      ok: true;
+      nickname: string;
+      rooms: string[];
+      activeRoom: string | null;
+      unread: Record<string, number>;
+      globalHistory: ChatMessage[];
+    }
   | { ok: false; error: string };
 type ActiveRoomAck = { ok: true } | { ok: false; error: string };
+type LeaveAck = { ok: true } | { ok: false; error: string };
 interface ClientToServerEvents {
   // RQ-10/RQ-18: 닉네임 제출 → 서버가 세션 토큰 발급(ADR-0003 결정1).
   identify: (payload: { nickname: string }, ack: (result: IdentifyAck) => void) => void;
@@ -33,6 +41,7 @@ interface ClientToServerEvents {
     // ack.history: 입장 시점의 room 히스토리 (최근 50개, RQ-11).
     ack: (result: { ok: true; history: ChatMessage[] } | { ok: false; error: string }) => void,
   ) => void;
+  leave: (payload: { room: string }, ack: (result: LeaveAck) => void) => void;
   message: (payload: { room: string; body: string }) => void;
 }
 type ChatSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -62,7 +71,8 @@ export interface ChatState {
   participantsByRoom: Record<string, string[]>;
   availableRooms: string[];
   unreadByRoom: Record<string, number>;
-  joinRoom: (room: string) => void;
+  joinRoom: (room: string) => Promise<string | null>;
+  leaveRoom: (room: string) => Promise<string | null>;
   setActiveRoom: (room: string) => void;
   sendMessage: (body: string) => void;
 }
@@ -82,17 +92,27 @@ export interface ChatState {
  */
 export function useChat(nickname: string): ChatState {
   const socketRef = useRef<ChatSocket | null>(null);
-  const roomsRef = useRef<string[]>([]);
+  const roomsRef = useRef<string[]>([GLOBAL_ROOM]);
   // activeRoom을 ref로 미러링 — sendMessage가 상태 업데이터(순수해야 함) 밖에서
   // 현재 room을 읽어 emit하기 위함. StrictMode 이중 호출로 인한 중복 전송 방지.
-  const activeRoomRef = useRef<string | null>(null);
+  const activeRoomRef = useRef<string | null>(GLOBAL_ROOM);
   const [status, setStatus] = useState<ConnStatus>('connecting');
-  const [rooms, setRooms] = useState<string[]>([]);
-  const [activeRoom, setActiveRoomState] = useState<string | null>(null);
+  // global은 모든 사용자가 자동 참여하는 고정 채널이다. UI에서도 항상 첫 채널로
+  // 보여야 하므로, 서버의 room directory 수신을 기다리지 않고 초기 상태에 둔다.
+  const [rooms, setRooms] = useState<string[]>([GLOBAL_ROOM]);
+  const [activeRoom, setActiveRoomState] = useState<string | null>(GLOBAL_ROOM);
   const [messagesByRoom, setMessagesByRoom] = useState<Record<string, ClientMessage[]>>({});
   const [participantsByRoom, setParticipantsByRoom] = useState<Record<string, string[]>>({});
   const [availableRooms, setAvailableRooms] = useState<string[]>([]);
   const [unreadByRoom, setUnreadByRoom] = useState<Record<string, number>>({});
+
+  const setGlobalHistory = (history: ChatMessage[]) => {
+    const messages: ClientMessage[] = history.map((message) => {
+      msgSeq += 1;
+      return { id: `g${msgSeq}`, room: message.room, nickname: message.nickname, body: message.body, at: Date.now() };
+    });
+    setMessagesByRoom((prev) => ({ ...prev, [GLOBAL_ROOM]: messages }));
+  };
 
   useEffect(() => {
     // Vite proxy(/socket.io → :3001)를 통해 same-origin으로 접속.
@@ -108,7 +128,11 @@ export function useChat(nickname: string): ChatState {
     // RQ-18/ADR-0003: 새 세션 발급 — 닉네임 identify → 토큰 저장 → 참여 room 복원.
     const identifyFresh = () => {
       socket.emit('identify', { nickname }, (res) => {
-        if (res.ok) localStorage.setItem(TOKEN_KEY, res.token);
+        if (res.ok) {
+          localStorage.setItem(TOKEN_KEY, res.token);
+          setGlobalHistory(res.globalHistory);
+          socket.emit('activeRoom', { room: GLOBAL_ROOM }, () => undefined);
+        }
         rejoinAll(); // 최초 연결은 no-op, 재연결/토큰만료 폴백 시 참여 room 재등록
       });
     };
@@ -126,10 +150,11 @@ export function useChat(nickname: string): ChatState {
             return;
           }
           // resume이 서버측 room 재합류를 수행하므로 rejoinAll을 다시 하지 않는다.
-          const restored = res.rooms.filter((r) => r !== GLOBAL_ROOM);
+          const restored = res.rooms.includes(GLOBAL_ROOM) ? res.rooms : [GLOBAL_ROOM, ...res.rooms];
           roomsRef.current = restored;
           setRooms(restored);
           setUnreadByRoom(res.unread);
+          setGlobalHistory(res.globalHistory);
           for (const room of restored) {
             setMessagesByRoom((prev) => (prev[room] ? prev : { ...prev, [room]: [] }));
           }
@@ -137,6 +162,10 @@ export function useChat(nickname: string): ChatState {
             // selectRoom은 아래에서 정의되므로 ref/setter를 인라인(활성 room 통지는 이미 서버에 복원됨).
             activeRoomRef.current = res.activeRoom;
             setActiveRoomState(res.activeRoom);
+          } else {
+            activeRoomRef.current = GLOBAL_ROOM;
+            setActiveRoomState(GLOBAL_ROOM);
+            socket.emit('activeRoom', { room: GLOBAL_ROOM }, () => undefined);
           }
         });
       } else {
@@ -192,33 +221,72 @@ export function useChat(nickname: string): ChatState {
   }, []);
 
   const joinRoom = useCallback(
-    (room: string) => {
+    (room: string): Promise<string | null> => {
       const name = room.trim();
-      if (!name || roomsRef.current.includes(name)) {
-        if (name) selectRoom(name);
-        return;
+      if (!name) return Promise.resolve('room 이름을 입력해 주세요.');
+      if (roomsRef.current.includes(name)) {
+        selectRoom(name);
+        return Promise.resolve(null);
       }
       const socket = socketRef.current;
+      if (!socket?.connected) return Promise.resolve('서버 연결이 준비되지 않았습니다. 잠시 후 다시 시도해 주세요.');
       // 최초 join: ack의 히스토리(RQ-11)를 기존 앞에 prepend. 서버가 히스토리와
       // 라이브의 무중복을 보장하므로(한 메시지는 둘 중 하나에만), ack 전 도착한
       // 라이브가 있어도 prepend로 순서(과거→현재) 유지하며 잃지 않는다.
-      socket?.emit('join', { room: name, nickname }, (result) => {
-        if (!result.ok) return;
+      return new Promise((resolve) => socket.emit('join', { room: name, nickname }, (result) => {
+        if (!result.ok) {
+          resolve(result.error);
+          return;
+        }
         const historyMsgs: ClientMessage[] = result.history.map((m) => {
           msgSeq += 1;
           return { id: `h${msgSeq}`, room: m.room, nickname: m.nickname, body: m.body, at: Date.now() };
         });
+        roomsRef.current = [...roomsRef.current, name];
+        setRooms(roomsRef.current);
+        selectRoom(name);
         setMessagesByRoom((prev) => ({ ...prev, [name]: [...historyMsgs, ...(prev[name] ?? [])] }));
-      });
-      roomsRef.current = [...roomsRef.current, name];
-      setRooms(roomsRef.current);
-      selectRoom(name);
-      setMessagesByRoom((prev) => (prev[name] ? prev : { ...prev, [name]: [] }));
       // 혼자 입장(founding join)은 서버가 방송하지 않으므로 본인을 seed —
       // 두 번째 참여자가 오면 서버 방송(participants)이 권위 목록으로 대체한다.
-      setParticipantsByRoom((prev) => (prev[name] ? prev : { ...prev, [name]: [nickname] }));
+        setParticipantsByRoom((prev) => (prev[name] ? prev : { ...prev, [name]: [nickname] }));
+        resolve(null);
+      }));
     },
     [nickname, selectRoom],
+  );
+
+  const leaveRoom = useCallback(
+    (room: string): Promise<string | null> => {
+      if (room === GLOBAL_ROOM) return Promise.resolve('global 채널은 나갈 수 없습니다.');
+      const socket = socketRef.current;
+      if (!socket?.connected) return Promise.resolve('서버 연결이 준비되지 않았습니다. 잠시 후 다시 시도해 주세요.');
+      return new Promise((resolve) => socket.emit('leave', { room }, (result) => {
+        if (!result.ok) {
+          resolve(result.error);
+          return;
+        }
+        roomsRef.current = roomsRef.current.filter((item) => item !== room);
+        setRooms(roomsRef.current);
+        setMessagesByRoom((prev) => {
+          const next = { ...prev };
+          delete next[room];
+          return next;
+        });
+        setParticipantsByRoom((prev) => {
+          const next = { ...prev };
+          delete next[room];
+          return next;
+        });
+        setUnreadByRoom((prev) => {
+          const next = { ...prev };
+          delete next[room];
+          return next;
+        });
+        if (activeRoomRef.current === room) selectRoom(GLOBAL_ROOM);
+        resolve(null);
+      }));
+    },
+    [selectRoom],
   );
 
   const sendMessage = useCallback((body: string) => {
@@ -239,6 +307,7 @@ export function useChat(nickname: string): ChatState {
       availableRooms,
       unreadByRoom,
       joinRoom,
+      leaveRoom,
       setActiveRoom: selectRoom,
       sendMessage,
     }),
@@ -251,6 +320,7 @@ export function useChat(nickname: string): ChatState {
       availableRooms,
       unreadByRoom,
       joinRoom,
+      leaveRoom,
       selectRoom,
       sendMessage,
     ],

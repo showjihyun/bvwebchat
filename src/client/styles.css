@@ -285,6 +285,16 @@ input,
   font-size: 15px;
   font-weight: 700;
 }
+.room-leave {
+  margin-left: auto;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+.leave-error {
+  padding: 6px 14px;
+  color: var(--color-danger, #c0392b);
+  font-size: 12px;
+}
 .msg-list {
   flex: 1;
   overflow-y: auto;

@@ -32,6 +32,7 @@ export function ChatApp({ nickname }: Props) {
         messages={activeMessages}
         status={chat.status}
         onSend={chat.sendMessage}
+        onLeave={chat.leaveRoom}
         onNewRoom={() => setModalOpen(true)}
       />
       <ParticipantList
@@ -44,10 +45,7 @@ export function ChatApp({ nickname }: Props) {
           existingRooms={chat.rooms}
           availableRooms={chat.availableRooms}
           onCancel={() => setModalOpen(false)}
-          onJoin={(room) => {
-            chat.joinRoom(room);
-            setModalOpen(false);
-          }}
+          onJoin={chat.joinRoom}
         />
       )}
     </div>

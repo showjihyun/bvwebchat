@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Avatar } from './Avatar';
 import { Composer } from './Composer';
 import { displayNickname } from '../avatar';
 import type { ClientMessage, ConnStatus } from '../useChat';
+import { GLOBAL_ROOM } from '../../shared/types';
 
 interface Props {
   room: string | null;
@@ -10,6 +11,7 @@ interface Props {
   messages: ClientMessage[];
   status: ConnStatus;
   onSend: (body: string) => void;
+  onLeave: (room: string) => Promise<string | null>;
   onNewRoom: () => void;
 }
 
@@ -21,8 +23,9 @@ function formatTime(ms: number): string {
 }
 
 /** 채팅 영역 (DESIGN.md §4/§5). 재연결 배너, 플랫 메시지 리스트, 입력창. */
-export function ChatPane({ room, nickname, messages, status, onSend, onNewRoom }: Props) {
+export function ChatPane({ room, nickname, messages, status, onSend, onLeave, onNewRoom }: Props) {
   const listRef = useRef<HTMLDivElement>(null);
+  const [leaveError, setLeaveError] = useState<string | null>(null);
   // 새 메시지가 오거나 room을 바꾸면 목록을 맨 아래로 스크롤(최신 메시지 노출).
   // 위로 스크롤하면 과거 대화를 볼 수 있고, 새 메시지 도착 시 다시 하단으로 붙는다.
   useEffect(() => {
@@ -46,11 +49,22 @@ export function ChatPane({ room, nickname, messages, status, onSend, onNewRoom }
     );
   }
 
+  const leave = async () => {
+    const error = await onLeave(room);
+    setLeaveError(error);
+  };
+
   return (
     <div className="col-chat">
       <div className="col-header">
         <span className="chat-head-name"># {room}</span>
+        {room !== GLOBAL_ROOM && (
+          <button className="btn-ghost room-leave" type="button" onClick={() => void leave()}>
+            나가기
+          </button>
+        )}
       </div>
+      {leaveError && <div className="leave-error">{leaveError}</div>}
       {status === 'reconnecting' && (
         <div className="reconnect-bar">
           <span className="dot" />
