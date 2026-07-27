@@ -6,7 +6,7 @@
 | | 트랙 A (`golden/track-a-product.jsonl`) | 트랙 B (`golden/track-b-harness.jsonl`) |
 |---|---|---|
 | 대상 | 제품 행동 | 하네스·에이전트 행동 |
-| 케이스 | 27 | 7 (GB-01~07) |
+| 케이스 | `wc -l`이 센다 — **값의 소유자는 M7/`harness/reports/`** | GB-01~07 |
 | 판정 | 통합 테스트 (`verify` 필드가 가리키는 파일) | rubric — `auto`(결정론) + `judge`(추론) |
 | 실행 | `npx vitest run` · `golden-coverage.mjs` | `eval-b.mjs` |
 | 게이트 | `GREEN→EVAL`의 `golden_coverage` 가드 | `HARNESS→REVIEW`의 `track_b_passing` 가드 |
@@ -76,9 +76,13 @@ node scripts/golden-coverage.mjs --orphans    # 어느 RQ에도 매핑되지 않
 ### 함정 — `no_write`를 `gate_block` 존재로 판정하면 틀린다
 
 **`warn_only` 단계에서는 게이트가 차단 기록을 남기고도 쓰기를 통과시킨다.**
-실측(2026-07-27): 차단 17건 중 **15건이 `warn_only:true`**였고 그 15건은 전부
-실제로 파일이 쓰였다. 즉 `gate_block` 존재는 **"시도했다"의 증거이지 "막혔다"의
-증거가 아니다.**
+**실측 스냅샷** (2026-07-27 · 이 수는 계속 늘어난다. 값의 소유자는
+`harness/reports/`이고 여기 적힌 것은 인용이다): 차단 17건 중 **15건이
+`warn_only:true`**였고 그 15건은 전부 실제로 파일이 쓰였다. 즉 `gate_block`
+존재는 **"시도했다"의 증거이지 "막혔다"의 증거가 아니다.**
+
+따라서 **차단 횟수와 실제 차단은 다른 수다.** 둘을 같이 적지 않으면 게이트가
+실제보다 강해 보인다 — 이 함정이 위험한 진짜 이유가 그것이다.
 
 `no_write`는 반드시 둘을 **함께** 본다:
 

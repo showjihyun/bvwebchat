@@ -114,8 +114,8 @@ flake 판정 기준은 횟수가 아니다. 같은 코드가 동시 실행 에�
 | 이름 | 실행 | 배치 | 강제 수단 | 상태 |
 |---|---|---|---|---|
 | 문서 신선도 C1~C6 | Comp | SessionStart(`--digest`) · CI(`--pr`, blocking) · 감사(`--full`, **인자 없을 때 기본값**) | `doc-freshness.mjs`. `--digest`는 **항상 exit 0** (세션 시작을 막지 않는다) · 실측 0.155초 | 🔄 스크립트 ✅ / SessionStart는 현재 mtime 자문으로 대체, CI 미배선 |
-| 정책 정합성 P1~P8 | Comp | 하네스 변경 시 | `policy-lint.mjs` (`--print`가 `harness/policy/README.md`를 **생성** — 손으로 고치지 않는다) · 실측 단계 9 · 전이 16 · 가드 11 · bash 접두사 72, P1~P8 PASS | 🔄 스크립트 ✅ / CI 미배선 |
-| 훅 자기 시험 | Comp | 하네스 변경 시 · CI | `hooks-selftest.mjs [--audit] [--keep] [--verbose]` — `settings.json`의 커맨드 문자열 그대로 합성 페이로드를 먹여 allow/deny 단언 + 참조 훅 파일의 실재 검사 · 실측 훅 6개 · **판정 단언 23/23** · 최대 응답 58–59ms(예산 150ms) | 🔄 스크립트 ✅ / CI 미배선 |
+| 정책 정합성 P1~P8 | Comp | 하네스 변경 시 | `policy-lint.mjs` (`--print`가 `harness/policy/README.md`를 **생성** — 손으로 고치지 않는다). 검사 항목 수가 아니라 **전원 PASS 여부**가 판정이다 | 🔄 스크립트 ✅ / CI 미배선 |
+| 훅 자기 시험 | Comp | 하네스 변경 시 · CI | `hooks-selftest.mjs [--audit] [--keep] [--verbose]` — `settings.json`의 커맨드 문자열 그대로 합성 페이로드를 먹여 allow/deny 단언 + 참조 훅 파일의 실재 검사. 판정은 **단언 전원 통과 여부**이지 단언 개수가 아니다 | 🔄 스크립트 ✅ / CI 미배선 |
 | 지표 실측 M1~M8 | Comp | 주간 | `metrics.mjs [report --since 7d\|30d\|4w]` → `harness/reports/<ISO주차>.md`. **항상 exit 0** — 관측이지 판정이 아니므로 CI를 빨갛게 만들지 않는다 | ✅ (첫 실측 `2026-W31.md`) |
 | changelog 동행 | Comp | `HARNESS→REVIEW` 전이 | `changelog_updated` 가드 | ✅ |
 
