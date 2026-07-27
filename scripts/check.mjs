@@ -5,7 +5,7 @@
  * check.sh / CI / hook / 전이 가드가 전부 이 파일 하나를 부른다.
  * 의존성 없음(node: 내장 모듈만), 셸 없음, 절대경로 없음 — Windows·ubuntu 동일 동작.
  *
- *   --fast              변경·미추적 TS 파일만 lint. hook 경로, 예산 5초 (ADR-0005 결정5)
+ *   --fast              변경·미추적 소스 파일만 lint. hook 경로, 예산 5초 (ADR-0005 결정5)
  *   (인자 없음)          eslint . → tsc --noEmit → vitest run. CI 게이트, 예산 3분
  *   --red --rq RQ-XX    ADR-0005 결정3 Red 정당성 판정
  *   --repeat N          테스트 스위트 N회 반복 — flake 보정용 시그니처 수집
@@ -23,8 +23,13 @@ import { fileURLToPath } from 'node:url';
 // hook·CI·서브셸이 어디서 부르든 같은 곳을 본다.
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-/** --fast가 린트할 확장자. `.tsx` 누락이 클라이언트 전체를 무검사로 방치했었다. */
-const TS_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts']);
+/**
+ * --fast가 린트할 확장자 — `eslint .`가 실제로 검사하는 집합과 일치시킨다.
+ * 두 집합이 어긋나면 훅은 초록인데 CI만 빨간 구멍이 생긴다. 실제로 두 번 생겼다:
+ * `.tsx` 누락이 클라이언트 10개 파일을, `.mjs` 누락이 scripts/ 센서들을
+ * 훅 경로에서 못 보게 했다.
+ */
+const LINTED_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs', '.cjs']);
 /** ADR-0005 결정5: hook 경로 예산. 초과해도 실패시키지 않고 경고만 한다. */
 const FAST_BUDGET_MS = 5000;
 /** ADR-0005 결정3: 아직 만들지 않은 src/ 모듈 임포트만이 정당한 Red다. */
@@ -123,13 +128,14 @@ function hasNodeModules() {
 
 // ── 모드: --fast ─────────────────────────────────────────────────────────────
 
-function changedTypeScriptFiles() {
+function changedLintableFiles() {
   const tracked = git(['diff', '--name-only', 'HEAD']) ?? '';
+  // --exclude-standard가 .gitignore를 따르므로 dist/·node_modules/는 애초에 안 나온다.
   const untracked = git(['ls-files', '--others', '--exclude-standard']) ?? '';
   return [...new Set(`${tracked}\n${untracked}`.split(/\r?\n/))]
     .map((line) => line.trim())
     .filter(Boolean)
-    .filter((file) => TS_EXTENSIONS.has(path.extname(file)))
+    .filter((file) => LINTED_EXTENSIONS.has(path.extname(file)))
     // 삭제된 파일도 git diff에 뜬다 — 실재하는 것만 린트한다.
     .filter((file) => fs.existsSync(path.join(projectRoot, file)))
     .sort();
@@ -139,7 +145,7 @@ function modeFast() {
   // 클론 직후 등 node_modules 부재 시 조용히 통과 — 환경 문제는 전체 검증이 잡는다.
   if (!hasNodeModules()) return 0;
 
-  const files = changedTypeScriptFiles();
+  const files = changedLintableFiles();
   if (files.length === 0) return 0;
 
   const startedAt = Date.now();
@@ -155,7 +161,7 @@ function modeFast() {
 
   if (code !== 0) {
     const sample = files.slice(0, 3).join(' ') + (files.length > 3 ? ' …' : '');
-    die(`린트 실패 — 변경된 TS 파일 ${files.length}개 중 위반 있음`, [
+    die(`린트 실패 — 변경된 파일 ${files.length}개 중 위반 있음`, [
       `npx eslint --fix ${sample}    # 자동 수정 가능한 규칙부터 처리`,
       '남는 오류는 위에 찍힌 파일:줄:열 위치를 직접 고치세요.',
       '규칙 자체가 틀렸다고 판단되면 eslint.config.js 변경은 ADR이 필요합니다 (CLAUDE.md).',
@@ -546,7 +552,7 @@ function modeRepeat(times) {
 const USAGE = `사용법: node scripts/check.mjs [모드]
 
   (인자 없음)          전체 검증: eslint . → tsc --noEmit → vitest run  (CI 게이트)
-  --fast              변경·미추적 .ts/.tsx/.mts/.cts만 lint  (hook, 예산 5초)
+  --fast              변경·미추적 .ts/.tsx/.mts/.cts/.js/.mjs/.cjs만 lint  (hook, 예산 5초)
   --red --rq RQ-XX    ADR-0005 결정3 Red 정당성 판정
   --repeat N          테스트 스위트 N회 반복 — flake 시그니처 수집
   --help              이 도움말
