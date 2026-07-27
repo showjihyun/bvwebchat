@@ -324,7 +324,11 @@ def record_transition(root: Path, ctx: dict, target: str, guards: list[GuardResu
                       forced: bool, reason: str | None, edge_legal: bool) -> Path:
     ts = st.iso_now()
     session = ctx["session"]
+    # seq — 전이 일련번호. ts 가 동률이어도 순서가 결정되는 타이브레이커다.
+    # 소비자(resume-test 등)는 (ts, seq) 로 정렬해야 '최신'이 실제 최신이 된다.
+    seq = len(st.read_jsonl(st.state_dir(root) / st.PHASE_LOG)) + 1
     entry = {
+        "seq": seq,
         "ts": ts, "from": ctx["phase"], "to": target, "rq": ctx["rq"],
         "branch": ctx["branch"], "head_sha": ctx["sha"],
         "forced": forced, "edge_legal": edge_legal,
@@ -341,8 +345,10 @@ def record_transition(root: Path, ctx: dict, target: str, guards: list[GuardResu
     stamp, n = st.utc_stamp(), 0
     ck = ck_dir / f"{stamp}.json"
     while ck.exists():
+        # 접미사('-1')를 붙이지 않는다 — 정렬이 깨진다. 1ms 씩 밀어
+        # 파일명을 순수 숫자로 유지하면 '파일명 정렬 == 시간순'이 지켜진다.
         n += 1
-        ck = ck_dir / f"{stamp}-{n}.json"
+        ck = ck_dir / f"{st.bump_stamp(stamp, n)}.json"
     matrix_phase = st.phase_def(ctx["matrix"], target)
     st.write_json_atomic(ck, {
         "schema": 1, **entry,
@@ -482,6 +488,19 @@ def cmd_force(root: Path, ctx: dict, args) -> int:
     return 0
 
 
+def checkpoints_in_order(ck_dir: Path) -> list[Path]:
+    """(ts, seq, 파일명) 순. **파일명만으로 정렬하면 안 된다** — 충돌 접미사
+    'Z-1.json' 이 'Z.json' 보다 사전순으로 앞서고, 초 단위 ts 는 동률이 난다.
+    둘 다 겪었고, 그 결과 '최신 체크포인트'가 시간순 마지막이 아니었다."""
+    if not ck_dir.exists():
+        return []
+    def key(f: Path):
+        data, status = st.read_json(f)
+        d = data or {}
+        return (str(d.get("ts") or ""), int(d.get("seq") or 0), f.name)
+    return sorted(ck_dir.glob("*.json"), key=key)
+
+
 def cmd_resume(root: Path, ctx: dict, args) -> int:
     s, matrix = ctx["session"], ctx["matrix"]
     _out("=" * 68)
@@ -500,7 +519,7 @@ def cmd_resume(root: Path, ctx: dict, args) -> int:
             for v in (vals if isinstance(vals, list) else [vals]):
                 _out(f"  - {v}")
     ck_root = st.state_dir(root) / st.CHECKPOINT_DIR / st.branch_slug(ctx["rq"])
-    cks = sorted(ck_root.glob("*.json")) if ck_root.exists() else []
+    cks = checkpoints_in_order(ck_root)
     _out(f"[체크포인트] {len(cks)}건" + (f", 최신 {cks[-1].name}" if cks else ""))
     pd = st.phase_def(matrix, ctx["phase"])
     _out(f"[쓰기 허용] {' '.join(pd.get('write_allow', []))}")

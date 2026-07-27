@@ -398,11 +398,39 @@ def hook_wiring_problems(root: Path) -> list[str]:
 
 
 def utc_stamp() -> str:
-    """파일명 안전한 ISO 8601 basic (콜론 없음 — Windows 파일명 제약)."""
+    """파일명 안전한 ISO 8601 basic + 밀리초 (콜론 없음 — Windows 파일명 제약).
+
+    밀리초를 넣는 이유는 정렬이다. 초 단위였을 때 같은 초의 전이 3건이
+    충돌 접미사('-1','-2')를 받았는데, '-'(0x2D) 가 '.'(0x2E) 보다 작아
+    'Z-1.json' 이 'Z.json' 보다 앞서 정렬됐다. 그 결과 '최신 체크포인트'가
+    시간순 마지막이 아니게 되고, 파일명으로 정답지를 고르는 resume-test 가
+    낡은 상태를 기준으로 채점했다. 전부 숫자로 끝나면 이 문제가 사라진다.
+    """
     import datetime
-    return datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    now = datetime.datetime.now(datetime.timezone.utc)
+    return now.strftime("%Y%m%dT%H%M%S") + f"{now.microsecond // 1000:03d}" + "Z"
+
+
+def bump_stamp(stamp: str, ms: int) -> str:
+    """스탬프를 ms 밀리초 뒤로 민다.
+
+    같은 밀리초에 두 번 기록될 때 'Z-1.json' 같은 접미사를 붙이면 정렬이
+    깨진다 — '-'(0x2D) 가 '.'(0x2E) 보다 작아 접미사 붙은 쪽이 앞선다.
+    이름을 끝까지 순수 숫자로 유지하는 편이 소비자에게 안전하다: 파일명
+    정렬 == 시간순이라는 불변식이 유지된다.
+    """
+    import datetime
+    base = datetime.datetime.strptime(stamp[:-1], "%Y%m%dT%H%M%S%f") if "." in stamp else \
+        datetime.datetime(
+            int(stamp[0:4]), int(stamp[4:6]), int(stamp[6:8]),
+            int(stamp[9:11]), int(stamp[11:13]), int(stamp[13:15]),
+            int(stamp[15:18]) * 1000)
+    out = base + datetime.timedelta(milliseconds=ms)
+    return out.strftime("%Y%m%dT%H%M%S") + f"{out.microsecond // 1000:03d}" + "Z"
 
 
 def iso_now() -> str:
+    """밀리초까지 — 초 단위면 같은 초의 기록들이 ts 로도 구분되지 않는다."""
     import datetime
-    return datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    return (datetime.datetime.now(datetime.timezone.utc)
+            .isoformat(timespec="milliseconds").replace("+00:00", "Z"))
