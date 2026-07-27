@@ -297,6 +297,28 @@ function addMember(
   return { isNewUserRoom, memberCount: members.length };
 }
 
+/**
+ * RQ-15: room의 멤버 순서 기록에서 이 소켓을 제거한다(남은 멤버의 상대 순서는
+ * 유지 — splice).
+ *
+ * `removed`가 false면 이 소켓은 애초에 이 room의 멤버가 아니었다는 뜻이고,
+ * 그때 `becameEmpty`는 **반드시 false**다. 이 전제(구 handleLeave의
+ * `index !== -1` 가드)를 잃으면, 참여한 적 없는 room에 대해서도 "비었다"가
+ * 참이 되어 RQ-12의 room 상태 삭제가 잘못 발동한다.
+ */
+function removeMember(state: ChatState, room: RoomName, socketId: string): { removed: boolean; becameEmpty: boolean } {
+  const members = state.members.get(room);
+  if (members === undefined) {
+    return { removed: false, becameEmpty: false };
+  }
+  const index = members.indexOf(socketId);
+  if (index === -1) {
+    return { removed: false, becameEmpty: false };
+  }
+  members.splice(index, 1);
+  return { removed: true, becameEmpty: members.length === 0 };
+}
+
 type ChatServer = SocketIOServer<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, SocketData>;
 type ChatSocket = Socket<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, SocketData>;
 
@@ -572,17 +594,7 @@ function handleLeave(
   // 목록을 남은 room 멤버 전원에게 방송한다. RQ-13: 이 제거로 멤버가 0명이
   // 됐다면("사용자 생성 room 집합"에서 제거되는 1→0 전이) 존재 room 목록도
   // 전 접속자에게 방송한다(GA-23, 신설 계약 3번).
-  const members = state.members.get(payload.room);
-  let becameEmptyUserRoom = false;
-  if (members !== undefined) {
-    const index = members.indexOf(socket.id);
-    if (index !== -1) {
-      members.splice(index, 1);
-      if (members.length === 0) {
-        becameEmptyUserRoom = true;
-      }
-    }
-  }
+  const { becameEmpty: becameEmptyUserRoom } = removeMember(state, payload.room, socket.id);
   broadcastParticipants(io, state, payload.room);
   if (becameEmptyUserRoom) {
     broadcastRooms(io, state);
@@ -618,16 +630,15 @@ function handleDisconnect(io: ChatServer, state: ChatState, socket: ChatSocket):
   // 후 한 번에 삭제한다(순회 중인 Map을 직접 변형하지 않기 위함 — 한 소켓이
   // 여러 room의 마지막 멤버였을 수 있다).
   const emptiedRooms: RoomName[] = [];
-  for (const [room, members] of state.members) {
-    const index = members.indexOf(socket.id);
-    if (index === -1) continue;
-    members.splice(index, 1);
+  for (const [room] of state.members) {
+    const { removed, becameEmpty } = removeMember(state, room, socket.id);
+    if (!removed) continue;
     broadcastParticipants(io, state, room);
     // RQ-13: 이 room이 이 disconnect로 0명이 됐다면 "사용자 생성 room 집합"이
     // 바뀐 것이다(1→0 전이) — 존재 room 목록 방송이 필요하다는 표시만 남기고
     // 계속 순회한다(한 소켓이 여러 room의 마지막 멤버였을 수 있으므로 방송은
     // 루프 종료 후 한 번만 보낸다).
-    if (members.length === 0) {
+    if (becameEmpty) {
       userRoomSetChanged = true;
       emptiedRooms.push(room);
     }
