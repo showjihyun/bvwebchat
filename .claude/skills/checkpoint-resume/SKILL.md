@@ -142,7 +142,8 @@ node scripts/resume-test.mjs --cold --json     # 기계 판독 (사람 출력은
 
 **이 결과가 증명하는 것은 "다른 머신에서 재개 가능"이다.** cold는 신선한
 워크트리에서 돌고, `phase.json`·`session.json`·`.key`는 gitignore라 거기 **애초에
-없다.** 남는 것은 `checkpoints/`·`phase.jsonl`·`decisions.jsonl` 셋뿐이므로,
+없다.** 남는 것은 `.harness/state/checkpoints/`·`.harness/state/phase.jsonl`·
+`.harness/state/decisions.jsonl` 셋뿐이므로,
 통과는 **커밋된 기록만으로 복원됐다**는 뜻이다. 이것이 "라이브 커서는 로컬,
 내구 기록은 커밋"이라는 분할이 장식이 아니라는 증거다.
 
