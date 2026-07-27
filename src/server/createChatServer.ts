@@ -344,6 +344,26 @@ function replaceMember(state: ChatState, room: RoomName, staleSocketId: string, 
   }
 }
 
+/**
+ * RQ-12 / ADR-0004 예외 2: 완전히 빈 user room의 서버 상태를 장부에서
+ * 지운다(멤버 배열 + 히스토리).
+ *
+ * **호출 순서가 계약이다** — 반드시 관련 방송(participants/rooms)을 모두
+ * 보낸 **뒤에** 호출한다. 방송 시점엔 멤버 배열이 이미 비어 있어(length 0)
+ * 결과가 같지만, 삭제를 앞당기면 listRooms·broadcastParticipants가 보는
+ * 장부가 달라진다. 통합 테스트는 이 순서 뒤바뀜을 잡지 못한다(listRooms의
+ * 멤버 수 필터가 빈 키를 어차피 제외하므로 목록 결과가 동일하다) — 규율로만
+ * 보존되는 지점이다.
+ *
+ * GLOBAL_ROOM은 애초에 members 장부에 등록되지 않으므로(RQ-15 설계 결정)
+ * 이 함수의 대상이 될 수 없다 — ADR-0004 결정1의 "global은 삭제되지 않는다"가
+ * 별도 분기 없이 구조적으로 보장된다.
+ */
+function deleteRoomState(state: ChatState, room: RoomName): void {
+  state.members.delete(room);
+  state.histories.delete(room);
+}
+
 type ChatServer = SocketIOServer<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, SocketData>;
 type ChatSocket = Socket<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, SocketData>;
 
@@ -634,8 +654,7 @@ function handleLeave(
   // 그대로 두고 그 뒤에만 상태를 정리한다 — 방송 시점엔 이미 멤버 배열이
   // 비어 있어(length === 0) 삭제 전후로 방송 결과가 달라지지 않는다.
   if (becameEmptyUserRoom) {
-    state.members.delete(payload.room);
-    state.histories.delete(payload.room);
+    deleteRoomState(state, payload.room);
   }
 }
 
@@ -677,8 +696,7 @@ function handleDisconnect(io: ChatServer, state: ChatState, socket: ChatSocket):
   // 순회 대상에 애초에 등록되지 않으므로(RQ-15 설계 결정) 이 루프 자체에
   // 나타나지 않아 삭제 대상에서 구조적으로 제외된다.
   for (const room of emptiedRooms) {
-    state.members.delete(room);
-    state.histories.delete(room);
+    deleteRoomState(state, room);
   }
 }
 
