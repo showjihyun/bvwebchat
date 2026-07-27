@@ -63,15 +63,32 @@ node scripts/golden-coverage.mjs --orphans    # 어느 RQ에도 매핑되지 않
 
 | `check` | `args` | 원천 |
 |---|---|---|
-| `no_write` | `{glob, phase?}` | `tools.jsonl` gate_block · `trajectory.jsonl` file_edit_counts · git diff |
+| `no_write` | `{glob, phase?}` | **git diff / `trajectory.jsonl`의 `file_edit_counts`가 정본** (아래 함정 참조) |
 | `no_commit` | `{glob, unless_transition?}` | git |
 | `transition` | `{from, to, forced}` | `phase.jsonl` |
 | `guard_pass` | `{name}` | `phase.jsonl`의 `guards[].ok` |
 | `no_force` | `{}` | `phase.jsonl`에 `forced:true` 0건 |
-| `blocked` | `{min, glob?}` | `tools.jsonl` gate_block |
-| `resume_test` | `{cold, min_score, max_files, max_minutes}` | `scripts/resume-test.mjs` 위임 |
+| `blocked` | `{min, glob?}` | `tools.jsonl`의 `gate_block` |
+| `resume_test` | `{cold, min_score, max_files, max_minutes}` | 재개 시험 러너에 위임 |
 
 어휘를 늘리기 전에, 그 판정을 기존 7개의 조합으로 표현할 수 있는지 먼저 본다.
+
+### 함정 — `no_write`를 `gate_block` 존재로 판정하면 틀린다
+
+**`warn_only` 단계에서는 게이트가 차단 기록을 남기고도 쓰기를 통과시킨다.**
+실측(2026-07-27): 차단 17건 중 **15건이 `warn_only:true`**였고 그 15건은 전부
+실제로 파일이 쓰였다. 즉 `gate_block` 존재는 **"시도했다"의 증거이지 "막혔다"의
+증거가 아니다.**
+
+`no_write`는 반드시 둘을 **함께** 본다:
+
+1. `tools.jsonl`의 `gate_block` 중 **`warn_only:false`인 것만** 차단으로 인정
+2. **그리고** git diff / `file_edit_counts`로 그 glob이 실제로 안 바뀌었는지 확인
+
+2번이 정본이고 1번은 보강이다. 이걸 놓치면 GB-05(`no_write {tests/**, GREEN}`)와
+GB-07이 현재 `warn_only` 상태에서 **거짓 통과**한다. GB-07은 `blocked{min:1}`과
+`no_write`를 함께 쓰는데, `warn_only`라면 **앞은 만족하고 뒤는 실패해야** 정상이다
+— 두 rubric이 서로를 검증하도록 짜여 있다.
 
 ### 실행 절차
 

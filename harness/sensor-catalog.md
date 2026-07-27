@@ -96,7 +96,7 @@ ADR-0005 결정5의 예산은 5초이고, 초과 시 실패가 아니라 경고�
 |---|---|---|---|---|
 | 배포 아티팩트 빌드 + 골든 스모크 | Comp | main 머지 → 배포 | `deploy.yml` → Docker 빌드 → `smoke.sh`(health + GA-01 + GA-04) | ✅ (2026-07-21 기준 최근 5회 연속 성공 — `gh run list --workflow=deploy.yml`) |
 | flake 시그니처 수집 | Comp | 리팩터 전후 · 의심 시 | `check.mjs --repeat N` — `assert`/`collect`/`crash` 3모집단 분류 | ✅ 수동 호출 |
-| git 이력 재유도 (단계 순서 대조) | Comp | CI | `phase-audit.mjs [--base <ref>] [--all] [--strict]` — Bash 우회의 **탐지** 경로 (예방이 아니다) | 🔄 스크립트 ✅ / CI 미배선 |
+| git 이력 재유도 (단계 순서 대조) | Comp | CI | `phase-audit.mjs [--base <ref>] [--all] [--strict]` — Bash 우회의 **탐지** 경로(예방이 아니다). 인자 없으면 `origin/main...HEAD` 범위, 저장소 전체는 `--all`. **기록과의 모순만** 차단하고 이력 자체의 이상은 advisory(`--strict`로 승격) | 🔄 스크립트 ✅ / CI 미배선 |
 | 재개 시험 (L3 졸업 시험 · GB-06) | Comp | 상태 계약 변경 시 | `resume-test.mjs --cold` — worktree 격리 + `claude -p` 5문항 채점 (정답지 = 체크포인트 파일 자체) | 🔄 스크립트 ✅ / **첫 통과 미확인** |
 
 배포 후 스모크의 🟡는 해제됐다. RQ-05/RQ-17이 종결됐고 `deploy.yml`·`smoke.sh`가
@@ -113,10 +113,10 @@ flake 판정 기준은 횟수가 아니다. 같은 코드가 동시 실행 에�
 
 | 이름 | 실행 | 배치 | 강제 수단 | 상태 |
 |---|---|---|---|---|
-| 문서 신선도 C1~C6 | Comp | SessionStart(`--digest`) · CI(`--pr`, blocking) · 감사(`--full`) | `doc-freshness.mjs` | 🔄 스크립트 ✅ / 3개 배선 중 SessionStart는 mtime 자문으로 대체, CI 미배선 |
-| 정책 정합성 P1~P7 | Comp | 하네스 변경 시 | `policy-lint.mjs` (`--print`로 `policy/README.md` 생성) | 🔄 스크립트 ✅ / CI 미배선 |
-| 훅 자기 시험 | Comp | 하네스 변경 시 · CI | `hooks-selftest.mjs [--audit]` — `settings.json`의 커맨드 문자열 그대로 합성 페이로드를 먹여 allow/deny 단언 + 참조 훅 파일의 실재 검사 | 🔄 스크립트 ✅ / CI 미배선 |
-| 지표 실측 M1~M8 | Comp | 주간 | `metrics.mjs report --since 7d` → `harness/reports/<ISO주차>.md` | ✅ (첫 실측 `2026-W31.md`) |
+| 문서 신선도 C1~C6 | Comp | SessionStart(`--digest`) · CI(`--pr`, blocking) · 감사(`--full`, **인자 없을 때 기본값**) | `doc-freshness.mjs`. `--digest`는 **항상 exit 0** (세션 시작을 막지 않는다) · 실측 0.155초 | 🔄 스크립트 ✅ / SessionStart는 현재 mtime 자문으로 대체, CI 미배선 |
+| 정책 정합성 P1~P8 | Comp | 하네스 변경 시 | `policy-lint.mjs` (`--print`가 `harness/policy/README.md`를 **생성** — 손으로 고치지 않는다) · 실측 단계 9 · 전이 16 · 가드 11 · bash 접두사 72, P1~P8 PASS | 🔄 스크립트 ✅ / CI 미배선 |
+| 훅 자기 시험 | Comp | 하네스 변경 시 · CI | `hooks-selftest.mjs [--audit] [--keep] [--verbose]` — `settings.json`의 커맨드 문자열 그대로 합성 페이로드를 먹여 allow/deny 단언 + 참조 훅 파일의 실재 검사 · 실측 훅 6개 · **판정 단언 23/23** · 최대 응답 58–59ms(예산 150ms) | 🔄 스크립트 ✅ / CI 미배선 |
+| 지표 실측 M1~M8 | Comp | 주간 | `metrics.mjs [report --since 7d\|30d\|4w]` → `harness/reports/<ISO주차>.md`. **항상 exit 0** — 관측이지 판정이 아니므로 CI를 빨갛게 만들지 않는다 | ✅ (첫 실측 `2026-W31.md`) |
 | changelog 동행 | Comp | `HARNESS→REVIEW` 전이 | `changelog_updated` 가드 | ✅ |
 
 **테스트 없는 게이트는 연극이다.** 훅이 조용히 죽어 항상 allow를 반환하는 상태와
@@ -124,6 +124,16 @@ flake 판정 기준은 횟수가 아니다. 같은 코드가 동시 실행 에�
 중 `gate_spec_freeze.py` 삭제와 `settings.json` 재배선 사이의 창에서 모든
 에이전트의 Write/Edit이 죽었고, 그것은 정책 거부가 아니라 훅 파손이었다.
 `settings.json`이 참조하는 훅 파일의 실재 검사가 이 스크립트의 필수 단언이다.
+
+**메타 센서가 실제로 잡은 것 (2026-07-27, 이 재구성 중)** — 이 층이 장식이
+아니라는 실증이다. 셋 다 **사람이 아니라 린터가 먼저 발견**했다.
+
+| 센서 | 잡은 것 |
+|---|---|
+| `doc-freshness` C4 | 스킬 문서 3개가 **존재하지 않는 스크립트를 부르고 있었다**. 오케스트레이션 스코프 누락(센서 6종만 배정했는데 계획은 8종)이 문서 린터에서 드러났다 |
+| `policy-lint` P8 | `no_pending_spec` 가드의 정규식이 **문법은 맞고 의미만 죽어** 어떤 입력에도 매칭되지 않았다 — 영구 no-op이라는 이유로 지운 훅의 기능을 흡수한 가드가 다른 이유로 똑같이 no-op였다 |
+| `hooks-selftest` | `hook.py`가 디스크에 있는데 `settings.json`이 부르지 않는 **고아 훅**. 최악의 경우 "이미 막고 있다"는 착각을 만든다 |
+| `metrics.mjs` | 자기 처방으로 "`hooks-selftest`를 CI blocking으로" 를 권고했다 — **학습 루프가 처방을 낸 첫 사례**다 |
 
 ## 운영 규칙
 
