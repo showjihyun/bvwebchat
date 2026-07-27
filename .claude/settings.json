@@ -46,7 +46,20 @@
       "Bash(python harness/phase.py resume:*)",
       "Bash(python harness/phase.py session:*)",
       "Bash(python harness/phase.py decide:*)",
-      "Bash(python .claude/hooks/:*)"
+      "Bash(python .claude/hooks/:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(wc:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(rg:*)",
+      "Bash(find:*)",
+      "Bash(git stash:*)",
+      "Bash(git revert:*)",
+      "Bash(mkdir:*)",
+      "Bash(touch:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)"
     ],
     "ask": [
       "Bash(git push:*)",
@@ -82,7 +95,8 @@
       "Bash(git reset --hard:*)",
       "Bash(git rebase:*)",
       "Bash(git filter-branch:*)",
-      "Bash(git clean -fdx:*)"
+      "Bash(git clean -fdx:*)",
+      "Bash(chmod 777:*)"
     ]
   },
   "hooks": {
