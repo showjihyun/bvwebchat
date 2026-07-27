@@ -33,6 +33,15 @@
       `npm run dev`. 참여자 목록·안 읽음·히스토리·global·닉네임 고유화 UI는
       각 서버 RQ(15/18/11/04/10) 구현 시 확장. 다음: RQ-02
 
+- [ ] 🔄 **서버 모듈 분해 (2026-07-27, ADR-0007)**: `createChatServer.ts` 822줄 →
+      `src/server/chat/` 8모듈 + 조립점. 행동 보존 리팩터 —
+      공개 계약 `createChatServer(requestListener?)` 무변경, `tests/` 무수정.
+      참조: `docs/adr/0007-server-module-boundaries.md`,
+      `_workspace/harness-redesign/01_server-split-design.md`.
+      검증: Step 0 baseline `npx vitest run` ×10 = 9/10 (1회 fork-pool 워커
+      크래시 flake, 단언 diff 없음 — progress.md 기록과 일치), `npm run build` OK
+      (`dist/server/main.js` 14,032 B). 커밋마다 eslint → tsc → vitest ×3.
+
 ## 작업 원장 — RQ 구현
 
 > 착수 시 `tdd-workflow` 스킬 사용 (Red→Green→평가→review-gate). 브랜치 `feat/RQ-XX-*`.
