@@ -31,7 +31,6 @@ import {
   createChatState,
   deleteRoomState,
   GRACE_PERIOD_MS,
-  listRooms,
   removeMember,
   replaceMember,
   type ChatState,
@@ -43,29 +42,13 @@ import {
   isNonEmptyString,
   isReservedRoomNameForCreation,
 } from './chat/validation';
-
-/**
- * roomMembers에 기록된 순서대로 nickname을 조회해 해당 room 멤버 전원에게
- * 'participants' 이벤트를 방송한다 (RQ-15). 이미 연결이 끊긴 소켓(id가 남아
- * 있지만 io.sockets.sockets에 더 이상 없는 경우)이나 nickname이 아직 없는
- * 소켓은 결과 배열에서 제외한다.
- */
-function broadcastParticipants(io: ChatServer, state: ChatState, room: RoomName): void {
-  const memberIds = state.members.get(room) ?? [];
-  const participants = memberIds
-    .map((socketId) => io.sockets.sockets.get(socketId)?.data.nickname)
-    .filter(isNonEmptyString);
-  io.to(room).emit('participants', { room, participants });
-}
-
-/**
- * 존재 room 목록을 접속 중인 모든 소켓에게 방송한다 (RQ-13, 신설 계약 2-a).
- * room 한정 방송인 broadcastParticipants와 달리 io.emit으로 전 접속자에게
- * 보낸다 — GA-21의 "room 미참여자도 수신"이 이를 요구한다.
- */
-function broadcastRooms(io: ChatServer, state: ChatState): void {
-  io.emit('rooms', { rooms: listRooms(state) });
-}
+import {
+  broadcastParticipants,
+  broadcastRooms,
+  emitRoomsSnapshot,
+  emitUnreadToSocket,
+  emitUnreadToSocketId,
+} from './chat/broadcast';
 
 /**
  * 이 소켓에 바인딩된 세션을 조회한다 — **세션리스 소켓 회귀 방지의 단일 지점**.
@@ -133,7 +116,7 @@ function fanOutUnread(io: ChatServer, state: ChatState, room: RoomName, cap: num
     const next = Math.min(current + 1, cap);
     session.unread.set(room, next);
     if (session.connected) {
-      io.to(session.socketId).emit('unread', { room, count: next });
+      emitUnreadToSocketId(io, session.socketId, { room, count: next });
     }
   }
 }
@@ -460,7 +443,7 @@ function handleActiveRoom(
   session.activeRoom = payload.room;
   session.unread.set(payload.room, 0);
   ack({ ok: true });
-  socket.emit('unread', { room: payload.room, count: 0 });
+  emitUnreadToSocket(socket, { room: payload.room, count: 0 });
 }
 
 /**
@@ -595,7 +578,7 @@ export function createChatServer(requestListener?: RequestListener): {
     // RQ-13 신설 계약 2-b: 신규 접속자에게 그 순간의 존재 room 목록 스냅샷을
     // 유니캐스트로 즉시 전달한다. GLOBAL_ROOM이 항상 포함돼 목록이 결코
     // 비지 않으므로 조건 없이 항상 보낸다.
-    socket.emit('rooms', { rooms: listRooms(state) });
+    emitRoomsSnapshot(socket, state);
 
     socket.on('identify', (payload, ack) => handleIdentify(state, socket, payload, ack));
     socket.on('join', (payload, ack) => handleJoin(io, state, socket, payload, ack));
