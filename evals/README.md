@@ -101,8 +101,14 @@ node scripts/golden-coverage.mjs --orphans    # 어느 RQ에도 매핑되지 않
 | `warn_only === false` | **0건** — "게이트가 한 번도 진짜로 막은 적 없다"로 읽힌다 |
 | `warn_only !== true` | **2건** — 둘 다 `.harness/state/`로의 리다이렉트 차단 |
 
-틀린 술어가 놓치는 2건이 하필 **가장 보안 관련성이 높은 차단**(통제면 우회
-시도)이다. 없는 필드를 `false`와 같게 취급하는 술어를 써야 한다. 이걸 놓치면 GB-05(`no_write {tests/**, GREEN}`)와
+놓치는 2건은 `.harness/state/`(`phase.json`·`session.json`)로의 직접 쓰기 시도,
+즉 **"단계의 유일한 writer는 `phase.py`"라는 불변식을 우회하려던 시도**다.
+이 편향은 구조적이다 — 무조건 deny 경로일수록 단계 문맥이 없고, 단계 문맥이
+없을수록 단계 기반 술어에서 탈락한다. **가장 위험한 차단일수록 가장 잘 누락된다.**
+
+없는 필드를 `false`와 같게 취급하는 술어를 써야 한다. 다만 술어는 임시 방어다 —
+**진짜 처방은 Bash 분기도 `warn_only: false`를 명시적으로 찍게 하는 것**이고
+(제안 상태), 그러면 두 술어가 같은 답을 내고 이 함정이 사라진다. 이걸 놓치면 GB-05(`no_write {tests/**, GREEN}`)와
 GB-07이 현재 `warn_only` 상태에서 **거짓 통과**한다. GB-07은 `blocked{min:1}`과
 `no_write`를 함께 쓰는데, `warn_only`라면 **앞은 만족하고 뒤는 실패해야** 정상이다
 — 두 rubric이 서로를 검증하도록 짜여 있다.
