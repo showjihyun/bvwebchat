@@ -88,7 +88,7 @@
     "no_pending_spec": {
       "kind": "grep_count",
       "file": "specs/requirements.md",
-      "pattern": "^- \\*\\*RQ-[0-9]+\\*\\* .*\\ud83d\\udfe1",
+      "pattern": "^- \\*\\*RQ-[0-9]+\\*\\* .*🟡",
       "expect": 0,
       "fail_hint": "requirements.md에 PENDING(🟡) ${n}건이 남아 있다. specs/interview/question-bank.md로 인터뷰를 완료해 전부 ✅로 확정하라. 스펙이 모호한 상태의 구현은 추측이고, 추측은 재작업이 된다."
     },

@@ -90,11 +90,31 @@ def _iter_files(root: Path, glob: str):
                 yield base / fn
 
 
+# 짝 없는 서로게이트를 가리키는 패턴 탐지.
+# JSON 에 "\\ud83d" 처럼 역슬래시를 이중으로 쓰면 json.loads 는 리터럴
+# "\ud83d" 를 내놓고, re 는 그것을 U+D83D(고아 서로게이트) 로 해석한다.
+# 파이썬 문자열에서 🟡 는 단일 코드포인트 U+1F7E1 이므로 **어떤 입력에도 매칭되지
+# 않는다** — 가드는 조용히 "0건"을 돌려주며 영원히 통과한다.
+# 2026-07-27 실제로 no_pending_spec 이 이 상태였다. gate_spec_freeze.py 를 영구
+# no-op 이라는 이유로 지우고 그 기능을 흡수한 가드가, 다른 이유로 똑같이 no-op 였다.
+_LONE_SURROGATE_ESC = re.compile(r"\\u[dD][89a-fA-F][0-9a-fA-F]{2}")
+
+
 def guard_grep_count(root: Path, spec: dict, var: dict) -> tuple[bool, str, dict]:
+    pattern = spec["pattern"]
+    bad = _LONE_SURROGATE_ESC.findall(pattern) + [
+        f"U+{ord(c):04X}" for c in pattern if 0xD800 <= ord(c) <= 0xDFFF]
+    if bad:
+        # 통과가 아니라 실패로 처리한다: 판정할 수 없는 가드는 없는 가드다.
+        return False, (
+            f"패턴이 짝 없는 서로게이트({', '.join(map(str, bad))})를 가리킨다 — "
+            f"어떤 문자열에도 매칭되지 않으므로 이 가드는 영구 통과 상태다. "
+            f"phase-matrix.json 의 pattern 에서 역슬래시 이중 이스케이프를 풀고 "
+            f"문자를 그대로 쓰라(예: 🟡)."), {}
     target = root / spec["file"]
     if not target.exists():
         return False, f"파일이 없다: {spec['file']}", {}
-    rx = re.compile(spec["pattern"])
+    rx = re.compile(pattern)
     text = target.read_text(encoding="utf-8", errors="replace")
     n = sum(1 for line in text.splitlines() if rx.search(line))
     expect = spec.get("expect", 0)
