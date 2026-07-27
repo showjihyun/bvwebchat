@@ -550,7 +550,10 @@ if (DRY_RUN) {
   say(`  Q4 blockers : ${(s.open_questions || []).length}건`);
   say(`  Q5 accept   : ${(s.acceptance || []).length}건`);
   say('');
-  say('  5문항 프롬프트는 고정이다. 실제 시험: node scripts/resume-test.mjs --cold');
+  say('── 고정 5문항 프롬프트 (이 텍스트가 시험지 전문이다) ─────────────────');
+  for (const line of PROMPT.split('\n')) say(`  ${line}`);
+  say('');
+  say('  실제 시험: node scripts/resume-test.mjs --cold');
   emit({ script: 'resume-test', status: 'dry_run', checkpoint: ck.rel, sha: targetSha }, EXIT_PASS);
 }
 
