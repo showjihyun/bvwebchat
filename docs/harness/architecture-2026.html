@@ -2212,7 +2212,8 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
               <code>golden-coverage.mjs</code>가 <code>evals/golden/track-a-product.jsonl</code>의 각 케이스에 대해
               <code>verify</code> 필드가 가리키는 테스트가 <b>실재하는지</b>를 대조한다. 통과 여부가 아니라 <b>존재 여부</b>가
               질문이라는 점이 S2와의 결정적 차이다. 이 검사는 <code>GREEN→EVAL</code> 가드의 일부가 된다.
-              (현재 트랙 A는 27 케이스, 트랙 B는 5 케이스 — <code>wc -l evals/golden/*.jsonl</code>, 2026-07-27 기준)
+              (트랙 A 27 케이스 · 트랙 B <b>7</b> 케이스 — <code>wc -l evals/golden/*.jsonl</code>, 2026-07-27 기준.
+              트랙 B가 5에서 7로 는 것은 아래 §09가 예고한 GB-06·GB-07이 실제로 만들어졌기 때문이다)
             </p>
           </div>
         </div>
@@ -2436,12 +2437,14 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
                 <td>트랙 A+B 케이스 수 (승격 루프 작동 증거)</td>
                 <td><code>evals/golden/*.jsonl</code> 행 수</td>
                 <td><span class="yes">✅</span></td>
-                <td>유일하게 값이 있던 지표(베이스라인 13). 2026-07-27 실측: <b>트랙 A 27 · 트랙 B 5</b></td>
+                <td>유일하게 값이 있던 지표(베이스라인 13). 2026-07-27 실측: <b>트랙 A 27 · 트랙 B 7 = 34</b> —
+                  트랙 B의 +2가 GB-06·GB-07이다</td>
               </tr>
               <tr>
                 <td><span class="tag">M8<small>게이트 차단 — 신설</small></span></td>
                 <td>단계 게이트가 실제로 막은 횟수 · 사유별</td>
-                <td><code>trajectory.jsonl</code> v2의 <code>blocked[]</code></td>
+                <td><code>tools.jsonl</code>의 <code>gate_block</code>이 <b>정본</b> ·
+                  <code>trajectory.jsonl</code> v2의 <code>blocked[]</code>는 <b>교차검증</b></td>
                 <td>— → <span class="yes">✅</span></td>
                 <td><b>경계면이 실제로 하중을 받는지에 대한 유일한 직접 증거.</b> 아래 참조</td>
               </tr>
@@ -2459,6 +2462,15 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
               다른 어떤 지표도 이 질문에 답하지 못한다. M1~M3은 결과를 재고, M8만이
               <b>경계면 자체</b>를 잰다. 그래서 M4를 지우고도 지표 개수가 줄지 않았다.
             </p>
+            <p>
+              <b>그리고 M8은 원천이 둘이어야 한다.</b> 초안은 <code>trajectory.jsonl</code>의
+              <code>blocked[]</code> 하나만 지정했는데, 이는 §07 자신의 아래 각주(<code>tools.jsonl</code>이
+              실패·차단을 갖는다)와 모순이었다. 구현이 <code>tools.jsonl</code>의 <code>gate_block</code>을
+              정본으로, <code>blocked[]</code>를 교차검증으로 잡았고 <b>그쪽이 옳다</b> —
+              두 수가 어긋나는 순간 <b>"훅 하나가 죽었다"는 신호가 공짜로 나오기 때문이다.
+              이것은 지표가 아니라 센서를 하나 더 얻는 것이다.</b>
+              같은 논리가 <code>hooks-selftest</code>에도 있다: 죽은 훅과 엄격한 훅은 침묵으로는 구별되지 않는다.
+            </p>
           </div>
         </div>
 
@@ -2467,6 +2479,10 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
           이것이 D1(빈 칸 문제)의 구조적 해소다 — 손으로 채우는 열이 없으면 비어 있을 열도 없다.
           신설 로그는 둘이다: <code>phase.jsonl</code>(전이마다) · <code>tools.jsonl</code>(실패·차단만 — 작게 유지).
           <code>tools.jsonl</code>에 성공 호출까지 넣지 않는 이유는 <code>trajectory.jsonl</code>과 중복되기 때문이다.
+          <br><br>
+          <b>이 문서는 M1~M8의 실측값을 싣지 않는다.</b> 값은 <code>harness/reports/</code>가 갖는다는 규칙이
+          이 문서에도 적용된다 — 설계서에 살아 움직이는 카운터를 박아 넣으면 그 순간 이 문서가
+          D7(문서 드리프트)의 새 발생원이 된다. 아래 §10 W7이 인용하는 숫자에 <b>스냅샷 라벨을 붙인</b> 이유도 같다.
         </p>
       </div>
     </section>
@@ -2854,6 +2870,14 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
               <code>src/server/chat/*.ts</code>를 만들고 있었다.
               <code>enforce: warn_only</code>였으므로 통과했지만, <b>게이트는 이 브랜치가 두 단계를 섞고 있으며
               자기 규칙대로라면 PR이 2개여야 한다고 정확히 판정했다.</b>
+            </p>
+            <p>
+              그리고 그 판정은 <b>세어졌다</b>. <code>harness/reports/2026-W31.md</code>(스냅샷 —
+              실측값의 소유자는 그 리포트이며 이 문서가 아니다)가 M8 차단을 사유별로 분해했는데
+              가장 큰 묶음이 <code>HARNESS/src/**</code>였다. 즉 이 절이 고백하는 위반은 산문이 아니라
+              <b>로그에 사유 코드로 남아 있다</b>. 같은 리포트가 그 차단들 대부분이
+              <code>warn_only</code> 유예로 실제로는 통과했다고 함께 적는다 — <b>차단 횟수와 실제 차단은
+              다른 수이고, 둘을 같이 적지 않으면 게이트가 실제보다 강해 보인다.</b>
             </p>
             <p>
               경고를 억누르거나 매트릭스를 느슨하게 고쳐 초록으로 만들지 않는다. 그건 W5가 경고한
