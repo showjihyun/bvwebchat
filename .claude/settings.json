@@ -42,7 +42,7 @@
       {
         "matcher": "Write|Edit",
         "hooks": [
-          { "type": "command", "command": "\"C:\\Program Files\\Git\\bin\\bash.exe\" scripts/check.sh --fast" }
+          { "type": "command", "command": "node scripts/check.mjs --fast" }
         ]
       }
     ]

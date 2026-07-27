@@ -38,14 +38,9 @@ jobs:
             echo "::warning::코드 변경에 스펙/ADR 변경이 없습니다. 스펙에 이미 있는 항목인지 PR 설명에 RQ-ID를 명시하세요."
           fi
 
-      - name: 테스트-코드 동행 검사 (M3 프록시)
-        run: |
-          BASE="origin/${{ github.base_ref }}"
-          CHANGED=$(git diff --name-only "$BASE"...HEAD)
-          # TODO(ADR-0005 확정 후): 테스트 경로 패턴을 실제 레이아웃에 맞게 수정
-          if echo "$CHANGED" | grep -q '^src/' && ! echo "$CHANGED" | grep -qE '(^tests?/|\.(test|spec)\.)'; then
-            echo "::warning::구현(src/) 변경에 테스트 변경이 없습니다. TDD(테스트 먼저) 위반인지 확인하고, ADR-0005의 예외에 해당하면 PR 설명에 사유를 적으세요."
-          fi
+      # M3(테스트 선행률)은 여기서 재지 않는다. grep 프록시는 "테스트가 함께 바뀌었나"만
+      # 볼 뿐 순서를 못 보고, phase.jsonl의 RED→GREEN 전이 기록이 정확한 M3다.
+      # 프록시와 정확한 센서를 함께 두면 서로 다른 답을 낸다.
 
-      - name: 검증 일괄 (lint + test)
+      - name: 검증 일괄 (lint + typecheck + test)
         run: bash scripts/check.sh
