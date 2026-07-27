@@ -97,7 +97,7 @@ ADR-0005 결정5의 예산은 5초이고, 초과 시 실패가 아니라 경고�
 | 배포 아티팩트 빌드 + 골든 스모크 | Comp | main 머지 → 배포 | `deploy.yml` → Docker 빌드 → `smoke.sh`(health + GA-01 + GA-04) | ✅ (2026-07-21 기준 최근 5회 연속 성공 — `gh run list --workflow=deploy.yml`) |
 | flake 시그니처 수집 | Comp | 리팩터 전후 · 의심 시 | `check.mjs --repeat N` — `assert`/`collect`/`crash` 3모집단 분류 | ✅ 수동 호출 |
 | git 이력 재유도 (단계 순서 대조) | Comp | CI | `phase-audit.mjs [--base <ref>] [--all] [--strict]` — Bash 우회의 **탐지** 경로 (예방이 아니다) | 🔄 스크립트 ✅ / CI 미배선 |
-| 재개 시험 (L3 졸업 시험 · GB-06) | Comp | 상태 계약 변경 시 | `resume-test.mjs --cold` — worktree 격리 + `claude -p` 5문항 채점 | ⬜ 제작 중 |
+| 재개 시험 (L3 졸업 시험 · GB-06) | Comp | 상태 계약 변경 시 | `resume-test.mjs --cold` — worktree 격리 + `claude -p` 5문항 채점 (정답지 = 체크포인트 파일 자체) | 🔄 스크립트 ✅ / **첫 통과 미확인** |
 
 배포 후 스모크의 🟡는 해제됐다. RQ-05/RQ-17이 종결됐고 `deploy.yml`·`smoke.sh`가
 실제로 초록이다. 컨테이너는 S4의 **유일한 실환경 기질**이다 — `vitest`는 Vite로,

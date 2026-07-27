@@ -99,7 +99,9 @@ python harness/phase.py decide "결정 문장" --why "근거 — 이게 없으�
 ## 검증 — 재개 시험 (L3 졸업 시험)
 
 ```
-node scripts/resume-test.mjs --cold
+node scripts/resume-test.mjs --cold            # 진짜 시험 (다이제스트·라이브 커서 없음)
+node scripts/resume-test.mjs --cold --dry-run  # 채점 없이 프롬프트·정답지만 확인
+node scripts/resume-test.mjs --cold --json     # 기계 판독 (사람 출력은 stderr)
 ```
 
 `git worktree`로 격리한 사본에서 `claude -p`를 헤드리스로 띄우고 5문항을
@@ -109,9 +111,13 @@ node scripts/resume-test.mjs --cold
 **PASS 기준: cold(다이제스트 없이) 5/5 · 읽은 파일 ≤7 · ≤5분.**
 통과 못 하면 상태 계약이 없는 것이고, 있다고 주장할 근거도 없다. 이것이 GB-06이다.
 
-> **미검증 (2026-07-27)**: 위 러너는 아직 저장소에 없다. 기준은
-> 설계서(`docs/harness/architecture-2026.html` §06)의 계약이고, 스크립트가
-> 생기면 이 절을 실행 출력으로 교체한다.
+`--cold`가 기본값인 이유: 다이제스트가 떠 있는 상태의 5/5는 **다이제스트를
+읽었다는 증거**일 뿐 상태 파일이 충분하다는 증거가 아니다. 계약이 검증하려는 것은
+다이제스트 생성기가 아니라 그 아래의 커밋된 상태 파일이다.
+
+> **실행 미검증 (2026-07-27)**: 러너는 실재하지만(`scripts/resume-test.mjs`)
+> 이 문서 작성 시점에 **한 번도 통과가 확인되지 않았다**. 첫 실행은 W4의
+> 통합 검증 항목이고, 결과가 나오면 이 절에 출력을 붙인다.
 
 ## 에러 핸들링
 
