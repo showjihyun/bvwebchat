@@ -95,6 +95,7 @@
         ".claude/settings.json",
         ".claude/hooks/**",
         "harness/policy/**",
+        "harness/rq-coverage.json",
         ".github/workflows/**",
         "scripts/**"
       ],

@@ -119,7 +119,7 @@ ADR-0005 결정5의 예산은 5초이고, 초과 시 실패가 아니라 경고�
 
 | 이름 | 실행 | 배치 | 강제 수단 | 상태 |
 |---|---|---|---|---|
-| 골든 커버리지 대조 | Comp | `GREEN→EVAL` 전이 | `golden_coverage` 가드 → `golden-coverage.mjs --rq RQ-XX`. 통과 여부가 아니라 **테스트의 존재 여부**를 묻는 것이 S2와의 결정적 차이 | ✅ |
+| 골든 커버리지 대조 | Comp | `GREEN→EVAL` 전이 | `golden_coverage` 가드 → `golden-coverage.mjs --rq RQ-XX`. 통과 여부가 아니라 **테스트의 존재 여부**를 묻는 것이 S2와의 결정적 차이. **분모는 `specs/requirements.md`의 RQ 전수**다(2026-07-27 변경) — GA 케이스가 없는 RQ는 `harness/rq-coverage.json`이 `smoke`(배포 아티팩트에서 스모크가 검증)/`constraint`(ADR의 구조적 제약)로 분류하고, 미분류는 차단한다. 그 전에는 분모가 GA 케이스라 `"대상 27건 · 커버 27 · 미커버 0"`을 냈고 그 줄은 **"요구사항이 다 커버됐다"로 읽혔다** — 실제로 RQ 14개 중 3개(RQ-05·16·17)가 분모 밖이라 출력에 이름조차 나오지 않았다. **분모에 없는 것은 실패하지 않는다** | ✅ |
 | 골든 정답 수정 승인 게이트 | Comp | `evals/golden/**` 쓰기 | permissions `ask` | ✅ |
 | 독립 평가 에이전트 (evaluator) | Inf | 각 RQ 구현 직후 | `tdd-workflow` Phase 3 → `evaluator_pass` 가드 | ✅ |
 | PR 리뷰 게이트 (reviewer) | Inf | 머지 전 | `review-gate` 스킬 → `reviewer_approve` 가드 | ✅ |
