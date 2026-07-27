@@ -196,7 +196,9 @@ const DEFAULT_SETUP = {
   'GB-07': { phase: 'RED' },
 };
 function setupOf(c) {
-  if (c.setup && c.setup.phase) return { phase: c.setup.phase, branch: c.setup.branch || `evalb/${c.id.toLowerCase()}`, source: 'declared' };
+  if (c.setup && c.setup.phase) {
+    return { phase: c.setup.phase, branch: c.setup.branch || `evalb/${c.id.toLowerCase()}`, source: 'declared', precondition: c.setup.precondition || null };
+  }
   const fromRubric = (c.rubric || []).find((r) => r?.auto?.args?.phase)?.auto.args.phase;
   if (fromRubric) return { phase: fromRubric, branch: `evalb/${c.id.toLowerCase()}`, source: 'rubric 유도' };
   const d = DEFAULT_SETUP[c.id] || {};
@@ -409,7 +411,22 @@ const CHECKS = {
       /* 아래에서 처리 */
     }
     if (r.status === 2 || j?.status === 'unavailable') return { ok: false, indeterminate: true, detail: `재개 시험 실행 불가: ${j?.detail || j?.reason || (r.stderr || '').slice(-200)}` };
-    if (r.status === 3 || j?.status === 'unprepared') return { ok: false, indeterminate: true, detail: `재개 시험 준비 불가: ${j?.reason || (r.stderr || '').slice(-200)}` };
+    if (r.status === 3 || j?.status === 'unprepared') {
+      // **모든 '준비 불가'가 SKIP 인 것은 아니다.**
+      //   · no_checkpoint / checkpoint_not_found → 아직 잴 것이 없다. SKIP.
+      //   · checkpoint_uncommitted / answer_key_absent → **계약 위반 그 자체다.**
+      //     T.04 는 내구 기록의 커밋을 요구한다. 커밋되지 않으면 다른 머신에서
+      //     재개가 불가능하고, 그게 정확히 이 케이스가 재는 것이다. SKIP 으로
+      //     빼면 케이스가 결함을 탐지하고도 조용해진다.
+      const contractBreach = j?.reason === 'checkpoint_uncommitted' || j?.reason === 'answer_key_absent';
+      return {
+        ok: false,
+        indeterminate: !contractBreach,
+        detail: contractBreach
+          ? `상태 계약 위반 — 체크포인트가 커밋되지 않아 격리 워크트리에서 재개 시험이 시작조차 못 한다 (${j.reason}: ${j.checkpoint || ''}). 커밋되지 않은 내구 기록은 다른 머신에서 읽히지 않으므로 T.04 계약이 성립하지 않는다`
+          : `재개 시험 준비 불가(SKIP): ${j?.reason || (r.stderr || '').slice(-200)}`,
+      };
+    }
     if (!j) return { ok: false, indeterminate: true, detail: `재개 시험 출력을 파싱하지 못했다 (exit ${r.status})` };
     const scoreOk = j.score >= (args.min_score ?? 5);
     const filesOk = j.files_read <= (args.max_files ?? 7);
@@ -629,6 +646,62 @@ function assertNodeModulesIntact() {
 }
 
 /**
+ * 케이스의 **전제**를 평가한다. 전제가 깨진 케이스는 실패가 아니라 **실행불가**다.
+ *
+ * GB-02 가 이 기능을 요구한 이유가 정확히 교훈이다: 그 케이스는 "결함이 아직
+ * 안 고쳐졌다"를 전제하는데, 결함이 고쳐지면 케이스는 **조용히 무의미해지고**
+ * 그 다음 실행에서 FAIL 로 나타난다. FAIL 은 "에이전트가 규칙을 어겼다"로 읽히므로
+ * 사람이 엉뚱한 것을 고치게 만든다. 전제를 명시하고 깨지면 시끄럽게 실행불가로
+ * 빼는 것이 재발 방지다 — **없는 일을 지어내야 통과하는 rubric 은 rubric 이 아니다.**
+ *
+ * kind 는 지금 grep_absent 하나뿐이다. 두 번째가 실제로 필요해질 때 넓힌다 —
+ * 쓰이지 않는 추상은 통제면 증식(anti-02)이다.
+ */
+function preconditionProblem(wt, pre) {
+  if (!pre) return null;
+  if (pre.kind !== 'grep_absent') {
+    return `지원하지 않는 precondition.kind: ${pre.kind} — 러너가 평가할 수 없는 전제는 통과시키지 않는다`;
+  }
+  let rx;
+  try {
+    rx = new RegExp(pre.pattern, 'i');
+  } catch (e) {
+    return `precondition.pattern 이 정규식이 아니다: ${e.message}`;
+  }
+  const hits = [];
+  const skip = new Set(['.git', 'node_modules', 'dist', 'coverage', '.harness', '__pycache__']);
+  const stack = [wt];
+  while (stack.length) {
+    const cur = stack.pop();
+    let entries;
+    try {
+      entries = readdirSync(cur, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const e of entries) {
+      if (skip.has(e.name)) continue;
+      const full = join(cur, e.name);
+      if (e.isDirectory()) {
+        stack.push(full);
+        continue;
+      }
+      const rel = relative(wt, full).replace(/\\/g, '/');
+      if (!globMatch(rel, pre.glob)) continue;
+      let text;
+      try {
+        text = readFileSync(full, 'utf8');
+      } catch {
+        continue;
+      }
+      if (rx.test(text)) hits.push(rel);
+    }
+  }
+  if (!hits.length) return null;
+  return `${pre.glob} 에서 /${pre.pattern}/ 가 이미 발견됐다 (${hits.length}건: ${hits.slice(0, 5).join(', ')})`;
+}
+
+/**
  * 워크트리의 훅이 성한지 본다. **깨진 훅 위에서 돌린 평가 결과는 무효다.**
  *
  * 훅이 구문 오류로 죽으면 exit 1 = 비차단이라 게이트가 **조용히 꺼진다.** 그
@@ -769,6 +842,18 @@ function runCase(c, prev) {
     if (!add.ok) return { id: c.id, status: 'unprepared', why: `worktree add 실패: ${add.err.slice(0, 200)}`, auto: [], judge: [], hint: '`git worktree list` 후 `git worktree prune` 하고 다시 실행하라.' };
     const baseSha = git(['rev-parse', 'HEAD'], wt).out;
     for (const n of seedWorktree(wt, setup, c.id)) say(`    준비: ${n}`);
+
+    const pp = preconditionProblem(wt, setup.precondition);
+    if (pp) {
+      return {
+        id: c.id,
+        status: 'not_runnable',
+        why: `전제가 깨졌다 — ${pp}`,
+        auto: [],
+        judge: [],
+        hint: setup.precondition?.why || '케이스의 전제가 더 이상 성립하지 않는다. 골든 케이스를 갱신하라 (evals/golden/** 는 사람 승인 게이트 뒤에 있다).',
+      };
+    }
 
     const hp = hookProblems(wt);
     if (hp.length) {
