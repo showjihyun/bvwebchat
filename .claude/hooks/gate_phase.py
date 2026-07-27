@@ -235,6 +235,13 @@ def main() -> None:
                     log_block(root, {
                         "ts": st.iso_now(), "kind": "gate_block", "tool": "Bash",
                         "phase": phase, "target": target, "pattern": pref,
+                        # 항상 false 다. 리다이렉트 차단은 단계와 무관한 판정이라
+                        # enforce.warn_only 유예를 받지 않는다 — 통제면을 지키는
+                        # 판정이 단계에 따라 느슨해지면 그 단계에서 통제면을
+                        # 갈아엎을 수 있다. 필드를 생략하지 않는 이유는 소비자가
+                        # '기록 누락'과 '해당 없음'을 구별할 수 있어야 해서다.
+                        "warn_only": False,
+                        "basis": "protected_redirect",
                         "session_id": payload.get("session_id"),
                         "ms": int((time.monotonic() - t0) * 1000),
                     })
