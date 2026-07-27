@@ -423,6 +423,109 @@ function generateUniqueNickname(base: string, nicknamesInUse: ReadonlySet<string
 }
 
 /**
+ * 이 소켓에 바인딩된 세션을 조회한다 — **세션리스 소켓 회귀 방지의 단일 지점**.
+ *
+ * identify를 호출한 적 없는 소켓은 socket.data.token이 undefined이고, 그런
+ * 소켓에 대해 세션 로직은 전부 조용히 건너뛰어야 한다(RQ-01~15 골든 케이스의
+ * 대다수가 identify 없이 join한다). 토큰이 있어도 세션이 이미 버려졌을 수
+ * 있으므로(유예 만료·재identify) 두 단계 모두 확인한다.
+ *
+ * 주의: handleActiveRoom은 이 헬퍼를 쓰지 않는다 — "토큰 없음"과 "세션 없음"에
+ * **서로 다른 에러 문자열**로 ack해야 하므로 두 분기를 유지해야 한다.
+ */
+function sessionOfSocket(state: ChatState, socket: ChatSocket): SessionState | undefined {
+  const token = socket.data.token;
+  if (token === undefined) {
+    return undefined;
+  }
+  return state.sessions.get(token);
+}
+
+/**
+ * RQ-18 / ADR-0003: 이 room을 세션의 참여 room 집합에 추가한다 — 이후 이
+ * room에 도착하는 메시지가 안 읽음 집계 대상이 된다(활성 room이 아닐 때).
+ * 세션 없는 소켓은 아무것도 하지 않는다.
+ */
+function attachRoomToSession(state: ChatState, socket: ChatSocket, room: RoomName): void {
+  const session = sessionOfSocket(state, socket);
+  if (session === undefined) {
+    return;
+  }
+  session.rooms.add(room);
+}
+
+/**
+ * RQ-18 / ADR-0003 결정4: 세션의 참여 room 집합·안 읽음 기록에서 이 room을
+ * 제거한다. 이 room이 활성 room이었다면 활성 room은 다시 없음(null)으로
+ * 되돌아간다(파생 테스트로 검증). 세션 없는 소켓은 아무것도 하지 않는다.
+ */
+function detachRoomFromSession(state: ChatState, socket: ChatSocket, room: RoomName): void {
+  const session = sessionOfSocket(state, socket);
+  if (session === undefined) {
+    return;
+  }
+  session.rooms.delete(room);
+  session.unread.delete(room);
+  if (session.activeRoom === room) {
+    session.activeRoom = null;
+  }
+}
+
+/**
+ * RQ-18 / ADR-0003 결정4: 이 room에 참여 중인(global 포함) 세션 중 이 room이
+ * 활성 room이 아닌 세션의 안 읽음을 1 증가시켜 유니캐스트로 통지한다.
+ *
+ * `cap`은 appendMessage가 돌려준 **post-append 링버퍼 길이**여야 한다
+ * (GA-17) — 열었을 때 이미 밀려나 볼 수 없는 메시지는 세지 않는다.
+ * 순회 순서는 sessions Map의 삽입 순서이며, 이는 unread 방출 순서를 결정한다
+ * (현재 관찰 불가능하지만 room→sessions 인덱스를 도입하면 달라진다).
+ */
+function fanOutUnread(io: ChatServer, state: ChatState, room: RoomName, cap: number): void {
+  for (const session of state.sessions.values()) {
+    if (!session.rooms.has(room)) continue;
+    if (session.activeRoom === room) continue;
+    const current = session.unread.get(room) ?? 0;
+    const next = Math.min(current + 1, cap);
+    session.unread.set(room, next);
+    if (session.connected) {
+      io.to(session.socketId).emit('unread', { room, count: next });
+    }
+  }
+}
+
+/**
+ * ADR-0003 결정5: 세션을 "연결 끊김"으로 표시하고 유예 타이머 핸들을 세션에
+ * 보관한다 — resume이 이 핸들로 타이머를 취소한다. 세션 없는 소켓
+ * (identify 미호출)은 취소할 주체가 없으므로 아무것도 하지 않는다(타이머
+ * 자체는 그대로 진행되어 무조건 만료된다).
+ */
+function markSessionDisconnected(
+  state: ChatState,
+  token: string | undefined,
+  timer: NodeJS.Timeout
+): SessionState | undefined {
+  const session = token !== undefined ? state.sessions.get(token) : undefined;
+  if (session === undefined) {
+    return undefined;
+  }
+  session.connected = false;
+  session.graceTimer = timer;
+  return session;
+}
+
+/**
+ * ADR-0003 결정5 마지막 문장: 퇴장이 확정되면 세션을 안 읽음 개수까지 통째로
+ * 버린다 — 더 이상 어떤 room에도 "참여 중"이 아니다. 세션 없는 소켓의
+ * 퇴장에서는 버릴 것이 없다.
+ */
+function discardSession(state: ChatState, token: string | undefined): void {
+  if (token === undefined) {
+    return;
+  }
+  state.sessions.delete(token);
+}
+
+/**
  * RQ-10 본체: nickname 입력만으로 사용자를 식별한다(계정·비밀번호 없음).
  * 이미 사용 중인 nickname이면 자동 접미사로 고유화한다(GA-11).
  *
@@ -519,13 +622,7 @@ function handleJoin(
   // 도착하는 메시지가 안 읽음 집계 대상이 된다(활성 room이 아닐 때).
   // 세션 없는 소켓(identify 미호출)은 이 로직을 건너뛰어 기존 RQ-01~15
   // 동작을 그대로 유지한다(세션리스 소켓 회귀 방지).
-  const joinToken = socket.data.token;
-  if (joinToken !== undefined) {
-    const session = state.sessions.get(joinToken);
-    if (session !== undefined) {
-      session.rooms.add(payload.room);
-    }
-  }
+  attachRoomToSession(state, socket, payload.room);
 
   // RQ-15: 이 room의 멤버 순서 기록에 이 소켓을 추가한다(참여 순 — 맨 뒤에
   // append). RQ-13: 이 join 직전에 멤버가 0명(키 부재 포함)이었는지를 먼저
@@ -585,16 +682,7 @@ function handleMessage(io: ChatServer, state: ChatState, socket: ChatSocket, pay
   // (방금 갱신한 링버퍼 길이, ADR-0002 상한 50)로 클램프한다 — 열었을 때
   // 이미 밀려나 볼 수 없는 메시지는 세지 않는다는 요구와 일치한다.
   const cap = appendMessage(state, payload.room, message);
-  for (const session of state.sessions.values()) {
-    if (!session.rooms.has(payload.room)) continue;
-    if (session.activeRoom === payload.room) continue;
-    const current = session.unread.get(payload.room) ?? 0;
-    const next = Math.min(current + 1, cap);
-    session.unread.set(payload.room, next);
-    if (session.connected) {
-      io.to(session.socketId).emit('unread', { room: payload.room, count: next });
-    }
-  }
+  fanOutUnread(io, state, payload.room, cap);
 }
 
 /** RQ-03 본체: 이 소켓을 room의 수신자 목록에서 제거한다 (Socket.IO room = 수신자 목록). */
@@ -623,17 +711,7 @@ function handleLeave(
   // RQ-18 / ADR-0003 결정4: 이 소켓에 세션이 있으면 참여 room 집합·안 읽음
   // 기록에서 이 room을 제거한다. 이 room이 활성 room이었다면 활성 room은
   // 다시 없음(null)으로 되돌아간다(파생 테스트로 검증).
-  const leaveToken = socket.data.token;
-  if (leaveToken !== undefined) {
-    const session = state.sessions.get(leaveToken);
-    if (session !== undefined) {
-      session.rooms.delete(payload.room);
-      session.unread.delete(payload.room);
-      if (session.activeRoom === payload.room) {
-        session.activeRoom = null;
-      }
-    }
-  }
+  detachRoomFromSession(state, socket, payload.room);
 
   // RQ-15: 이 room의 멤버 순서 기록에서 이 소켓을 제거하고 갱신된 참여자
   // 목록을 남은 room 멤버 전원에게 방송한다. RQ-13: 이 제거로 멤버가 0명이
@@ -808,18 +886,18 @@ function handleResume(
  * 기다리지 않도록 하기 위함이며, 타이머가 실행되는 시점·동작에는 영향이 없다.
  */
 function scheduleDeparture(io: ChatServer, state: ChatState, socket: ChatSocket): void {
+  // 토큰은 **스케줄 시점**에 스냅샷해 콜백 인자로 넘긴다. 반면
+  // finalizeDeparture가 읽는 identifiedNickname은 **발화 시점**에 읽는다 —
+  // 이 비대칭은 의도적이다(다른 소켓에서의 resume이 옛 소켓의 타이머로
+  // 엉뚱한 닉네임을 해제하지 않게 한다).
   const token = socket.data.token;
-  const session = token !== undefined ? state.sessions.get(token) : undefined;
 
   const timer = setTimeout(() => {
     finalizeDeparture(io, state, socket, token);
   }, GRACE_PERIOD_MS);
   timer.unref();
 
-  if (session !== undefined) {
-    session.connected = false;
-    session.graceTimer = timer;
-  }
+  markSessionDisconnected(state, token, timer);
 }
 
 /**
@@ -835,9 +913,7 @@ function finalizeDeparture(io: ChatServer, state: ChatState, socket: ChatSocket,
     state.nicknamesInUse.delete(heldNickname);
   }
   handleDisconnect(io, state, socket);
-  if (token !== undefined) {
-    state.sessions.delete(token);
-  }
+  discardSession(state, token);
 }
 
 /**
