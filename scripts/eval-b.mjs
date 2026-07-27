@@ -599,6 +599,9 @@ function runCase(c, prev) {
     git(['worktree', 'remove', '--force', wt]);
     rmSync(parent, { recursive: true, force: true });
     git(['worktree', 'prune']);
+    // 케이스 브랜치는 워크트리가 아니라 **공유 저장소의 refs** 에 만들어진다.
+    // 워크트리만 지우면 evalb/* 브랜치가 계속 쌓인다.
+    if (setup.branch) git(['branch', '-D', setup.branch]);
   };
 
   try {
