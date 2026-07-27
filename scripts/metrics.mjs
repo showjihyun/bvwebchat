@@ -19,6 +19,11 @@
  * "스펙 밖 변경"을 세면 리뷰어가 *아니라고 설명한* 문장까지 걸려 22건 중 19건이 나온다
  * (실측함). 그런 숫자는 없느니만 못하다.
  *
+ * **측정하지 않는 것: flake 비율.** vitest 포크풀 크래시는 **머신 부하에 따라 달라진다** —
+ * 실측: 에이전트 1개일 때 9/10 클린, 4~5개 동시일 때 3회 중 2회 크래시. 같은 코드가 날마다 다른
+ * 숫자를 낸다. 부하를 함께 기록하지 않는 실패 횟수는 지표가 아니라 소음이고, **부하에 따라 변하는
+ * 지표는 없는 것만 못하다**. 그래서 이 스크립트는 flake를 세지 않고 **시그니처로 분류만** 한다.
+ *
  *   node scripts/metrics.mjs                    표 출력
  *   node scripts/metrics.mjs report --since 7d  harness/reports/<ISO주차>.md 작성
  */
@@ -393,6 +398,12 @@ function failureClasses() {
   for (const r of trajLatest) {
     for (const e of r.errors || []) {
       const detail = typeof e === 'string' ? e : e.detail || JSON.stringify(e);
+      // 부하 의존 실패는 별도 계열로 뺀다. 일반 오류와 섞이면 "오류가 늘었다"가 코드 변화인지
+      // 그날 에이전트가 몇 개 돌았는지를 뜻하는지 알 수 없게 된다.
+      if (/Worker exited unexpectedly|vitest-pool|Worker forks emitted error|Tinypool/i.test(detail)) {
+        bump('flake: vitest 워커 크래시 (부하 의존 — 횟수를 비율로 읽지 마라)', 'flake', detail.replace(/\s+/g, ' ').slice(0, 70), {});
+        continue;
+      }
       const hook = /^(\w+):(\w+) hook error:\s*\[([^\]]+)\]/.exec(detail);
       if (hook) {
         bump(`훅 오류 ${hook[1]} — ${hook[3]}`, 'hook_error', `${hook[2]} 도구에서 발생`, { event: hook[1], command: hook[3] });
@@ -443,6 +454,21 @@ function prescribe(c) {
         `훅이 오류로 죽는 것은 fail-open이다 — 게이트가 있다고 믿는 채로 없는 상태가 된다. 구조로는 못 막고(훅 자체가 구조다), ` +
         `Guide로도 못 막는다(사람이 기억할 문제가 아니다). 배선이 실제로 작동하는지 기계가 확인해야 한다.`,
       action: `node scripts/hooks-selftest.mjs 를 CI blocking으로 걸어라 (settings.json이 가리키는 커맨드 '${c.meta.command}'의 실재·실행을 단언한다)`,
+    };
+  }
+  if (c.kind === 'flake') {
+    return {
+      pick: 'A',
+      label: '구조적 불가능',
+      why:
+        '워커 크래시는 단언 diff가 없는 **프로세스 수준** 실패이고 부하에 비례한다. 센서를 더해도 잴 수 있는 것은 ' +
+        '"오늘 에이전트가 몇 개 돌았나"뿐이고, Guide로는 물리 현상을 막을 수 없다. 포크풀을 쓰지 않으면 이 실패 계열 자체가 사라진다 ' +
+        '(실측: --pool=threads 6/6 클린).',
+      action: 'vitest.config.ts의 pool을 threads로 바꾼다',
+      counter:
+        '반증 조건: pool 변경은 **하네스 변경**이라 changelog 동행이 필요하고(HARNESS→REVIEW 가드), 기능 PR에 섞으면 그 PR의 증거 사슬이 오염된다. ' +
+        '별도 PR로 분리하라. 또한 포크 격리를 threads로 바꾸면 테스트 간 전역 상태 공유 위험이 생기므로 ' +
+        'rq-13 GA-21(서버 인스턴스 격리)이 여전히 초록인지 반드시 확인해야 한다 — 그 확인 없이 바꾸면 flake를 더 조용한 버그로 바꾸는 것이다.',
     };
   }
   if (c.kind === 'fix') {
@@ -524,6 +550,10 @@ console.log('');
 if (CLASSES.length) {
   console.log('  실패 계열 상위:');
   for (const c of CLASSES.slice(0, 5)) console.log(`    ${String(c.count).padStart(3)}회  ${c.key}`);
+  if (CLASSES.some((c) => c.kind === 'flake')) {
+    console.log('    ⚠ flake 계열의 횟수는 **동시 실행 에이전트 수에 비례**한다 — 주차 간 비교 금지.');
+    console.log('      부하를 함께 기록하지 않는 한 이 숫자는 코드가 아니라 그날의 기계 사정을 잰다.');
+  }
   console.log('');
 }
 
@@ -574,6 +604,30 @@ if (DO_REPORT) {
     L.push('|---|---|---|');
     for (const c of CLASSES.slice(0, 5)) L.push(`| ${c.count} | ${c.key.replace(/\|/g, '\\|')} | ${c.samples.join(' · ').replace(/\|/g, '\\|')} |`);
   }
+  L.push('');
+  if (CLASSES.some((c) => c.kind === 'flake')) {
+    L.push('> ⚠ **flake 계열의 횟수는 지표가 아니다.** vitest 포크풀 크래시는 동시 실행 에이전트 수에 비례한다');
+    L.push('> (실측: 1개 활성 시 9/10 클린 · 4~5개 동시 시 3회 중 2회 크래시). 같은 코드가 날마다 다른 숫자를 낸다.');
+    L.push('> 그래서 여기서는 **시그니처로 분류만 하고 비율을 내지 않는다.** 주차 간 비교도 하지 마라 —');
+    L.push('> 부하를 함께 기록하기 전까지 이 숫자는 코드가 아니라 그날의 기계 사정을 잰다.');
+    L.push('>');
+    L.push('> **이 분류가 놓치는 것:** flake에는 두 번째 발현이 있다 — 스위트 1개가 **메시지 없이 조용히**');
+    L.push('> 건너뛰어지는 경우(exit 1 · 실패 0건 · pending suite 1 · stderr 완전히 빈 상태). 텍스트가 없으므로');
+    L.push('> 시그니처로 분류할 수 없고 여기 잡히지 않는다. 더 나쁜 것은 그 양상이 **"리팩터가 테스트 파일 로드를');
+    L.push('> 깨뜨렸다"와 구별 불가능**하다는 점이다 — 진짜 회귀가 flake의 옷을 입는다.');
+    L.push('> 그래서 판정 기준은 "실패 0건"이 아니라 **"테스트 수·파일 수가 정확히 기대값 · pending suite 0"**');
+    L.push('> 이어야 하고, 그 판별은 이 스크립트가 아니라 `node scripts/check.mjs --repeat N`의 관할이다');
+    L.push('> (assert / collect / crash 세 모집단으로 나눈다).');
+    L.push('');
+  }
+  L.push('## 측정하지 않는 것 (그리고 그 이유)');
+  L.push('');
+  L.push('- **flake 비율** — 부하 의존. 위 참고. 시그니처 분류로 대체한다.');
+  L.push('- **M4 PR time-to-merge** — 1인 저장소에서는 사람의 수면 시간을 잰다.');
+  L.push('- **M1의 리뷰어 절반** — 산문 키워드 집계는 리뷰어가 "해당 없음"이라 쓴 문장까지 센다(실측 22건 중 19건 오탐).');
+  L.push('  `라벨: drift` / `라벨: 없음` 규약이 생기면 그때 기계화된다.');
+  L.push('');
+  L.push('지우거나 재지 않기로 한 지표와 그 이유도 L&L 산출물이다. 빈 칸으로 두면 다음 사람이 다시 채우려 든다.');
   L.push('');
   L.push('## 자동 처방 (2회 이상 반복된 계열)');
   L.push('');

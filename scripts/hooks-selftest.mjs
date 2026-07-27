@@ -14,12 +14,23 @@
  * gate_spec_freeze.py를 가리켜 저장소의 **모든 Write가 차단**됐다.
  * 세 번 다 "훅 파일을 읽어서는 절대 안 보이는" 실패다.
  *
+ * ## 훅 실패의 종료 코드 (W2a 실측) — 이 표가 이 스크립트의 설계 근거다
+ *
+ *   스크립트 파일 부재   exit 2   → 훅 프로토콜의 "차단"과 충돌한다. 정책과 무관하게 **모든 도구가 막힌다**.
+ *   구문 오류            exit 1   → **비차단**. 게이트가 아무 말 없이 꺼진다 (fail-open).
+ *   런타임 예외          exit 1   → 비차단.
+ *   인터프리터 부재      exit 127 → 비차단.
+ *
+ * 부재는 시끄럽게 죽고 구문 오류는 침묵한다. **침묵하는 쪽이 더 위험하다** — 아무도 모른다.
+ * 그래서 이 스크립트는 두 계열을 모두 본다: (a) 참조 파일 실재 → 부재면 하드 실패,
+ * (b) 각 훅이 실제로 컴파일되고 합성 페이로드에 기대 판정을 내는가.
+ *
  *   node scripts/hooks-selftest.mjs            전체 (이식성 감사 + 판정 단언)
  *   node scripts/hooks-selftest.mjs --audit    이식성 감사만 (훅 실행 없음, 즉시)
  *   node scripts/hooks-selftest.mjs --keep     샌드박스를 지우지 않는다 (디버깅)
  *   node scripts/hooks-selftest.mjs --verbose  판정마다 훅의 stderr/stdout을 보여준다
  */
-import { readFileSync, existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, cpSync } from 'node:fs';
+import { readFileSync, existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, cpSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { createHmac } from 'node:crypto';
 import { resolve, join, delimiter, isAbsolute } from 'node:path';
@@ -116,6 +127,25 @@ function which(cmd) {
   return null;
 }
 
+/**
+ * 훅이 **컴파일되는지** 확인한다. 판정을 내지 않는 훅(PostToolUse·Stop·SessionStart)도
+ * 대상이다 — 구문 오류로 조용히 꺼진 훅은 L2 판정 단언이 절대 못 잡는다.
+ * 산출물을 남기지 않는 순수 구문 검사만 쓴다 (py_compile은 __pycache__를 만든다).
+ */
+function compileCheck(interp, tok, abs) {
+  const run = (cmd, args) => {
+    const r = spawnSync(cmd, args, { encoding: 'utf8' });
+    if (r.error) return null; // 인터프리터 부재는 위에서 따로 잡는다
+    return r.status === 0 ? null : (r.stderr || r.stdout || '').trim().split('\n').filter(Boolean).pop() || '구문 오류';
+  };
+  if (/\.py$/.test(tok)) {
+    return run(interp, ['-c', 'import sys;compile(open(sys.argv[1],encoding="utf-8").read(),sys.argv[1],"exec")', abs]);
+  }
+  if (/\.(mjs|cjs|js)$/.test(tok)) return run(process.execPath, ['--check', abs]);
+  if (/\.sh$/.test(tok)) return run('bash', ['-n', abs]);
+  return null;
+}
+
 // ── L1 이식성 감사 (모든 훅, 모든 이벤트) ───────────────────────────────────
 const SCRIPT_EXT = /\.(py|mjs|cjs|js|sh|ps1)$/;
 const auditRows = [];
@@ -164,7 +194,17 @@ for (const h of hooks) {
         if (tok.endsWith('.sh') && buf.includes(Buffer.from('\r\n'))) {
           fail(`${tok}에 CRLF 줄바꿈이 있다`, 'LF로 바꿔라. CRLF 셸 스크립트는 리눅스에서 "bad interpreter" 오류를 낸다.');
         }
-        row.notes.push(`스크립트 OK: ${tok}`);
+        const syntax = resolved ? compileCheck(interp, tok, abs) : null;
+        if (syntax) {
+          fail(
+            `${h.event} 훅 ${tok}이 컴파일되지 않는다 — ${syntax}`,
+            `구문 오류는 exit 1이고, 훅 프로토콜은 exit 1을 **비차단**으로 읽는다 — 게이트가 아무 말 없이 꺼진 채 ` +
+              `모든 쓰기가 통과한다(fail-open). 파일 부재(exit 2)는 시끄럽게 막기라도 하지만 이건 침묵한다. ` +
+              `위 위치를 고쳐라. 이 검사가 없으면 게이트가 꺼진 것을 아무도 모른다.`
+          );
+        } else {
+          row.notes.push(`스크립트 OK: ${tok}`);
+        }
       }
     }
   }
@@ -178,6 +218,28 @@ if (preToolHooks.length === 0) {
     'PreToolUse 훅이 하나도 없다 — 단계×경로 게이트가 걸려 있지 않다',
     '.claude/settings.json의 hooks.PreToolUse에 gate 훅을 배선하라. 정책 파일만 있고 훅이 없으면 phase-matrix.json은 읽히지 않는 문서다.'
   );
+}
+
+// 고아 훅 — 디스크에 있는데 settings.json이 부르지 않는다. 실패가 아니라 경고다.
+const HOOK_DIR = join(ROOT, '.claude/hooks');
+if (existsSync(HOOK_DIR)) {
+  const referenced = new Set(
+    hooks
+      .flatMap((h) => tokenize(h.command))
+      .filter((t) => SCRIPT_EXT.test(t))
+      .map((t) => t.replace(/^\.\//, '').replace(/\\/g, '/'))
+  );
+  for (const f of readdirSync(HOOK_DIR)) {
+    if (!SCRIPT_EXT.test(f)) continue;
+    const rel = `.claude/hooks/${f}`;
+    if (!referenced.has(rel)) {
+      warn(
+        `${rel}은 디스크에 있지만 settings.json이 부르지 않는다 — 고아 훅`,
+        '지웠다고 생각했는데 안 지워졌거나, 배선을 빠뜨렸다. 쓸 것이면 settings.json에 배선하고 아니면 파일을 지워라. ' +
+          '고아 훅은 다음 사람이 "이건 왜 안 도나"로 시간을 쓰게 만들고, 최악의 경우 "이미 막고 있다"고 착각하게 만든다.'
+      );
+    }
+  }
 }
 
 // ── 출력: 이식성 감사 ───────────────────────────────────────────────────────
