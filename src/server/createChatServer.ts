@@ -261,6 +261,19 @@ function appendMessage(state: ChatState, room: RoomName, message: ChatMessage): 
   return history.length;
 }
 
+/**
+ * 존재 room 목록을 구성한다 (RQ-13). GLOBAL_ROOM은 members 장부 조회 없이
+ * 무조건 0번 인덱스에 고정한다(ADR-0004 결과 — 접속자 수·user room 존재
+ * 여부와 무관하게 상시 포함). 이어서 members 장부의 키 중 현재 멤버가
+ * 1명 이상인 것만 Map 삽입 순서(= 생성순)로 덧붙인다 — 마지막 멤버가 떠나도
+ * 장부에서 키 자체를 지우지는 않으므로(메모리 삭제는 RQ-12 스코프) 여기서
+ * 멤버 수 필터로 "목록"에서만 제외한다.
+ */
+function listRooms(state: ChatState): RoomName[] {
+  const userRooms = [...state.members.entries()].filter(([, members]) => members.length > 0).map(([room]) => room);
+  return [GLOBAL_ROOM, ...userRooms];
+}
+
 type ChatServer = SocketIOServer<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, SocketData>;
 type ChatSocket = Socket<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, SocketData>;
 
@@ -283,25 +296,12 @@ function broadcastParticipants(io: ChatServer, state: ChatState, room: RoomName)
 }
 
 /**
- * 존재 room 목록을 구성한다 (RQ-13). GLOBAL_ROOM은 roomMembers 장부 조회 없이
- * 무조건 0번 인덱스에 고정한다(ADR-0004 결과 — 접속자 수·user room 존재
- * 여부와 무관하게 상시 포함). 이어서 roomMembers 장부의 키 중 현재 멤버가
- * 1명 이상인 것만 Map 삽입 순서(= 생성순)로 덧붙인다 — 마지막 멤버가 떠나도
- * 장부에서 키 자체를 지우지는 않으므로(메모리 삭제는 RQ-12 스코프) 여기서
- * 멤버 수 필터로 "목록"에서만 제외한다.
- */
-function computeRoomsList(state: ChatState): RoomName[] {
-  const userRooms = [...state.members.entries()].filter(([, members]) => members.length > 0).map(([room]) => room);
-  return [GLOBAL_ROOM, ...userRooms];
-}
-
-/**
  * 존재 room 목록을 접속 중인 모든 소켓에게 방송한다 (RQ-13, 신설 계약 2-a).
  * room 한정 방송인 broadcastParticipants와 달리 io.emit으로 전 접속자에게
  * 보낸다 — GA-21의 "room 미참여자도 수신"이 이를 요구한다.
  */
 function broadcastRooms(io: ChatServer, state: ChatState): void {
-  io.emit('rooms', { rooms: computeRoomsList(state) });
+  io.emit('rooms', { rooms: listRooms(state) });
 }
 
 /**
@@ -806,7 +806,7 @@ export function createChatServer(requestListener?: RequestListener): {
     // RQ-13 신설 계약 2-b: 신규 접속자에게 그 순간의 존재 room 목록 스냅샷을
     // 유니캐스트로 즉시 전달한다. GLOBAL_ROOM이 항상 포함돼 목록이 결코
     // 비지 않으므로 조건 없이 항상 보낸다.
-    socket.emit('rooms', { rooms: computeRoomsList(state) });
+    socket.emit('rooms', { rooms: listRooms(state) });
 
     socket.on('identify', (payload, ack) => handleIdentify(state, socket, payload, ack));
     socket.on('join', (payload, ack) => handleJoin(io, state, socket, payload, ack));
