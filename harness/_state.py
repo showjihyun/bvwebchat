@@ -22,7 +22,7 @@ import json
 import os
 import re
 from hashlib import sha256
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 # secrets · tempfile · datetime 은 함수 안에서 늦게 임포트한다. 게이트는 매 Write마다
 # 뜨고 예산이 150ms인데 tempfile 은 shutil 을, secrets 는 random 을 끌고 온다.
@@ -391,9 +391,25 @@ def hook_wiring_problems(root: Path) -> list[str]:
         for group in groups if isinstance(groups, list) else []:
             for hook in (group or {}).get("hooks") or []:
                 cmd = str((hook or {}).get("command") or "")
-                for token in cmd.replace('"', " ").replace("'", " ").split():
-                    if token.endswith((".py", ".mjs", ".js", ".sh")) and not (root / token).exists():
-                        problems.append(f"{event}: {token} 없음")
+                tokens = cmd.replace('"', " ").replace("'", " ").split()
+                for i, token in enumerate(tokens):
+                    if token.endswith((".py", ".mjs", ".js", ".sh")):
+                        if not (root / token).exists():
+                            problems.append(f"{event}: {token} 없음")
+                            continue
+                        # 디스패처 간접층을 따라간다. 'hook.py gate_phase' 는
+                        # hook.py 만 보면 통과하지만 실제로 판정을 내는 건
+                        # gate_phase.py 다. 그게 사라지면 디스패처가 설계대로
+                        # fail-OPEN 하고, 게이트가 꺼진 걸 아무도 모르게 된다.
+                        if PurePosixPath(token).name == "hook.py" and i + 1 < len(tokens):
+                            handler = tokens[i + 1]
+                            if not handler.endswith(".py"):
+                                handler += ".py"
+                            target = Path(token).parent / PurePosixPath(handler).name
+                            if not (root / target).exists():
+                                problems.append(
+                                    f"{event}: 디스패처 핸들러 {target.as_posix()} 없음 "
+                                    f"(hook.py 는 있지만 판정을 내는 쪽이 없다 → 조용히 fail-OPEN)")
     return problems
 
 
