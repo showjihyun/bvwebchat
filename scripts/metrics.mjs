@@ -362,12 +362,32 @@ function m8() {
   // 교차검증: 두 원천이 같은 모집단을 세는지 확인한다. 스키마가 다르면 비교가 성립하지 않는다.
   const trajAll = trajLatest.flatMap((r) => r.blocked || []);
   const trajNoField = trajAll.filter((b) => !('warn_only' in b)).length;
+
+  /**
+   * **자기 해제형 경고.** tools.jsonl은 append-only이므로, 로거가 고쳐져도 옛 레코드는
+   * 영원히 남는다. "필드 없는 레코드가 하나라도 있으면 경고"로 두면 이미 해결된 문제를
+   * 영구히 떠들게 되고, 상시로 켜진 경고는 그 자체가 **다음 경고를 무시하게 만드는 훈련**이다.
+   *
+   * 그래서 개수가 아니라 **시간 순서**로 판정한다: 올바른 모양의 레코드가 마지막으로
+   * 잘못된 모양의 레코드보다 나중에 찍혔으면 로거는 고쳐진 것이다. 그 시점부터 경고가
+   * 스스로 꺼진다 — 지우는 커밋이 필요 없다.
+   */
+  const ts = (r) => Date.parse(r.ts) || 0;
+  const newestBad = Math.max(0, ...noField.map(ts));
+  const newestGood = Math.max(0, ...gateBlocks.filter((r) => 'warn_only' in r && r.warn_only === false).map(ts));
   const asymmetry =
-    noField.length > 0 && trajNoField === 0
-      ? ' · ⚠ 스키마 비대칭: tools.jsonl에는 warn_only 없는 레코드가 ' +
-        noField.length +
-        '건(리다이렉트 차단)인데 trajectory blocked[]에는 0건이다 — 두 원천이 같은 모집단이 아니므로 교차검증은 근사다'
-      : '';
+    noField.length === 0
+      ? ''
+      : newestGood > newestBad
+        ? ' · 참고: warn_only 없는 옛 레코드가 ' +
+          noField.length +
+          '건 남아 있지만 그 이후 올바른 모양의 레코드가 찍혔다 — 로거는 고쳐졌고 이력만 남은 상태다'
+        : ' · ⚠ 스키마 비대칭: tools.jsonl에 warn_only 없는 레코드가 ' +
+          noField.length +
+          '건(리다이렉트 차단)인데 trajectory blocked[]에는 ' +
+          trajNoField +
+          '건이다 — 두 원천이 같은 모집단이 아니므로 교차검증은 근사다. ' +
+          '고친 뒤 리다이렉트 차단이 한 번 더 기록되면 이 경고는 스스로 사라진다';
 
   return [
     {
