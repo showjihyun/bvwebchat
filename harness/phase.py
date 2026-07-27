@@ -227,6 +227,18 @@ def guard_exec(root: Path, spec: dict, var: dict) -> tuple[bool, str, dict]:
     want = spec.get("expect_exit", 0)
     tail = ((p.stdout or "") + (p.stderr or "")).strip().splitlines()[-15:]
     detail = f"exit={p.returncode} (기대 {want}), {elapsed}ms\n" + "\n".join(tail)
+    if p.returncode != want:
+        # 실패했을 때만 '왜'를 나눈다. 먼저 막지 않는 이유: 센서 스크립트는
+        # Node stdlib 만 쓰므로 node_modules 없이도 돈다. 미리 차단하면
+        # 평가 가능한 가드를 거짓 실패시킨다 — 게이트를 실제보다 넓게 잡는 것은
+        # 게이트를 부정확하게 만드는 것이고, 부정확한 게이트는 안 믿긴다.
+        missing = st.toolchain_missing(root)
+        if missing:
+            # 단정하지 않는다. 스크립트마다 node_modules 필요 여부가 다르고
+            # (센서 6종은 stdlib 만 쓴다), 원인을 잘못 지목하는 게이트는
+            # 원인을 안 알려주는 게이트보다 나쁘다 — 사람을 틀린 곳으로 보낸다.
+            detail = (f"[참고] {missing}. 이 실패가 그 때문일 수 있다 — 복구는 "
+                      f"npm ci (R2, 사람 승인). 아래 실제 출력을 먼저 확인하라.\n" + detail)
     return p.returncode == want, detail, {}
 
 

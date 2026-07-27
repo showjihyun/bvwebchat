@@ -371,6 +371,28 @@ def is_warn_only(matrix: dict, phase: str) -> bool:
     return phase in ((matrix.get("enforce") or {}).get("warn_only") or [])
 
 
+def toolchain_missing(root: Path) -> str | None:
+    """JS 도구 사슬이 없으면 사유를, 있으면 None.
+
+    '검증이 실패했다'와 '검증을 실행할 수 없다'는 다른 사건이고 처방도 다르다.
+    앞의 것은 "네 변경을 고쳐라", 뒤의 것은 "npm ci". 이 둘을 섞어 보고하면
+    사람이 첫 문장을 믿지 않게 되고, 믿지 않는 게이트는 곧 꺼지는 게이트다.
+
+    출력 문구가 아니라 파일 존재로 판별한다 — 메시지 문구에 결합하면
+    check.mjs 가 말을 바꾸는 순간 조용히 오작동한다.
+    """
+    if not (root / "package.json").exists():
+        return None  # JS 프로젝트가 아니면 이 판별의 관할이 아니다
+    nm = root / "node_modules"
+    if not nm.is_dir():
+        return "node_modules 가 없다"
+    try:
+        next(nm.iterdir())
+    except (StopIteration, OSError):
+        return "node_modules 가 비어 있다"
+    return None
+
+
 def hook_wiring_problems(root: Path) -> list[str]:
     """settings.json 이 참조하는 훅 스크립트가 실재하는지 본다.
 

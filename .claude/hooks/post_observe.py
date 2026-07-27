@@ -106,6 +106,16 @@ def main() -> None:
     if not check.exists():
         sys.exit(0)  # W1 산출물이 아직 없다 — 조용히 빠진다
 
+    # 도구 사슬 부재는 '네 변경이 깨뜨렸다'가 아니다. 여기서 exit 2 로 막으면
+    # 매 쓰기마다 틀린 진단이 나가고, 정작 처방(npm ci)은 세션 안에서 실행할
+    # 수 없다(R2 = 사람 승인). 막지 말고 **정확히** 말하고 빠진다.
+    missing = st.toolchain_missing(root)
+    if missing:
+        warn(f"[post-observe] 빠른 검증을 건너뛴다 — {missing}. 방금 쓴 파일 문제가 아니라\n"
+             f"  환경 문제다. 복구: npm ci (tool-risk.json 상 R2 — 사람 승인이 필요하다).\n"
+             f"  복구 전까지 lint/typecheck/test 는 아무것도 검증하지 않는다는 점을 유의하라.")
+        sys.exit(0)
+
     try:
         p = subprocess.run(
             ["node", "scripts/check.mjs", "--fast"], cwd=str(root),
