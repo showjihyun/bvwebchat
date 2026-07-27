@@ -382,6 +382,17 @@ def hook_wiring_problems(root: Path) -> list[str]:
 
     실측(2026-07-27): 파일 부재 exit 2(차단) / 구문 오류·런타임 예외 exit 1
     (비차단) / 인터프리터 부재 exit 127(비차단). 즉 위험한 건 '부재' 하나뿐이다.
+
+    ⚠️ 같은 판정을 scripts/hooks-selftest.mjs 도 내린다. **중복은 의도된 것**이다:
+    이쪽은 세션 시작 다이제스트·phase.py show 에서 뜨는 빠른 피드백(왼쪽)이고,
+    저쪽은 CI·harness-audit 에서 머지를 막는 게이트(오른쪽)다. 배치가 다르므로
+    하나로 합치면 둘 중 하나의 자리가 없어진다.
+
+    남는 부채: '디스패처'를 판별하는 지식(현재는 이름이 hook.py 라는 것)이 두
+    구현에 따로 박혀 있다. **디스패처를 하나 더 만들거나 이름을 바꾸면 양쪽을
+    같이 고쳐야 한다.** 지금 공유 설정으로 빼지 않는 이유는 디스패처가 하나뿐이고
+    늘 이유가 없어서다 — 쓰이지 않을 추상화를 미리 만드는 비용이 더 크다.
+    그 전제가 깨지는 날 harness/policy/ 에 dispatchers 목록을 두고 양쪽이 읽게 하라.
     """
     data, status = read_json(root / ".claude/settings.json")
     if status != "ok" or data is None:
