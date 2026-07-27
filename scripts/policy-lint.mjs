@@ -339,6 +339,23 @@ function unpairedSurrogates(str) {
   return out;
 }
 
+const RE_ANCHOR_END = '$';
+/**
+ * 파이썬 re 전용 문법을 JS 정규식으로 옮긴다. **오탐 방지 전용**이다.
+ * 정책 패턴을 실행하는 것은 파이썬이므로, JS가 못 읽는다는 사실만으로 실패시키면
+ * (?P<name>...) 같은 정당한 파이썬 패턴이 린트에서 죽는다.
+ * 정규화 후에도 컴파일되지 않을 때만 "명백한 구문 오류"로 판정한다.
+ */
+function normalizePythonRegex(pat) {
+  return pat
+    .replace(/\(\?P</g, '(?<')
+    .replace(/\(\?P=(\w+)\)/g, '')
+    .replace(/\(\?#[^)]*\)/g, '')
+    .replace(/^\(\?[imsxaLu]+\)/, '')
+    .replace(/\\A/g, '^')
+    .replace(/\\[Zz]/g, () => RE_ANCHOR_END);
+}
+
 function checkPatterns(m) {
   for (const [name, g] of Object.entries(m.guards || {})) {
     const pat = g.pattern;
@@ -351,7 +368,7 @@ function checkPatterns(m) {
         `guards.${name}의 패턴에 서로게이트 이스케이프 '${esc[0]}'가 있다 — 파이썬 re에서 이 패턴은 어떤 입력에도 매칭되지 않는다`,
         `이스케이프를 지우고 **문자를 그대로** 써라 (예: \\ud83d\\udfe1 → 🟡). 파이썬 문자열의 이모지는 단일 코드포인트라 ` +
           `서로게이트 쌍으로 쪼개지지 않는다. 지금 이 가드는 늘 0건을 돌려주고 expect와 일치해 **항상 통과**한다 — ` +
-          `즉 게이트가 꺼져 있는데 초록으로 보인다. JS에서 같은 정규식을 돌리면 매칭되므로 실행으로는 확인되지 않는다.`
+          `즉 게이트가 꺼져 있는데 초록으로 보인다. JS에서 같은 정규식을 돌리면 매칭되므로 실행으로는 확인되지 않는다 — 그래서 이 검사는 패턴을 돌리지 않고 문자열만 본다. (근거: 2026-07-27 no_pending_spec — P1~P7이 전부 초록인 채로 스펙 동결이 두 전이에서 꺼져 있었다)`
       );
     }
 
@@ -365,18 +382,33 @@ function checkPatterns(m) {
       );
     }
 
+    // ── (2) 컴파일 가능성 — 명백한 구문 오류만 잡는다
+    let re = null;
+    let compileError = null;
+    try {
+      re = new RegExp(pat);
+    } catch (e1) {
+      try {
+        re = new RegExp(normalizePythonRegex(pat));
+      } catch {
+        compileError = e1.message;
+      }
+    }
+    if (compileError) {
+      fail(
+        'P8',
+        `guards.${name}의 패턴이 정규식으로 컴파일되지 않는다 — ${compileError}`,
+        `패턴 문법을 고쳐라. 파이썬 방언((?P<name>) 등)은 정규화 후 재시도하므로, 여기까지 온 것은 방언 차이가 아니라 ` +
+          `실제 구문 오류다. 컴파일되지 않는 가드는 전이 시점에 예외로 죽거나 조용히 통과한다 — 둘 다 게이트가 없는 것과 같다.`
+      );
+      continue;
+    }
+
     // ── 부가 신호 (권위 없음): "0건이라 통과"와 "매칭 능력이 없어 통과"를 구별한다
     if (g.expect !== 0 || !g.file || g.file.includes('${')) continue;
     const abs = join(ROOT, g.file);
     if (!existsSync(abs)) {
       note('P8', `guards.${name}의 대상 파일 ${g.file}이 없다 — 판정할 대상 자체가 없다 (advisory)`);
-      continue;
-    }
-    let re;
-    try {
-      re = new RegExp(pat);
-    } catch {
-      note('P8', `guards.${name}의 패턴을 JS로 컴파일할 수 없다 (파이썬 전용 문법일 수 있다) — 정적 검사만 적용했다 (advisory)`);
       continue;
     }
     const lines = readFileSync(abs, 'utf8').split(/\r?\n/);
