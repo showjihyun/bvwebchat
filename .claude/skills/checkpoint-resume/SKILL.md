@@ -1,0 +1,120 @@
+---
+name: checkpoint-resume
+description: 상태 계약의 읽기·쓰기. 세션을 시작·재개하거나("어디까지 했지?", "이어서 하자", "재개", "지금 뭐 하던 중이었어?", "컨텍스트 복원") 세션을 선언·저장할 때("세션 선언", "체크포인트", "저장하고 끝내자", "왜 이걸 하는지 기록") 반드시 이 스킬을 사용하라. Stop 훅이 "session.json 을 갱신하라"고 막았을 때의 순응 경로이기도 하다. .harness/state/ 의 유일한 writer 는 harness/phase.py 이므로 파일을 직접 편집하지 않는다. 구현·리뷰·하네스 점검에는 사용하지 않는다.
+---
+
+# Checkpoint / Resume — 상태 계약의 읽기·쓰기
+
+L3(Durable Operator)의 본체. 요구는 하나다 — **새 세션이 5분 안에 "무엇을 왜
+했고 다음은 무엇인지" 복원한다.** git은 무엇을 했는지 안다. git이 모르는 건 이유다.
+
+## 상태의 두 수명
+
+| 파일 | 성격 | 커밋 |
+|---|---|---|
+| `.harness/state/phase.json` | 라이브 커서 — 현재 단계 | ❌ gitignore |
+| `.harness/state/session.json` | 라이브 선언 — 왜·완료조건·다음 (**≤60줄**) | ❌ gitignore |
+| `.harness/state/.key` | 전이 서명 | ❌ gitignore |
+| `.harness/state/checkpoints/<RQ>/<ISO>.json` | 불변 기록 — 전이마다 자동 생성 | ✅ 커밋 |
+| `.harness/state/decisions.jsonl` | 결정 + 근거 | ✅ 커밋 |
+| `.harness/state/phase.jsonl` | 전이 이력 (M3의 원천) | ✅ 커밋 |
+
+둘을 나누지 않으면 둘 다 깨진다. 라이브 커서를 커밋하면 모든 커밋이 상태 변화로
+더러워지고 병합 충돌이 난다. 체크포인트를 커밋하지 않으면 다른 머신에서 재개가
+불가능해 계약 자체가 성립하지 않는다.
+
+**`.harness/state/`를 Write·Edit로 직접 고치지 않는다.** `settings.json`이 막고,
+Bash 리다이렉트는 게이트가 막는다. 유일한 writer는 `harness/phase.py`다.
+
+## 읽기 — 재개
+
+```
+python harness/phase.py resume     # 재개 브리프 (왜 · 완료조건 · 한 것 · 다음 · 쓰기 허용 · 다음 전이)
+python harness/phase.py why        # 왜 + 전이 이력 8건 + force 비율
+python harness/phase.py show       # 현재 단계 · 쓰기 허용/금지 · 다음 전이 명령
+```
+
+세션 시작 시에는 SessionStart 훅이 ≤15줄 다이제스트를 자동으로 찍는다.
+다이제스트에 `[🚨 배선 파손]`이 떠 있으면 **다른 줄은 전부 무의미하다** — 그
+matcher의 도구가 전부 막힌 상태이므로 그것부터 고친다.
+
+재개 절차:
+
+1. 다이제스트를 읽는다. 부족하면 `phase.py resume`.
+2. `phase.py why`로 마지막 전이가 무엇이었고 가드가 통과했는지 본다.
+3. 최신 체크포인트(`.harness/state/checkpoints/<RQ>/`의 마지막 파일)를 읽는다 —
+   전이 시점의 `write_allow`·`exit_hint`·세션 스냅샷이 통째로 들어 있다.
+4. **여기까지 읽은 파일이 4개를 넘으면 상태 계약이 얇다는 신호다.**
+   통과 기준은 읽은 파일 ≤7이고, 그 예산은 저장소 탐색이 아니라 상태 파일에 쓴다.
+
+## 쓰기 — 세션 선언
+
+`PLAN→RED` 전이의 `session_declared` 가드가 `task.rq`·`goal`·`acceptance` 셋의
+존재를 요구한다. 없으면 전이가 거부된다.
+
+```
+python harness/phase.py session --rq RQ-07 --title "…" \
+  --goal "왜 이 작업을 하는가" \
+  --acceptance "완료 조건 1" --acceptance "완료 조건 2"
+```
+
+- `--goal`은 **"왜"** 를 적는다. "무엇을 했는가"로 채우면 계약 위반이다 —
+  무엇은 git이 이미 안다.
+- `--acceptance` · `--next` · `--open`은 반복 지정하면 **교체**된다.
+- `--done`만 **누적**이다 — 이번 세션의 성과가 지난 세션의 성과를 지우지 않는다.
+- `--from-json <경로>` (또는 `-` = stdin)로 최상위 키 단위 병합도 된다.
+- `updated`·`branch`는 CLI가 찍는다. 손으로 쓴 타임스탬프는 반드시 거짓말을 한다.
+
+## 쓰기 — 체크포인트
+
+전이(`phase.py enter`)는 불변 체크포인트를 **자동으로** 남긴다. 사람이 쓸 것은
+`session.json`의 서술 필드뿐이다.
+
+```
+python harness/phase.py session \
+  --done "테스트 12건 커밋 (a1b2c3d)" \
+  --next "coder 재호출 — evaluator FAIL 2건" \
+  --open "GA-19의 '활성 room' 정의가 RQ-18과 어긋난다"
+```
+
+시점: **작업 단위가 끝날 때마다, 그리고 세션을 닫기 전에 반드시.**
+`stop_state.py` 훅이 R1 쓰기가 있었는데 `session.json`이 갱신되지 않았으면
+세션당 **1회** 막는다. 그 차단의 순응 경로가 정확히 이 명령이다.
+
+분량 상한 60줄은 자문(advisory)이다 — 초과해도 쓰기는 되고 경고가 나온다.
+경고가 나오면 `done`에서 끝난 항목을 걷어내거나 요약한다. 길면 안 읽히고,
+안 읽히는 계약은 없는 계약이다.
+
+## 쓰기 — 결정 기록
+
+되돌리기 어렵거나 나중에 "왜 이렇게 했지?"가 나올 결정은 append한다.
+
+```
+python harness/phase.py decide "결정 문장" --why "근거 — 이게 없으면 기록할 가치가 없다"
+```
+
+`--why`가 필수인 이유는 하나다: 무엇을 결정했는지는 코드가 보여주지만 왜는
+아무 데도 안 남는다. 이 파일은 커밋되므로 다른 머신·다른 세션에서도 읽힌다.
+
+## 검증 — 재개 시험 (L3 졸업 시험)
+
+`scripts/resume-test.mjs`가 `git worktree`로 격리한 사본에서 `claude -p`를
+헤드리스로 띄우고 5문항을 채점한다. **정답지를 사람이 쓰지 않는다 — 체크포인트
+파일 자체가 정답지다.** 그래서 CI에서 반복 실행할 수 있고 정답지가 낡을 수 없다.
+
+**PASS 기준: cold(다이제스트 없이) 5/5 · 읽은 파일 ≤7 · ≤5분.**
+통과 못 하면 상태 계약이 없는 것이고, 있다고 주장할 근거도 없다. 이것이 GB-06이다.
+
+> **미검증**: `scripts/resume-test.mjs`는 이 문서 작성 시점(2026-07-27)에 아직
+> 저장소에 없다. 위 기준은 설계서(`docs/harness/architecture-2026.html` §06)의
+> 계약이고, 스크립트가 생기면 이 절을 실행 출력으로 교체한다.
+
+## 에러 핸들링
+
+| 상황 | 처리 |
+|---|---|
+| `phase.py show`가 `상태: tampered` | 서명 불일치. IDLE로 강등돼 있다. `.harness/state/`를 손으로 고쳤는지 확인하고, 아니면 `.key` 유실이다 — 세션을 다시 선언한다 |
+| `session_declared` 가드 실패 | `session` 서브커맨드 출력의 `[주의]` 줄이 비어 있는 필드를 알려준다 |
+| 60줄 예산 초과 경고 | `done`을 요약한다. 요약할 게 아니라 로그라면 그것은 `trajectory.jsonl`의 일이다 |
+| `session`·`decide` 실행에 승인 프롬프트가 뜸 | `.claude/settings.json` allow 목록에 두 서브커맨드가 없어서다 (2026-07-27 확인). 배선 전까지는 승인하고 진행 |
+| 체크포인트가 0건 | 이 브랜치에서 아직 전이를 밟지 않았다. 재개할 상태가 없는 것이 정상이다 |
