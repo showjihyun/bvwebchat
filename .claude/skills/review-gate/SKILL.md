@@ -1,6 +1,6 @@
 ---
 name: review-gate
-description: PR 머지 전 독립 리뷰 게이트. "리뷰해줘", "머지 전 검토", "PR 리뷰", "머지해도 돼?", "재리뷰", "리뷰 다시" 요청 시, 그리고 tdd-workflow Phase 4에서 PR 준비 시 반드시 이 스킬을 사용하라. 솔로 체제에서 사람 리뷰어를 대체한다 — reviewer 에이전트(Opus)가 별도 세션에서 diff를 검토해 APPROVE 판정을 내려야 머지할 수 있다. 코드 구현·수정 요청(tdd-workflow), 하네스 점검, 스펙 인터뷰에는 사용하지 않는다.
+description: PR 머지 전 독립 리뷰 게이트. "리뷰해줘", "머지 전 검토", "PR 리뷰", "머지해도 돼?", "재리뷰", "리뷰 다시" 요청 시, 그리고 tdd-workflow Phase 4·harness-audit 종료 시 반드시 이 스킬을 사용하라. 솔로 체제에서 사람 리뷰어를 대체한다 — reviewer 에이전트(Opus)가 별도 세션에서 diff를 검토해 APPROVE 판정을 내려야 REVIEW→RELEASE 전이가 열린다. 코드 구현·수정 요청(tdd-workflow), 하네스 점검(harness-audit), 스펙 인터뷰에는 사용하지 않는다.
 ---
 
 # Review Gate — 머지 전 독립 리뷰
@@ -12,12 +12,19 @@ description: PR 머지 전 독립 리뷰 게이트. "리뷰해줘", "머지 전 
 
 **규칙: reviewer의 APPROVE 없이 머지하지 않는다.** blocker가 있는데 급하다는
 이유로 우회하면 이 게이트는 그날로 장식이 된다 (트랙 B GB-04와 같은 원리).
+이 규칙은 이제 산문이 아니라 전이 가드다 — `REVIEW→RELEASE`의 `reviewer_approve`
+가드가 `_workspace/review/{브랜치명}.md`에서 `판정 … APPROVE`를 찾지 못하면
+전이가 거부된다.
 
 ## Phase 0: 대상·전제 확인
 
-1. 리뷰 대상 결정: 현재 브랜치 vs `main` (또는 사용자가 지정한 PR/브랜치)
-2. 전제: 작업이 커밋된 상태여야 한다. 미커밋 변경이 있으면 먼저 커밋을 요청
-3. `_workspace/review/{브랜치명}.md`가 이미 있으면 **재리뷰 모드** —
+1. 단계가 `REVIEW`인지 확인: `python harness/phase.py show`.
+   아니라면 선행 단계를 먼저 닫는다 (`EVAL→REVIEW`는 evaluator PASS를,
+   `HARNESS→REVIEW`는 트랙 B 아티팩트와 changelog 동행을 요구한다).
+2. 리뷰 대상 결정: 현재 브랜치 vs `main` (또는 사용자가 지정한 PR/브랜치)
+3. 전제: 작업이 커밋된 상태여야 한다. 미커밋 변경이 있으면 먼저 커밋을 요청.
+   여러 에이전트가 트리를 공유 중이면 `git commit -- <경로>`만 쓴다.
+4. `_workspace/review/{브랜치명}.md`가 이미 있으면 **재리뷰 모드** —
    이전 보고서를 reviewer 입력에 포함한다
 
 ## Phase 1: 리뷰 패키지 수집 (오케스트레이터가 직접)
@@ -36,11 +43,16 @@ description: PR 머지 전 독립 리뷰 게이트. "리뷰해줘", "머지 전 
 
 ## Phase 3: 판정 처리
 
-- **APPROVE** → 사용자에게 보고서 요약과 함께 "머지 가능"을 보고.
-  머지 실행은 사용자 확인 후 (`gh pr merge`)
-- **REQUEST_CHANGES** → blocker 목록을 사용자에게 보고.
+- **APPROVE** → `python harness/phase.py enter RELEASE`.
+  전이가 `reviewer_approve` 가드로 보고서를 한 번 더 확인한다 — 통과하면
+  RELEASE의 쓰기 허용은 `docs/progress.md`·`docs/harness/changelog.md`뿐이므로,
+  머지 직전에 코드가 더 들어가는 일이 구조적으로 막힌다.
+  사용자에게 보고서 요약과 함께 "머지 가능"을 보고하고,
+  머지 실행은 사용자 확인 후 (`gh pr merge` — `permissions.ask`)
+- **REQUEST_CHANGES** → blocker 목록을 사용자에게 보고. `enter GREEN`으로 되돌린다.
   - 구현 수정이 필요하면 tdd-workflow(coder 재호출)로 라우팅
   - 스펙·ADR 문제면 해당 문서 개정이 먼저 (같은 PR)
+  - 하네스 변경이면 `enter HARNESS` + `harness-audit` 스킬
   - 수정 후 이 스킬을 재실행 (재리뷰 모드)
 - major/minor만 있으면 APPROVE와 동일하게 머지 가능 — 단, 지적 사항을
   사용자에게 보고하고 후속 처리 여부를 확인받는다
@@ -52,10 +64,11 @@ description: PR 머지 전 독립 리뷰 게이트. "리뷰해줘", "머지 전 
 | diff 없음 (main과 동일) | 리뷰 대상 없음 보고, 게이트 통과 아님 |
 | reviewer 실행 실패 | 1회 재시도, 재실패 시 중단·보고 (리뷰 생략하고 머지 금지) |
 | REQUEST_CHANGES 2회 연속 | 자동 반복 중단 — 사용자 개입 (설계 자체의 재검토 필요 신호) |
+| `enter RELEASE`가 거부됨 | 보고서의 판정 문자열을 확인한다. 가드는 `판정 … APPROVE` 패턴을 찾는다 — 형식이 다르면 판정이 있어도 못 읽는다 |
 
 ## 테스트 시나리오
 
 1. **정상**: tdd-workflow가 RQ-03 PASS 후 이 스킬 호출 → reviewer APPROVE →
-   사용자 확인 → 머지 → deploy.yml 트리거.
+   `enter RELEASE` → 사용자 확인 → 머지 → deploy.yml 트리거.
 2. **에러**: 스펙에 없는 편의 기능이 diff에 포함 → reviewer가 스코프 검사에서
    blocker 판정(M1) → 머지 차단 → 스펙 개정 또는 코드 제거 후 재리뷰.

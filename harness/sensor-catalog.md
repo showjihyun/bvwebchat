@@ -1,39 +1,145 @@
-# 센서 카탈로그 [스텁③] — 가드레일 지도 한 장
+# 센서 카탈로그 — 가드레일 지도 한 장
 
-모델: Guide(행동 **전** 읽는 규칙) / Sensor(행동 **후** 관찰·교정).
-실행: Comp(결정론적·빠름) / Inf(추론적·느림·비결정).
-원칙: "반드시"는 hook·CI로 강제, "권장"은 Guide로.
+3층 모델. 위층이 아래층보다 강하다.
+
+- **Guide** — 행동 **전**에 읽는 규칙. 강제력 없음. 어기려면 어길 수 있다.
+- **Boundary** — 행동 **자체**를 구조로 막는다. 어길 수단이 없다.
+- **Sensor** — 행동 **후** 관찰·교정. 이미 벌어진 것을 본다.
+
+실행 성질: **Comp**(결정론적·빠름) / **Inf**(추론적·느림·비결정).
+상태 표기: ✅ 배선 완료·실동작 / 🔄 산출물은 있으나 배선 미완 / ⬜ 미구현.
+
+원칙: "반드시"는 Boundary로, "권장"은 Guide로. 관측만 필요한 것이 Sensor다.
+설계 근거 전문은 `docs/harness/architecture-2026.html`.
 
 ## Guides (feed-forward)
 
-| 이름 | 실행 | 배치 | 상태 |
-|---|---|---|---|
-| CLAUDE.md (헌법) | — | 세션 시작 시 로드 | ✅ |
-| specs/requirements.md | — | 작업 착수 시 참조 | ✅ |
-| docs/adr/ | — | 아키텍처 관련 작업 시 | ✅ (내용은 Phase 3) |
-| plan mode 승인 | — | 3스텝 이상 작업 전 | ✅ (CLAUDE.md 규칙) |
+| 이름 | 배치 | 상태 |
+|---|---|---|
+| `CLAUDE.md` (헌법) | 세션 시작 시 로드 | ✅ |
+| `specs/requirements.md` | 작업 착수 시 참조 | ✅ |
+| `docs/adr/` | 아키텍처 관련 작업 시 | ✅ |
+| plan mode 승인 | 3스텝 이상 작업 전 | ✅ (CLAUDE.md 규칙) |
+| SessionStart 다이제스트 (≤15줄) | 세션 시작 | ✅ `session_start.py` |
+| 단계 `exit_hint` — 다음 전이 명령을 문장으로 | `phase.py show` · 차단 메시지 | ✅ |
 
-## Sensors (feedback)
+## Boundary (구조적 통제)
+
+Guide가 "부탁"이라면 이 층은 "불가능"이다. 이 층에 올릴 수 있는 규칙을
+Sensor로 두는 것은 낭비이고, 반대로 추론이 필요한 판단을 여기 올리면 오작동한다.
+
+| 통제 | 무엇을 불가능하게 하는가 | 강제 주체 | 상태 |
+|---|---|---|---|
+| R0/R2/R3 정적 권한 | 관찰은 항상 허용 · 경계 이탈은 사람 승인 · 이력 파괴·시크릿은 거부 | `.claude/settings.json` permissions | ✅ |
+| R1 단계×경로 매트릭스 | RED에서 `src/**` 쓰기, GREEN에서 `tests/**` 쓰기, HARNESS에서 `src/**`·`tests/**` 쓰기 | `.claude/hooks/gate_phase.py` (서브프로세스 0, 예산 ≤150ms) | ✅ |
+| 리다이렉트 차단 | `> .harness/state/…` · `> evals/golden/…` 등 통제면 우회 셸 리다이렉트 | `gate_phase.py` + `tool-risk.json` `deny_redirect` | ✅ (탐지이지 예방이 아니다 — `node -e fs.write…`는 못 막는다) |
+| 전이 가드 11종 | 직전 단계가 만들지 않은 산출물로 다음 단계에 진입하는 것 | `harness/phase.py enter` | ✅ |
+| 골든 정답 수정 승인 | 에이전트가 자기 정답지를 쓰는 것 | permissions `ask` (`evals/golden/**`) | ✅ |
+| 강제 전이의 가시성 | `force`를 조용히 쓰는 것 | permissions `ask` + `forced:true` 박제 + 비율 노출 | ✅ |
+| 진입점 예산 | `CLAUDE.md` 100줄 초과 (안티패턴 01의 유일한 기계 방어) | `doc-map.json` C5 + `doc-freshness.mjs` | 🔄 스크립트 ✅ / CI 배선 미완 |
+
+`gate_spec_freeze.py`는 삭제됐다. 🟡이 0건이라 영구 no-op이면서 매 Write마다
+파이썬 프로세스를 붙였다. 기능은 `PLAN→RED` 가드 `no_pending_spec`이 흡수했다
+— 매 쓰기 검사에서 전이 1회 검사로, 메커니즘 2개에서 1개로 줄었다.
+
+## Sensors — S1~S4
+
+핵심은 개수 4가 아니라 **기질이 서로 다르다**는 것이다. 같은 `vitest run`을 네 번
+이름만 바꿔 부르면 센서는 하나뿐이다. 각 계열은 다른 질문에 다른 재료로 답한다.
+
+| 계열 | 질문 | 기질 | **이 계열만 잡는 실패** |
+|---|---|---|---|
+| **S1** 도구 실행 | 행위가 먹혔나? | 도구 호출 결과 (`trajectory.jsonl` v2 · `tools.jsonl`) | "같은 파일 6번 수정", "Edit 3연속 실패" — 테스트는 전부 초록인데 헤매는 중 |
+| **S2** 자동 테스트 | 코드가 도나? | 소스 트리 (eslint · `tsc --noEmit` · vitest) | 타입 오류·린트 위반·단언 실패. 타입 전용 변경에서는 vitest가 눈이 멀고 tsc만이 센서다 |
+| **S3** 요구사항 충족 | 스펙이 시킨 걸 했나? | `evals/golden/` | "테스트 전부 통과인데 GA-22에 해당하는 테스트가 **아예 없다**" — S2로는 원리적으로 관측 불가 |
+| **S4** 변경 영향 회귀 | 다른 게 깨졌나? | Docker 아티팩트 · 반복 실행 분포 · git 이력 | 번들·컨테이너에서만 깨짐(esbuild ≠ Vite), ~1/10 flake — 단발 실행으로 관측 불가 |
+
+### S1 — 도구 실행
 
 | 이름 | 실행 | 배치 | 강제 수단 | 상태 |
 |---|---|---|---|---|
-| 트래젝토리 로그 | Comp | 세션 종료(Stop) | hook | ✅ |
-| 스펙 동결 게이트 (🟡 존재 시 구현 차단) | Comp | 구현 파일 수정 직전(PreToolUse) + PR(CI fail) | hook exit 2 + ci.yml | ✅ |
-| 골든 정답 수정 승인 게이트 | Comp | evals/golden/** Edit·Write 시 | permissions (ask) | ✅ |
-| 파일 수정 후 빠른 검사 | Comp | 수정 직후(PostToolUse) | hook → check.sh --fast (실측 1.4초) | ✅ 2026-07-17 |
-| lint / typecheck | Comp | CI (check.sh) | eslint + tsc --noEmit | ✅ 2026-07-17 |
-| 단위·통합 테스트 (트랙 A) | Comp | CI, PR 머지 게이트 | ci.yml → vitest run | ✅ 게이트 활성 (GA 케이스는 구현과 함께) |
-| 테스트-코드 동행 검사 (M3 프록시) | Comp | CI, PR | ci.yml (경고) | ✅ (경로 패턴은 ADR-0005 후 확정) |
-| 독립 평가 에이전트 (evaluator) | Inf | 각 RQ 구현 직후 (tdd-workflow Phase 3) | 오케스트레이터 스킬 | ✅ |
-| 트랙 B rubric 체크 | Inf | 하네스 변경 시·주간 | 사람 (수동) | ✅ 절차만 |
-| PR 리뷰 게이트 (reviewer, 솔로 대체) | Inf | PR 머지 전 (review-gate 스킬) | APPROVE 없이 머지 금지 + 브랜치 보호(status check `gate` 필수) | ✅ |
-| 배포 후 스모크 (트랙 A 승격) | Comp | main 머지 → 배포 직후 | deploy.yml → smoke.sh | 🟡 배포 대상(RQ-17) 확정 후 |
+| 트래젝토리 로그 (schema 2) | Comp | Stop · SubagentStop | `log_trajectory.py` — `agent`·`phase`·`rq`·`branch`·`tokens`·`errors[]`·`blocked[]`·`file_edit_counts` | ✅ |
+| 도구 실패 로그 | Comp | PostToolUse | `post_observe.py` → `.harness/logs/tools.jsonl` (실패·차단만 기록 — 성공은 질문에 답하지 않으면서 파일만 키운다) | ✅ |
+| 상태 갱신 강제 | Comp | Stop | `stop_state.py` — R1 쓰기가 있었는데 `session.json` 미갱신이면 세션당 **1회** 차단 | ✅ |
+| 게이트 차단 집계 (M8) | Comp | 주간 | `metrics.mjs` (미구현) ← `blocked[]` | ⬜ 스크립트 미구현 |
+
+### S2 — 자동 테스트
+
+| 이름 | 실행 | 배치 | 강제 수단 | 상태 |
+|---|---|---|---|---|
+| 파일 수정 후 빠른 검사 | Comp | 수정 직후 (PostToolUse) | `post_observe.py` → `node scripts/check.mjs --fast` | ✅ |
+| lint / typecheck / 단위·통합 테스트 | Comp | CI PR 게이트 | `ci.yml` → `check.sh` → `node scripts/check.mjs` | ✅ |
+| 전체 검증 전이 가드 | Comp | `GREEN→EVAL` | `check_full_green` 가드 (`check.mjs` exit 0) | ✅ |
+| Red 정당성 판정 | Comp | `RED→GREEN` | `red_evidence` 가드 → `check.mjs --red --rq` (ADR-0005 결정3: TS2307/TS2305만 정당한 Red) | ✅ |
+
+**`--fast` 실측 (2026-07-27)**: 변경 파일 5개 기준 0.72–0.84초 (`--cache` 웜, 3회 측정).
+ADR-0005 결정5의 예산은 5초이고, 초과 시 실패가 아니라 경고를 낸다.
+이전 카탈로그의 "1.4초"는 `.tsx`·`.mjs`가 린트 대상에서 빠져 있던 시절의 수치라
+비교 대상이 아니다 — 그 구멍이 클라이언트 10개 파일과 `scripts/` 센서들을
+훅 경로에서 보이지 않게 했다. 대상 파일 수에 비례하므로 단일 상수로 인용하지 않는다.
+
+### S3 — 요구사항 충족
+
+| 이름 | 실행 | 배치 | 강제 수단 | 상태 |
+|---|---|---|---|---|
+| 골든 커버리지 대조 | Comp | `GREEN→EVAL` 전이 | `golden_coverage` 가드 → `golden-coverage.mjs --rq RQ-XX`. 통과 여부가 아니라 **테스트의 존재 여부**를 묻는 것이 S2와의 결정적 차이 | ✅ |
+| 골든 정답 수정 승인 게이트 | Comp | `evals/golden/**` 쓰기 | permissions `ask` | ✅ |
+| 독립 평가 에이전트 (evaluator) | Inf | 각 RQ 구현 직후 | `tdd-workflow` Phase 3 → `evaluator_pass` 가드 | ✅ |
+| PR 리뷰 게이트 (reviewer) | Inf | 머지 전 | `review-gate` 스킬 → `reviewer_approve` 가드 | ✅ |
+| 트랙 B 하네스 회귀 평가 | Comp(auto) + Inf(judge) | 하네스 변경 시 · 주간 | `eval-b.mjs` → `evals/results/track-b/<sha>.json` → `track_b_passing` 가드 | ⬜ 스크립트 미구현 (골든 스키마는 `track-b-harness.jsonl` 참조) |
+
+이 계열의 상한은 `evaluator` 하나에 걸려 있다. 추론 센서를 결정론으로 위장하지 않는다.
+
+### S4 — 변경 영향 회귀
+
+| 이름 | 실행 | 배치 | 강제 수단 | 상태 |
+|---|---|---|---|---|
+| 배포 아티팩트 빌드 + 골든 스모크 | Comp | main 머지 → 배포 | `deploy.yml` → Docker 빌드 → `smoke.sh`(health + GA-01 + GA-04) | ✅ (2026-07-21 기준 최근 5회 연속 성공 — `gh run list --workflow=deploy.yml`) |
+| flake 시그니처 수집 | Comp | 리팩터 전후 · 의심 시 | `check.mjs --repeat N` — `assert`/`collect`/`crash` 3모집단 분류 | ✅ 수동 호출 |
+| git 이력 재유도 (단계 순서 대조) | Comp | CI | `phase-audit.mjs` (미구현) — Bash 우회의 **탐지** 경로 | ⬜ 스크립트 미구현 |
+
+배포 후 스모크의 🟡는 해제됐다. RQ-05/RQ-17이 종결됐고 `deploy.yml`·`smoke.sh`가
+실제로 초록이다. 컨테이너는 S4의 **유일한 실환경 기질**이다 — `vitest`는 Vite로,
+배포 아티팩트는 esbuild로 해석하므로 초록 vitest가 빌드를 증명하지 않는다.
+
+flake 판정 기준은 횟수가 아니다. 같은 코드가 동시 실행 에이전트 수에 따라 다른
+숫자를 낸다(에이전트 1개: 9/10 통과, 4~5개: 3회 중 2회 크래시). 기준은
+**"단언 레벨 실패 0건 + 모든 실패가 워커 크래시 시그니처"** 이고, 여기에
+"테스트 수·파일 수 정확 일치 + pending suite 0"을 더한다 — *조용히 건너뛴 스위트*는
+"리팩터가 테스트 로드를 깨뜨렸다"와 실패 모양이 구별되지 않기 때문이다.
+
+## 문서·정책 자체의 센서 (메타)
+
+| 이름 | 실행 | 배치 | 강제 수단 | 상태 |
+|---|---|---|---|---|
+| 문서 신선도 C1~C6 | Comp | SessionStart(`--digest`) · CI(`--pr`, blocking) · 감사(`--full`) | `doc-freshness.mjs` | 🔄 스크립트 ✅ / 3개 배선 중 SessionStart는 mtime 자문으로 대체, CI 미배선 |
+| 정책 정합성 P1~P7 | Comp | 하네스 변경 시 | `policy-lint.mjs` (`--print`로 `policy/README.md` 생성) | 🔄 스크립트 ✅ / CI 미배선 |
+| 훅 자기 시험 | Comp | 하네스 변경 시 · CI | `hooks-selftest.mjs` — `settings.json`의 커맨드 문자열 그대로 합성 페이로드를 먹여 allow/deny 단언 | ⬜ 미구현 |
+| changelog 동행 | Comp | `HARNESS→REVIEW` 전이 | `changelog_updated` 가드 | ✅ |
+
+**테스트 없는 게이트는 연극이다.** 훅이 조용히 죽어 항상 allow를 반환하는 상태와
+정상 동작하는 상태는 `hooks-selftest` 없이는 구별되지 않는다. 실제로 이번 재구성
+중 `gate_spec_freeze.py` 삭제와 `settings.json` 재배선 사이의 창에서 모든
+에이전트의 Write/Edit이 죽었고, 그것은 정책 거부가 아니라 훅 파손이었다.
+`settings.json`이 참조하는 훅 파일의 실재 검사가 이 스크립트의 필수 단언이다.
 
 ## 운영 규칙
 
-1. 센서는 가능한 한 왼쪽(수정 직후 > pre-commit > CI > 리뷰)에 배치한다.
+1. 센서는 가능한 한 왼쪽(수정 직후 > 전이 > pre-commit > CI > 리뷰)에 배치한다.
 2. 센서 에러 메시지에는 "어떻게 고치는지"를 담는다 — 에이전트가 읽고
    자기 교정하는 것이 목적이다.
 3. 같은 실수가 2회 반복되면: 그 실수를 잡는 센서를 추가하거나,
    Guide 한 줄을 추가한다. (둘 다는 과잉 — 하나만)
 4. 분기마다 이 표를 갱신한다. 상태가 전부 ✅면 이 문서가 곧 회고 자료다.
+5. **센서를 추가하기 전에, 그 실패를 phase 매트릭스로 구조적으로 불가능하게
+   만들 수 있는지 먼저 본다.** 우선순위는 **구조 > 게이트 > 센서 > Guide**다.
+   구조로 막을 수 있는 것을 센서로 두면 실패는 계속 일어나고 관측만 남는다.
+   반대로 추론이 필요한 판단을 구조로 올리면 오작동해서 결국 꺼진다.
+6. **병렬로 파일을 수정하는 에이전트에게는 `git add` 규율이 아니라 워크트리
+   격리가 답이다.** 경로 없는 `git commit`은 인덱스 전체를 커밋하므로, 트리를
+   공유하는 한 남이 스테이징해 둔 것이 그대로 실린다 — `git add`를 아무리
+   조심해도 원리적으로 막을 수 없다. 규칙은 두 겹이다:
+   (a) 커밋은 `git commit -- <경로>` 만 쓴다. (b) 애초에 같은 트리를 여러
+   에이전트가 쓰게 하지 말고 `isolation: "worktree"`를 먼저 고려한다.
+   2026-07-27 이 저장소에서 커밋 귀속 오염이 3회 발생했고(유실 0건,
+   `5202196`·`fe61db7` 등) 그만큼 bisect·롤백 granularity가 훼손됐다.

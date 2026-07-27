@@ -2,6 +2,7 @@
 
 room 참여 채팅 + global 채팅 웹 앱. 마감 7/31. 하네스 워크플로우 L&L 겸용.
 이 파일은 최소한의 규칙과 **참조 경로**만 담는다 — 상세는 참조 파일에서 읽는다.
+100줄 상한은 `harness/doc-map.json`의 `max_lines`가 기계로 강제한다(검사 C5).
 
 ## 진실 공급원 (충돌 시 위가 이김)
 
@@ -11,14 +12,39 @@ room 참여 채팅 + global 채팅 웹 앱. 마감 7/31. 하네스 워크플로�
 4. `docs/design/DESIGN.md` — UI 디자인. UI 구현이 모순되면 드리프트. 디자인은
    기능을 추가할 수 없어 충돌 시 requirements가 이긴다. ADR과는 관할 직교.
 
+## 단계 모델 — 9단계 상태 머신 (포인터)
+
+작업은 항상 한 **단계** 안에 있고, 단계가 쓰기 가능한 경로를 정한다.
+`IDLE`(기본값) · `SPEC` · `PLAN` · `RED` · `GREEN` · `EVAL` · `REVIEW` ·
+`HARNESS` · `RELEASE`.
+
+- 지금 어디인가·무엇을 쓸 수 있나: `python harness/phase.py show`
+- 왜 이 작업을 하는가·전이 이력: `python harness/phase.py why`
+- 전이: `python harness/phase.py enter <PHASE>` — 상태의 **유일한 writer**다.
+  합법 간선도 직전 단계만 만들 수 있는 산출물을 가드로 요구한다.
+- 계약: `harness/policy/phase-matrix.json` (사람용 표 `harness/policy/README.md`)
+- 설계 근거 전문: `docs/harness/architecture-2026.html`
+
+## 토폴로지 — 내려갈 때만 근거를 적는다 (포인터)
+
+기본값은 **단일 세션**이다. 한 칸 내려갈 때마다 사유를 남긴다.
+단일 세션 → **스크립트**(같은 절차 2회 이상 수동 반복 + 출력이 결정론적) →
+**스킬**(다단계 + 분기·게이트, 컨텍스트 격리 불필요) → **서브 에이전트**
+((a)격리 (b)병렬 (c)컨텍스트 예산 중 최소 하나가 참일 때만).
+병렬로 같은 트리를 쓰는 에이전트는 `isolation: "worktree"`로 띄운다.
+Red→Green→Eval 파이프라인에 팀 모드(SendMessage)를 쓰지 않는다 — 가치가 격리다.
+
 ## 참조 맵 — 작업 유형별 읽을 파일
 
 | 작업 | 먼저 읽을 파일 |
 |---|---|
 | **모든 개발 작업 시작·완료** | `docs/progress.md` — 진행 원장, 갱신 의무 |
+| 세션 시작·재개·체크포인트 | `checkpoint-resume` 스킬 |
 | 스펙 인터뷰 | `specs/interview/question-bank.md` |
 | RQ 구현·테스트·평가 | `tdd-workflow` 스킬 (.claude/skills/) |
 | PR 머지 전 | `review-gate` 스킬 — APPROVE 없이 머지 금지 |
+| 하네스 변경 착수 전 | `harness-audit` 스킬 — 변경은 한 번에 1건 |
+| 주간 회고·지표 | `retro-metrics` 스킬, `harness/metrics-baseline.md` |
 | UI 작업 | `docs/design/DESIGN.md` (진실 공급원) |
 | 골든 케이스·평가 | `evals/README.md` |
 | 하네스 점검·이력 | `harness/sensor-catalog.md`, `docs/harness/changelog.md` |
@@ -47,10 +73,17 @@ room 참여 채팅 + global 채팅 웹 앱. 마감 7/31. 하네스 워크플로�
 
 - 스펙에 없는 기능 추가 (스코프 크리프)
 - Deep Interview 미완료(🟡 존재) 상태의 구현(src/tests) 착수
+  — `PLAN→RED` 가드 `no_pending_spec`이 전이를 거부한다
 - 실패 테스트를 스킵/삭제로 "해결" · ADR 없는 라이브러리/아키텍처 변경
 - 시크릿·환경 파일 읽기/커밋
+- 현재 단계가 허용하지 않는 경로에 쓰기 — `gate_phase.py`가 거부한다.
+  우회는 `python harness/phase.py force --reason "…"`(사람 승인)뿐이고,
+  `forced:true`로 이력에 박제되어 주간 리포트 최상단에 노출된다.
 
 ## 명령어·컨벤션
 
-- 검증 일괄: `bash scripts/check.sh` / 개별: `npm run lint` · `npm run typecheck` · `npm test`
+- 검증 일괄: `node scripts/check.mjs` (`scripts/check.sh`는 이 파일을 부르는 shim)
+- 빠른 검사: `--fast` · Red 정당성 판정: `--red --rq RQ-XX` · flake: `--repeat N`
 - 커밋: `feat|fix|chore|test|docs(scope): 설명` · 브랜치: `feat/<RQ-ID>-<설명>`
+- 한 워킹트리를 여러 에이전트가 공유할 땐 `git commit -- <경로>`만 쓴다.
+  경로 없는 `git commit`은 남이 스테이징해 둔 것까지 싣는다(2026-07-27 3회 발생).
