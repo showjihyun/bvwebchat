@@ -13,7 +13,8 @@
  *   M5 재작업률        git
  *   M6 도구 호출       .harness/logs/trajectory.jsonl
  *   M7 골든 케이스 수  evals/golden/*.jsonl
- *   M8 게이트 차단     .harness/logs/tools.jsonl (정본) × trajectory blocked[] (교차검증)
+ *   M8a 게이트 시도    .harness/logs/tools.jsonl 의 gate_block 전체
+ *   M8b 실제 차단      그중 warn_only !== true  ← === false 로 세면 리다이렉트 차단이 사라진다
  *
  * **측정할 수 없는 것은 측정할 수 없다고 적는다.** 산문 리뷰 보고서에서 키워드로
  * "스펙 밖 변경"을 세면 리뷰어가 *아니라고 설명한* 문장까지 걸려 22건 중 19건이 나온다
@@ -317,43 +318,84 @@ function m7() {
  * M8이 0이면 둘 중 하나다 — 게이트가 무의미하거나(제거 후보), 우회되고 있다(조사 대상).
  * 둘 다 알아야 한다. 경계면이 실제로 하중을 받는지에 대한 유일한 직접 증거다.
  */
+/**
+ * M8은 **두 숫자다.** 하나로 합치면 게이트가 실제보다 강해 보이고, warn_only를 끄는
+ * 순간 같은 이름의 숫자가 소리 없이 다른 것을 뜻하게 된다(시계열 단절).
+ *
+ *   M8a 시도  — 게이트가 판정을 내린 횟수 (통과시켰든 막았든)
+ *   M8b 차단  — 도구 호출이 실제로 거부된 횟수
+ *
+ * **술어는 warn_only !== true 다. === false 가 아니다.**
+ * gate_phase.py는 두 경로에서 다른 모양의 레코드를 쓴다:
+ *   파일 도구 경로      → warn_only: true|false 있음
+ *   Bash 리다이렉트 경로 → warn_only 필드 **없음** (단계 무관 무조건 deny라 개념이 없다)
+ * 그래서 === false 로 세면 리다이렉트 차단이 통째로 빠지고, 하필 그것이
+ * **통제면 우회 시도**다 — 가장 보고돼야 할 것이 0으로 사라진다.
+ * 실측(2026-07-27): === false → 0건 / !== true → 2건(둘 다 .harness/state/ 리다이렉트).
+ *
+ * 판정 3종:
+ *   M8a = 0            게이트가 하중을 안 받는다 — 무의미하거나(제거 후보) 우회되고 있다(phase-audit가 답한다)
+ *   M8a > 0, M8b = 0   하중은 받는데 아직 유예 중 (지금 이 저장소가 그 상태다)
+ *   M8b > 0            경계면이 실제로 막고 있다
+ */
 function m8() {
+  const notBlocked = { id: 'M8a', name: '게이트 시도', target: '>0 (경계면이 하중을 받는다는 직접 증거)' };
+  const blocked = { id: 'M8b', name: '실제 차단', target: 'block 전환 후 >0' };
   if (!existsSync(TOOLS_LOG)) {
-    return {
-      id: 'M8',
-      name: '게이트 차단',
-      value: NODATA,
-      num: null,
-      source: '.harness/logs/tools.jsonl (없음)',
-      detail: 'M8=0은 "게이트가 무의미"이거나 "우회되고 있다" 둘 중 하나다. 어느 쪽인지는 phase-audit가 답한다.',
-      target: '>0',
-    };
+    const detail = 'M8a=0은 "게이트가 무의미"이거나 "우회되고 있다" 둘 중 하나다. 어느 쪽인지는 phase-audit가 답한다.';
+    return [
+      { ...notBlocked, value: NODATA, num: null, source: '.harness/logs/tools.jsonl (없음)', detail },
+      { ...blocked, value: NODATA, num: null, source: '.harness/logs/tools.jsonl (없음)', detail: '' },
+    ];
   }
   const recent = gateBlocks.filter((r) => Date.parse(r.ts) >= CUTOFF);
-  const trajBlocked = trajLatest.reduce((n, r) => n + (r.blocked || []).length, 0);
+  const real = gateBlocks.filter((r) => r.warn_only !== true);
+  const lenient = gateBlocks.filter((r) => r.warn_only === true);
+  const noField = gateBlocks.filter((r) => !('warn_only' in r));
+
   const byKey = new Map();
   for (const b of gateBlocks) {
-    const k = `${b.phase}/${b.pattern || b.basis || '?'}`;
+    const k = b.phase + '/' + (b.pattern || b.basis || '?');
     byKey.set(k, (byKey.get(k) || 0) + 1);
   }
-  const warnOnly = gateBlocks.filter((b) => b.warn_only).length;
-  return {
-    id: 'M8',
-    name: '게이트 차단',
-    value: `${gateBlocks.length}건 (최근 ${SINCE_LABEL} ${recent.length}건)`,
-    num: gateBlocks.length,
-    source: `tools.jsonl gate_block (정본) · trajectory blocked[] ${trajBlocked}건으로 교차검증`,
-    detail:
-      [...byKey.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}회`).join(' · ') +
-      (warnOnly ? ` · **그중 ${warnOnly}건은 warn_only 유예라 실제로는 통과했다**` : '') +
-      (trajBlocked && Math.abs(trajBlocked - gateBlocks.length) > gateBlocks.length * 0.5
-        ? ` · ⚠ 두 원천의 값이 크게 다르다(${gateBlocks.length} vs ${trajBlocked}) — 한쪽 로거가 빠뜨리고 있다`
-        : ''),
-    target: '>0 (경계면이 하중을 받는다는 유일한 직접 증거)',
-  };
+
+  // 교차검증: 두 원천이 같은 모집단을 세는지 확인한다. 스키마가 다르면 비교가 성립하지 않는다.
+  const trajAll = trajLatest.flatMap((r) => r.blocked || []);
+  const trajNoField = trajAll.filter((b) => !('warn_only' in b)).length;
+  const asymmetry =
+    noField.length > 0 && trajNoField === 0
+      ? ' · ⚠ 스키마 비대칭: tools.jsonl에는 warn_only 없는 레코드가 ' +
+        noField.length +
+        '건(리다이렉트 차단)인데 trajectory blocked[]에는 0건이다 — 두 원천이 같은 모집단이 아니므로 교차검증은 근사다'
+      : '';
+
+  return [
+    {
+      ...notBlocked,
+      value: gateBlocks.length + '건 (최근 ' + SINCE_LABEL + ' ' + recent.length + '건)',
+      num: gateBlocks.length,
+      source: 'tools.jsonl gate_block 전체 (정본) · trajectory blocked[] ' + trajAll.length + '건',
+      detail:
+        [...byKey.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => k + ' ' + v + '회').join(' · ') + asymmetry,
+    },
+    {
+      ...blocked,
+      value: real.length + '건 (유예 통과 ' + lenient.length + '건)',
+      num: real.length,
+      source: "tools.jsonl gate_block 중 warn_only !== true  ← '=== false'가 아니다 (리다이렉트 차단은 필드 자체가 없다)",
+      detail:
+        real.length === 0
+          ? '**M8a>0, M8b=0 — 하중은 받는데 아직 전부 유예 중이다.** 게이트가 판정은 내리지만 아무것도 막지 않는다. ' +
+            'W4의 block 전환이 이 값을 처음으로 0에서 띄운다.'
+          : real.length +
+            '건이 실제로 거부됐다: ' +
+            real.slice(0, 4).map((r) => r.tool + '(' + (r.target || r.path) + ')').join(' · ') +
+            (noField.length ? ' · 그중 ' + noField.length + '건은 리다이렉트 차단(단계 무관 무조건 deny)' : ''),
+    },
+  ];
 }
 
-const metrics = [m1(), m2(), m3(), m5(), m6(), m7(), m8()];
+const metrics = [m1(), m2(), m3(), m5(), m6(), m7(), ...m8()];
 
 const M4_NOTE =
   'M4 (PR time-to-merge) — **삭제**. 1인 저장소에서 머지 지연은 리뷰 대기가 아니라 사람의 수면 시간을 잰다. ' +
@@ -524,7 +566,7 @@ function previousReport(current) {
   if (!files.length) return null;
   const name = files[files.length - 1];
   const vals = new Map();
-  for (const m of readFileSync(join(REPORT_DIR, name), 'utf8').matchAll(/^\|\s*(M\d)\b[^|]*\|([^|]*)\|/gm)) vals.set(m[1], m[2].trim());
+  for (const m of readFileSync(join(REPORT_DIR, name), 'utf8').matchAll(/^\|\s*(M\d[ab]?)\b[^|]*\|([^|]*)\|/gm)) vals.set(m[1], m[2].trim());
   return { name, vals };
 }
 
