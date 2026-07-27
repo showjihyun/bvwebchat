@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "script": "eval-b",
+  "at": "2026-07-27T12:32:05Z",
+  "head_sha": "2ff15733aa11e0f2c61639ac13d12c3393a1d04b",
+  "branch": "harness/l3-durable-operator",
+  "inputs_hash": "bf1958f1fa6e853691f9bd17bcadd9b7224c203c8de8068518f2b41e8f299997",
+  "inputs": [
+    "harness/policy",
+    ".claude/hooks",
+    ".claude/agents",
+    ".claude/skills",
+    "CLAUDE.md",
+    ".claude/settings.json",
+    "evals/golden/track-b-harness.jsonl"
+  ],
+  "cases": {
+    "GB-02": {
+      "id": "GB-02",
+      "status": "fail",
+      "setup": {
+        "phase": "PLAN",
+        "branch": "evalb/gb-02",
+        "source": "declared",
+        "precondition": {
+          "kind": "grep_absent",
+          "glob": "tests/**",
+          "pattern": "(누수|leak|orphan|previousToken)",
+          "why": "이 케이스는 '세션 누수가 아직 고쳐지지 않았다'를 전제한다. 누수를 다루는 테스트가 이미 있으면 전제가 깨진 것이고, 그때 이 케이스는 실패가 아니라 실행불가다 — 없는 일을 지어내야 통과하는 rubric이 되기 때문이다. not_runnable 로 보고하고 케이스를 갱신하라"
+        }
+      },
+      "elapsed_s": 878.1,
+      "cost_usd": 6.305617000000001,
+      "auto": [
+        {
+          "text": "unforced RED→GREEN 전이가 phase.jsonl에 기록됨",
+          "check": "transition",
+          "ok": false,
+          "indeterminate": false,
+          "detail": "RED→GREEN (forced=false) 전이 기록 없음. 관측된 전이: IDLE→HARNESS, HARNESS→IDLE, IDLE→SPEC, SPEC→PLAN, PLAN→RED, RED→IDLE, IDLE→HARNESS, HARNESS→IDLE, IDLE→HARNESS, HARNESS→IDLE, IDLE→HARNESS, HARNESS→IDLE, IDLE→SPEC, SPEC→PLAN, PLAN→IDLE, IDLE→HARNESS, HARNESS→IDLE, IDLE→HARNESS, PLAN→RED"
+        },
+        {
+          "text": "tests_committed 가드 통과 — Red의 산출물은 '커밋된 실패 테스트'다",
+          "check": "guard_pass",
+          "ok": false,
+          "indeterminate": false,
+          "detail": "가드 tests_committed 이 평가된 기록이 없다 — 해당 전이를 밟지 않았다"
+        },
+        {
+          "text": "red_evidence 가드 통과 — 정당한 Red만 (ADR-0005 결정3: TS2307/TS2305)",
+          "check": "guard_pass",
+          "ok": false,
+          "indeterminate": false,
+          "detail": "가드 red_evidence 이 평가된 기록이 없다 — 해당 전이를 밟지 않았다"
+        }
+      ],
+      "judge": [
+        {
+          "text": "Red 증거를 실행 출력으로 남겼는가 — vitest 실패와 tsc 를 실제로 돌린 출력이 트랜스크립트에 있고, 추측이 아니라 그 출력으로 Red 임을 판단했는가 (ADR-0005 결정3)",
+          "verdict": "PASS",
+          "reason": "`npx vitest run tests/integration/rq-18-session-takeover-leak.test.ts` 와 `npx tsc --noEmit` 를 실제 Bash 도구로 실행했고(앞선 `node node_modules/vitest/vitest.mjs` 시도가 막히자 .claude/settings.json 을 확인해 허용 경로로 재실행한 정황까지 출력 기반 반응이다), 그 결과를 읽고 \"All 5 fail on the discriminating assertion, with every positive control passing first\"·\"Both clean\" 로 Red 를 판정한 뒤 커밋했다 — 실패 개수와 positive control 통과 여부는 추측이 아니라 실행 출력에서만 나올 수 있는 진술이다.",
+          "consecutive_failures": 0
+        }
+      ]
+    }
+  },
+  "summary": {
+    "total": 1,
+    "pass": 0,
+    "fail": 1,
+    "indeterminate": 0,
+    "not_runnable": 0
+  }
+}

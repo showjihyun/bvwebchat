@@ -998,7 +998,14 @@ function verifyArtifact() {
   // 게이트는 "1건 통과"를 "전부 통과"로 읽는다. 골든에 있는 케이스가 전부
   // 아티팩트에 있어야 한다. 없는 검사를 통과로 세지 않는다.
   const { cases: golden } = loadCases();
-  const missingCases = golden.map((g) => g.id).filter((id) => !(d.cases || {})[id]);
+
+  // `status:"blocked"` 는 필수 집합에서 빠진다. 통과할 수 없는 케이스를 가드에
+  // 남겨두면 첫 주에 force 가 습관이 되고, 그 순간 게이트 전체가 장식이 된다.
+  // 다만 **빠졌다는 사실을 조용히 두지 않는다** — 아래에서 이름과 사유를 찍는다.
+  // 제외의 정당성은 골든의 note 가 지고, 이 스크립트는 그것을 요구만 한다.
+  const blocked = golden.filter((g) => g.status === 'blocked');
+  const required = golden.filter((g) => g.status !== 'blocked');
+  const missingCases = required.map((g) => g.id).filter((id) => !(d.cases || {})[id]);
   if (missingCases.length) {
     problems.push(
       `골든 ${golden.length}건 중 ${missingCases.length}건이 아티팩트에 없다: ${missingCases.join(' ')}\n` +
@@ -1011,7 +1018,12 @@ function verifyArtifact() {
   const skipped = [];
   const judgeFail = [];
   const notRunnable = [];
+  const blockedIds = new Set(blocked.map((g) => g.id));
   for (const c of cases) {
+    // status:"blocked" 는 필수 집합 밖이므로 실패를 집계하지 않는다. 제외를
+    // 커버리지에만 적용하고 실패 집계에 남겨두면 blocked 가 아무것도 바꾸지
+    // 못한다 — 게이트는 여전히 막히고 이름만 바뀐다.
+    if (blockedIds.has(c.id)) continue;
     for (const a of c.auto || []) {
       if (a.ok) continue;
       // 판정 불가(= 검사를 실행하지 못함)는 blocking 이 아니다. 통과로도 세지 않는다.
@@ -1029,7 +1041,18 @@ function verifyArtifact() {
   say(`  입력 해시 ${String(d.inputs_hash).slice(0, 12)} ${d.inputs_hash === INPUTS_HASH ? '= 현재 (유효)' : `≠ 현재 ${INPUTS_HASH.slice(0, 12)}`}`);
   const passed = cases.filter((c) => c.status === 'pass').length;
   say(`  판정: pass ${passed} · fail ${cases.filter((c) => c.status === 'fail').length} · 판정불가 ${cases.filter((c) => c.status === 'indeterminate').length} · 실행불가 ${notRunnable.length}`);
-  say(`  커버리지: 골든 ${golden.length}건 중 ${cases.length}건 기록${missingCases.length ? ` · 누락 ${missingCases.join(' ')}` : ''}`);
+  say(`  커버리지: 필수 ${required.length}건 중 ${cases.filter((c) => required.some((g) => g.id === c.id)).length}건 기록${missingCases.length ? ` · 누락 ${missingCases.join(' ')}` : ''}`);
+  if (blocked.length) {
+    // 제외를 조용히 두지 않는다 — 이름과 사유를 매번 찍는다. 조용한 제외는
+    // 커버리지 숫자를 실제보다 좋아 보이게 만들고, 그것이 '분모에 없는 것은
+    // 실패하지 않는다'의 재발이다.
+    say(`  ⚠ 필수 집합에서 제외: ${blocked.map((g) => g.id).join(' ')} (status:"blocked")`);
+    for (const g of blocked) {
+      const why = (g.note || '').split('||').pop().trim().slice(0, 160);
+      say(`     ${g.id} — ${why || '사유가 note 에 없다. 제외 근거 없는 blocked 는 그냥 미측정이다.'}`);
+    }
+    say(`     이 케이스들은 게이트를 막지 않는다. 되살리려면 status 를 todo 로 되돌려라.`);
+  }
   say('');
   if (notRunnable.length) {
     say('실행 불가 케이스 (구 스키마 등) — 통과로 세지 않는다:');
@@ -1065,7 +1088,13 @@ if (problem) {
 }
 if (broken?.length) for (const b of broken) say(`[경고] 골든 파일 파싱 실패 — ${b}`);
 
-const selected = ONLY ? cases.filter((c) => c.id.toUpperCase() === ONLY) : cases;
+// blocked 는 전수(--all)에서 실행하지 않는다 — 통과할 수 없는 케이스를 매번
+// 돌리는 것은 비용만 쓰고 판정을 바꾸지 않는다(GB-02 실측 4회 · 약 $22).
+// 다만 `--case GB-02` 로 지목하면 돈다: 되살릴 수 있는지 확인하는 경로를
+// 막으면 blocked 가 영구 삭제와 같아진다.
+const selected = ONLY
+  ? cases.filter((c) => c.id.toUpperCase() === ONLY)
+  : cases.filter((c) => c.status !== 'blocked');
 if (ONLY && !selected.length) {
   say(`케이스 ${ONLY} 이 골든 파일에 없다. 존재하는 케이스: ${cases.map((c) => c.id).join(' ')}`);
   emit({ script: 'eval-b', status: 'unprepared', reason: 'case_not_found', requested: ONLY }, EXIT_UNPREPARED);
