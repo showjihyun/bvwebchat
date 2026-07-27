@@ -239,6 +239,28 @@ function createChatState(): ChatState {
   };
 }
 
+/**
+ * RQ-11 / ADR-0002: room 히스토리 링버퍼에 메시지 1건을 덧붙이고, **덧붙인
+ * 뒤의** 보관 개수를 반환한다. 상한(MAX_ROOM_HISTORY=50)을 넘으면 가장
+ * 오래된 것부터 폐기한다.
+ *
+ * 반환값이 "post-append 길이"라는 점이 계약이다 — RQ-18 GA-17의 안 읽음
+ * 상한이 이 값을 그대로 클램프 상한으로 쓴다. pre-append 길이를 반환하면
+ * 50번째 메시지에서 49가 되어 GA-17이 깨진다.
+ */
+function appendMessage(state: ChatState, room: RoomName, message: ChatMessage): number {
+  let history = state.histories.get(room);
+  if (history === undefined) {
+    history = [];
+    state.histories.set(room, history);
+  }
+  history.push(message);
+  if (history.length > MAX_ROOM_HISTORY) {
+    history.shift();
+  }
+  return history.length;
+}
+
 type ChatServer = SocketIOServer<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, SocketData>;
 type ChatSocket = Socket<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, SocketData>;
 
@@ -467,25 +489,16 @@ function handleMessage(io: ChatServer, state: ChatState, socket: ChatSocket, pay
   io.to(payload.room).emit('message', message);
 
   // RQ-11 / ADR-0002: 브로드캐스트에 부가해 room당 최근 50개 링버퍼에
-  // 저장한다 (기존 브로드캐스트 로직은 변경하지 않는다). history 변수를
-  // 그대로 재사용해(신규 room이든 기존이든) 아래 RQ-18 상한 계산이 별도
-  // map 재조회 없이 항상 최신 길이를 참조하게 한다.
-  let history = state.histories.get(payload.room);
-  if (history === undefined) {
-    history = [];
-    state.histories.set(payload.room, history);
-  }
-  history.push(message);
-  if (history.length > MAX_ROOM_HISTORY) {
-    history.shift();
-  }
-
+  // 저장한다 (기존 브로드캐스트 로직은 변경하지 않는다). appendMessage가
+  // 돌려주는 post-append 길이를 그대로 아래 상한 계산에 넘겨, 별도 map
+  // 재조회 없이 항상 최신 길이를 참조하게 한다.
+  //
   // RQ-18 / ADR-0003 결정4: 이 room에 참여 중인(global 포함) 세션 중 이
   // room이 활성 room이 아닌 세션의 안 읽음을 1 증가시켜 유니캐스트로
   // 통지한다. 상한(범위 제약 ②, GA-17)은 이 room이 현재 보관한 메시지 수
   // (방금 갱신한 링버퍼 길이, ADR-0002 상한 50)로 클램프한다 — 열었을 때
   // 이미 밀려나 볼 수 없는 메시지는 세지 않는다는 요구와 일치한다.
-  const cap = history.length;
+  const cap = appendMessage(state, payload.room, message);
   for (const session of state.sessions.values()) {
     if (!session.rooms.has(payload.room)) continue;
     if (session.activeRoom === payload.room) continue;
