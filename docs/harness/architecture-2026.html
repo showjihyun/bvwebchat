@@ -2669,7 +2669,8 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
               <tr>
                 <td><span class="tag">T.01<small>하네스 적합도</small></span></td>
                 <td>모델 벤치마크보다 먼저 "현재 하네스 + 현재 과업"의 <b>회귀 평가셋</b>을 만든다</td>
-                <td>트랙 B를 실행 가능하게 만드는 것이 이 설계의 절반이다 — <code>eval-b.mjs</code> auto rubric + <code>.github/workflows/harness.yml</code> 5종 blocking (아래 anti-06)</td>
+                <td>트랙 B를 실행 가능하게 만드는 것이 이 설계의 절반이다 — <code>eval-b.mjs</code> auto rubric + CI blocking.
+                  <b>현재 CI에 배선된 것은 <code>policy-lint</code>·<code>hooks-selftest</code> 2종</b>이고 나머지는 미배선이다 (아래 anti-06)</td>
                 <td>모델 교체 실험은 <b>하지 않는다</b>. 이 저장소에서 조정하는 변수는 하네스뿐이라 T.01의 "같은 모델에서 점수를 올린다"는 대조군이 없다. 7케이스 규모도 스모크 수준이다(W4).</td>
               </tr>
               <tr>
@@ -2778,7 +2779,20 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
           <article class="card">
             <span class="card-id warn">ANTI / 06 · 평가셋 없는 하네스 튜닝</span>
             <h3>해소되지만 "안전망"이라 부르면 거짓말이다</h3>
-            <p>트랙 B가 실행 가능해진다 — rubric의 절반이 <code>phase.jsonl</code>로 결정론이 되고, <code>.github/workflows/harness.yml</code>이 경로 필터로 5종을 blocking한다: <code>policy-lint</code> · <code>hooks-selftest</code> · <code>doc-freshness --pr</code> · 트랙 B 아티팩트 · changelog 동행.</p>
+            <p>트랙 B가 실행 가능해진다 — rubric의 절반이 <code>phase.jsonl</code>로 결정론이 된다.
+              <b>CI에서 실제로 도는 것은 2종</b>이다(2026-07-27): <code>ci.yml</code>의 <code>gate</code> 잡에 배선된
+              <code>policy-lint</code>와 <code>hooks-selftest</code>.
+              <b>아직 미배선</b>: <code>doc-freshness --pr</code> · <code>phase-audit</code> ·
+              <code>golden-coverage</code> · 트랙 B 아티팩트 검증.
+              설계가 상정한 <code>.github/workflows/harness.yml</code>(경로 필터로 분리된 워크플로)은
+              <b>아직 존재하지 않는다</b> — W4 범위다. 이 절은 그때까지 <b>미래형으로 읽어야 한다</b>.</p>
+            <p><b>이 2종이 먼저인 것은 임의가 아니다.</b> <code>gate_phase.py</code>의 fail-OPEN 정당화는
+              "통과는 로그에 남고 <b>사후에 잡힌다</b>"이다. 그 정당화가 성립하려면
+              <b>사후에 잡는 센서가 자동으로 돌아야 한다</b> — 사람이 기억할 때만 도는 센서는
+              fail-OPEN을 정당화하지 못한다. <code>hooks-selftest</code>가 CI에서 도는 순간에야
+              "훅이 죽어도 CI가 잡는다"가 참이 되고, 그 전까지 fail-OPEN은 <b>근거 없는 낙관</b>이다.
+              두 센서 모두 서브프로세스·API 키·네트워크가 필요 없어 초 단위로 끝난다는 점도 조건이었다 —
+              <b>느린 게이트는 꺼지는 게이트다</b>(§04).</p>
             <p><b>정직한 한계</b> — 7 케이스는 얇다. 승격 루프가 케이스를 늘리기 전까지 이 게이트는 "안전망"이 아니라 <b>"스모크"</b>다.</p>
             <span class="verdict warn">DEFENDED / 규모는 스모크 수준 · §10 W4</span>
           </article>
@@ -2895,6 +2909,27 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
               재유도해 대조하는 것 — <b>예방이 아니라 탐지</b>다.
               셸을 봉쇄하면 필드 리포트가 경고한 Azure SRE의 "100개 전용 도구 폭증"으로 간다.
               구멍을 남기는 쪽이 낫다고 판단했고, 그 판단은 M8이 검증한다.
+            </p>
+            <p>
+              <b>그런데 위협 모델이 틀렸다.</b> 이 절은 <b>적대적</b> <code>node -e</code> 우회를 걱정했는데,
+              2026-07-27에 실제로 일어난 것은 <b>정직한 코드가 낸 사고</b>였다.
+              <code>tool-risk.json</code>은 <code>git worktree remove</code>를 R2로 <b>올바르게 분류했다</b>.
+              그런데 <code>settings.json</code>의 <code>Bash(node scripts/:*)</code> 접두사 allow가
+              R2로 분류된 <code>eval-b.mjs</code>·<code>resume-test.mjs</code>까지 삼켜 <b>집행이 0</b>이었고,
+              그 스크립트가 <code>spawnSync</code>로 같은 명령을 직접 호출해 Windows 정션을 따라가며
+              저장소의 <code>node_modules</code>를 파괴했다. <b>정책은 맞았고, 닿지 않았다.</b>
+            </p>
+            <p>
+              두 가지가 드러난다. 첫째, <b>등급 체계가 관할하는 것은 명령이 아니라 표면이다</b> —
+              <code>permissions.ask</code>는 에이전트의 도구 호출에만 걸리고, 저장소에 커밋된 스크립트의
+              <code>spawnSync</code>는 어떤 등급도 조회하지 않는다. 스크립트는 등급 체계의 밖이 아니라
+              <b>아래</b>에 있다: 에이전트보다 신뢰받으면서 검사는 덜 받고, <b>이 공백은 스크립트를 늘릴수록 커진다</b>
+              (W3의 순증 6과 직접 연결된다).
+              둘째, 이것은 <b>D4와 같은 형태의 실패</b>다 — 분류는 옳고, 집행이 없고, 아무도 검사하지 않았다.
+              §00이 관측한 비대칭이 경계면에서 한 번 더 나타난 셈이다:
+              <b>적대적 우회를 걱정하는 동안 성실한 코드가 그 피해를 냈다.</b>
+              그래서 이 표를 읽고 "R2니까 사람이 본다"고 믿으면 안 된다 —
+              <b>없는 보장을 믿게 하는 것이 보장이 없는 것보다 나쁘다.</b>
             </p>
             <span class="verdict">DETECT, NOT PREVENT / phase-audit + M8</span>
           </article>
