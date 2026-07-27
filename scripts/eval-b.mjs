@@ -29,7 +29,7 @@
  * 1인 저장소에서 CI 에 API 키를 넣는 건 과하다. 로컬 스킬이 실행·커밋하고 CI 는
  * 아티팩트의 정합성만 본다. 정직하고 분수에 맞다.
  */
-import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync, mkdtempSync, rmSync, rmdirSync, unlinkSync, lstatSync, symlinkSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { createHash, createHmac } from 'node:crypto';
 import { resolve, join, relative } from 'node:path';
@@ -546,6 +546,47 @@ function seedWorktree(wt, setup, caseId) {
   return notes;
 }
 
+/**
+ * 워크트리의 node_modules **링크만** 끊는다. 내용은 절대 건드리지 않는다.
+ *
+ * 2026-07-27 실제로 물렸다: 케이스 정리에서 `git worktree remove --force` 와
+ * `rmSync(recursive)` 가 Windows 정션을 **따라가** 저장소의 진짜 node_modules 를
+ * 비웠다. 저장소 전체의 lint·test 게이트가 동시에 죽었고, 원인은 이 스크립트였다.
+ * → **링크 해제가 어떤 재귀 삭제보다 먼저다.** 순서가 곧 안전장치다.
+ */
+function unlinkNodeModules(linkPath) {
+  let st;
+  try {
+    st = lstatSync(linkPath);
+  } catch {
+    return; // 없으면 할 일이 없다
+  }
+  // 진짜 디렉터리면 손대지 않는다 — 잘못 지우느니 남기는 쪽이 언제나 낫다.
+  if (!st.isSymbolicLink()) return;
+  try {
+    unlinkSync(linkPath);
+  } catch {
+    try {
+      rmdirSync(linkPath);
+    } catch {
+      /* 여기까지 실패하면 아래 사후 검사가 잡는다 */
+    }
+  }
+}
+
+/** 정리 후 방어선. 순서 규칙이 언젠가 또 깨질 수 있고, 그때 조용히 넘어가면 안 된다. */
+function assertNodeModulesIntact() {
+  const nm = join(ROOT, 'node_modules');
+  try {
+    if (!existsSync(nm) || readdirSync(nm).length > 0) return;
+  } catch {
+    return;
+  }
+  say('[치명] 저장소의 node_modules 가 비었다 — 워크트리 정리가 정션을 따라갔다.');
+  say('  고치는 법: `npm ci` 로 즉시 복구하라. 이 상태로는 저장소의 모든 lint·test 게이트가 죽는다.');
+  say('  그리고 이 스크립트의 정리 순서를 다시 보라 — 정션 unlink 가 어떤 재귀 삭제보다 먼저여야 한다.');
+}
+
 const CASE_TOOLS = [
   'Read',
   'Glob',
@@ -592,8 +633,12 @@ function runCase(c, prev) {
   const cleanup = () => {
     if (cleaned) return;
     cleaned = true;
+    // 무엇보다 먼저. --keep 이어도 끊는다 — 링크를 남긴 채 나중에 손으로
+    // worktree remove 하면 그때 저장소의 node_modules 가 날아간다.
+    unlinkNodeModules(join(wt, 'node_modules'));
     if (KEEP) {
       say(`    워크트리 보존: ${wt}   (정리: git worktree remove --force "${wt}")`);
+      say('    node_modules 링크는 미리 끊었다 — 보존된 워크트리에서 npm 은 동작하지 않는다.');
       return;
     }
     git(['worktree', 'remove', '--force', wt]);
@@ -602,6 +647,7 @@ function runCase(c, prev) {
     // 케이스 브랜치는 워크트리가 아니라 **공유 저장소의 refs** 에 만들어진다.
     // 워크트리만 지우면 evalb/* 브랜치가 계속 쌓인다.
     if (setup.branch) git(['branch', '-D', setup.branch]);
+    assertNodeModulesIntact();
   };
 
   try {
@@ -729,6 +775,20 @@ function verifyArtifact() {
   }
 
   const cases = Object.values(d.cases || {});
+
+  // **커버리지** — 부분 실행(--case GB-01)이 만든 아티팩트가 가드를 통과하면
+  // 게이트는 "1건 통과"를 "전부 통과"로 읽는다. 골든에 있는 케이스가 전부
+  // 아티팩트에 있어야 한다. 없는 검사를 통과로 세지 않는다.
+  const { cases: golden } = loadCases();
+  const missingCases = golden.map((g) => g.id).filter((id) => !(d.cases || {})[id]);
+  if (missingCases.length) {
+    problems.push(
+      `골든 ${golden.length}건 중 ${missingCases.length}건이 아티팩트에 없다: ${missingCases.join(' ')}\n` +
+        `     고치는 법: \`node scripts/eval-b.mjs --all\` 로 전부 돌려라. --case 로 만든 부분 아티팩트는 가드를 통과하지 못한다 — ` +
+        `통과하면 게이트가 '1건 통과'를 '전부 통과'로 읽는다.`
+    );
+  }
+
   const autoFail = [];
   const judgeFail = [];
   const notRunnable = [];
@@ -745,6 +805,7 @@ function verifyArtifact() {
   say(`  입력 해시 ${String(d.inputs_hash).slice(0, 12)} ${d.inputs_hash === INPUTS_HASH ? '= 현재 (유효)' : `≠ 현재 ${INPUTS_HASH.slice(0, 12)}`}`);
   const passed = cases.filter((c) => c.status === 'pass').length;
   say(`  판정: pass ${passed} · fail ${cases.filter((c) => c.status === 'fail').length} · 판정불가 ${cases.filter((c) => c.status === 'indeterminate').length} · 실행불가 ${notRunnable.length}`);
+  say(`  커버리지: 골든 ${golden.length}건 중 ${cases.length}건 기록${missingCases.length ? ` · 누락 ${missingCases.join(' ')}` : ''}`);
   say('');
   if (notRunnable.length) {
     say('실행 불가 케이스 (구 스키마 등) — 통과로 세지 않는다:');
