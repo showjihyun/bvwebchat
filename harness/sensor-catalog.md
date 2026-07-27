@@ -61,7 +61,7 @@ Sensor로 두는 것은 낭비이고, 반대로 추론이 필요한 판단을 �
 | 트래젝토리 로그 (schema 2) | Comp | Stop · SubagentStop | `log_trajectory.py` — `agent`·`phase`·`rq`·`branch`·`tokens`·`errors[]`·`blocked[]`·`file_edit_counts` | ✅ |
 | 도구 실패 로그 | Comp | PostToolUse | `post_observe.py` → `.harness/logs/tools.jsonl` (실패·차단만 기록 — 성공은 질문에 답하지 않으면서 파일만 키운다) | ✅ |
 | 상태 갱신 강제 | Comp | Stop | `stop_state.py` — R1 쓰기가 있었는데 `session.json` 미갱신이면 세션당 **1회** 차단 | ✅ |
-| 게이트 차단 집계 (M8) | Comp | 주간 | `metrics.mjs` ← `tools.jsonl`의 `gate_block`(정본) × `trajectory.jsonl`의 `blocked[]`(교차검증) | 🔄 스크립트 ✅ / 주간 실행은 수동 |
+| 게이트 차단 집계 (M8a 시도 / **M8b 실제 차단**) | Comp | 주간 | `metrics.mjs` ← `tools.jsonl`의 `gate_block`. 실제 차단 술어는 **`warn_only !== true`** — `=== false`로 쓰면 Bash 리다이렉트 차단(필드 없음)을 통째로 놓친다 | 🔄 스크립트 ✅ / 주간 실행은 수동 |
 
 ### S2 — 자동 테스트
 

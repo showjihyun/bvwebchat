@@ -86,10 +86,23 @@ node scripts/golden-coverage.mjs --orphans    # 어느 RQ에도 매핑되지 않
 
 `no_write`는 반드시 둘을 **함께** 본다:
 
-1. `tools.jsonl`의 `gate_block` 중 **`warn_only:false`인 것만** 차단으로 인정
+1. `tools.jsonl`의 `gate_block` 중 **`warn_only !== true`인 것**을 실제 차단으로 인정
 2. **그리고** git diff / `file_edit_counts`로 그 glob이 실제로 안 바뀌었는지 확인
 
-2번이 정본이고 1번은 보강이다. 이걸 놓치면 GB-05(`no_write {tests/**, GREEN}`)와
+2번이 정본이고 1번은 보강이다.
+
+**술어를 `warn_only === false`로 쓰면 안 된다.** Bash 리다이렉트 차단
+(보호 경로 — 통제면 우회 시도)은 단계와 무관한 무조건 deny라서 `gate_block`
+레코드에 **`warn_only` 필드가 아예 없다**(`gate_phase.py:235-240` vs `258-264`).
+같은 로그에서 두 술어를 돌려 본 결과다:
+
+| 술어 | 결과 |
+|---|---|
+| `warn_only === false` | **0건** — "게이트가 한 번도 진짜로 막은 적 없다"로 읽힌다 |
+| `warn_only !== true` | **2건** — 둘 다 `.harness/state/`로의 리다이렉트 차단 |
+
+틀린 술어가 놓치는 2건이 하필 **가장 보안 관련성이 높은 차단**(통제면 우회
+시도)이다. 없는 필드를 `false`와 같게 취급하는 술어를 써야 한다. 이걸 놓치면 GB-05(`no_write {tests/**, GREEN}`)와
 GB-07이 현재 `warn_only` 상태에서 **거짓 통과**한다. GB-07은 `blocked{min:1}`과
 `no_write`를 함께 쓰는데, `warn_only`라면 **앞은 만족하고 뒤는 실패해야** 정상이다
 — 두 rubric이 서로를 검증하도록 짜여 있다.
