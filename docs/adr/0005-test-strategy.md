@@ -26,6 +26,12 @@ TDD(Red→Green→Refactor)가 헌법 규칙이고 tdd-workflow 파이프라인
    시그니처 불일치)는 "깨진 테스트"이므로 Red로 인정하지 않는다 — test-writer가
    고친다. 근거: 2026-07-17 RQ-01의 `disconnect(): this` 목 시그니처 버그가
    vitest만 돌린 Red를 통과해 coder 단계에서 발견됨(=테스트 파일 자체 타입 오류).
+   **이 결정의 집행 지점**: `harness/policy/phase-matrix.json`의 `RED→GREEN` 전이
+   가드 `red_evidence`(→ `node scripts/check.mjs --red --rq RQ-XX`)다. 2026-07-27
+   이전까지 이 규칙은 `test-writer.md` 산문에만 있었고 아무것도 강제하지 않았다.
+   이제 전이가 거부되므로 같은 실패가 구조적으로 재발 불가능하다 — 다만
+   **성공 경로(정당한 Red가 exit 0을 내는 것)는 아직 미실증**이다. 이 브랜치에
+   RED에 진입한 RQ가 없어서이며, 다음 실제 RQ 구현이 첫 실증이 된다.
 4. **테스트 더블**: 전송 계층만 대체 허용 — Socket.IO 서버를 테스트
    프로세스 안에서 기동하고 socket.io-client로 접속(실 네트워크 스택 불요).
    fake timer 허용(유예기간 등 시간 의존 로직 — ADR-0003). 모든 대기에
