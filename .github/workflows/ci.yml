@@ -46,3 +46,12 @@ jobs:
 
       - name: 검증 일괄 (lint + typecheck + test)
         run: bash scripts/check.sh
+
+      # 하네스 자체 검사 — 서브프로세스·API 키·네트워크 불필요, 초 단위.
+      # 이 둘이 CI에 없으면 hook.py 의 fail-OPEN 정당화("사후에 잡힌다")가
+      # 성립하지 않는다. 잡아줄 유일한 센서를 아무도 부르지 않기 때문이다.
+      - name: 정책 린트 (P1~P8 — 매칭 불가능한 패턴 포함)
+        run: node scripts/policy-lint.mjs
+
+      - name: 훅 자기검사 (게이트가 실제로 allow/deny 를 내는지)
+        run: node scripts/hooks-selftest.mjs
