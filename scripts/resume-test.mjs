@@ -15,14 +15,27 @@
  * 절차: 체크포인트 선택 → `git worktree` 격리 → (cold면 다이제스트 무력화)
  *       → `claude -p` 헤드리스 5문항 → 결정론 채점 4문항 + evaluator 판정 1문항.
  *
- *   node scripts/resume-test.mjs --cold     다이제스트 없음 · 라이브 커서 없음 ← **진짜 시험**
- *   node scripts/resume-test.mjs --warm     다이제스트 있음 · 라이브 커서 복사 (대조군)
+ *   node scripts/resume-test.mjs --cold     다이제스트 없음 · 라이브 커서 없음 ← **계약**
+ *   node scripts/resume-test.mjs --warm     다이제스트 + 라이브 커서 (진단, 시간 기준 없음)
  *   node scripts/resume-test.mjs --at 20260727T015105Z   특정 체크포인트로
  *   node scripts/resume-test.mjs --dry-run  LLM 없이 준비 상태·정답지만 확인
  *   node scripts/resume-test.mjs --cold --json   기계 판독용 (사람 출력은 stderr)
  *   node scripts/resume-test.mjs --cold --keep   워크트리를 남긴다 (디버깅)
  *
- * **PASS 기준**  cold: 5/5 · 읽은 파일 ≤7 · ≤5분   ·   warm: 5/5 · ≤1분
+ * **PASS 기준 (cold 만이 계약이다)**  5/5 · 읽은 파일 ≤7 · ≤5분
+ *
+ * ## warm 에 시간 기준이 없는 이유
+ * T.04 계약은 "새 세션이 5분 안에 무엇을 왜 했고 다음은 무엇인지 복원한다"이고,
+ * **cold 가 정확히 그것을 잰다.** warm 은 SessionStart 다이제스트라는 *편의 기능*이
+ * 작동하는지 보는 진단이다. 편의를 계약으로 승격하면 계약이 흐려진다.
+ *
+ * 실측이 이를 뒷받침한다(2026-07-27): **더 많은 일을 하는 cold 가 1.28분인데
+ * warm 이 1.88분**이었다. 병목은 상태 복원이 아니라 CLI 기동 + 모델 지연이다.
+ * 그 조건에서 ≤1분은 도달 불가능한 값이고, **도달 불가능한 기준은 기준이 아니라
+ * 상시 실패다.** 상시 실패는 상시 WARN 과 같은 병 — 다음 실패를 무시하게 만드는
+ * 훈련이다. 숫자를 다른 임의의 숫자(3분)로 바꾸는 것도 답이 아니다. 그 숫자가
+ * 무엇을 보장하는지 아무도 설명할 수 없기 때문이다.
+ * → warm 은 시간을 **계측만 하고 판정하지 않는다.** 정답률·파일 수는 그대로 판정한다.
  *
  * 종료 코드 (계약 — 호출자가 구분해야 한다):
  *   0  PASS
@@ -49,7 +62,7 @@ const argv = process.argv.slice(2);
 if (argv.includes('--help') || argv.includes('-h')) {
   console.log('사용법: node scripts/resume-test.mjs [--cold|--warm] [--at <ISO스탬프>] [--dry-run] [--json] [--keep] [--verbose]');
   console.log('  --cold  (기본) SessionStart 다이제스트 무력화 + 라이브 커서 없음 — 커밋된 상태 파일만으로 복원');
-  console.log('  --warm  다이제스트 + 라이브 커서 복사 — 대조군');
+  console.log('  --warm  다이제스트 + 라이브 커서 복사 — 진단. 시간은 계측만 하고 판정하지 않는다');
   console.log('종료 코드: 0 PASS · 1 FAIL · 2 실행 불가(CLI 부재/미인증) · 3 준비 불가(체크포인트 없음)');
   process.exit(EXIT_PASS);
 }
@@ -64,10 +77,11 @@ const AT = (() => {
   return i >= 0 && argv[i + 1] ? argv[i + 1] : null;
 })();
 
-// PASS 기준 — cold와 warm은 서로 다른 것을 재므로 기준도 다르다.
+// PASS 기준 — cold 와 warm 은 서로 다른 것을 재므로 기준도 다르다.
+// warm 의 maxMinutes 가 null 인 것이 설계다: 시간은 계측하되 판정하지 않는다(위 주석 참조).
 const BAR = COLD
   ? { minScore: 5, maxFiles: 7, maxMinutes: 5 }
-  : { minScore: 5, maxFiles: 12, maxMinutes: 1 };
+  : { minScore: 5, maxFiles: 12, maxMinutes: null };
 
 /** --json 일 때 stdout은 JSON 전용이다. 사람 출력은 stderr로 보낸다. */
 function say(...a) {
@@ -482,10 +496,14 @@ if (!ck) {
 
 say('재개 시험 (L3 졸업 시험 · GB-06) — 정답지는 체크포인트 파일 자체다');
 say('');
-say(`  모드      : ${COLD ? 'cold — 다이제스트 없음 · 라이브 커서 없음 (진짜 시험)' : 'warm — 다이제스트 + 라이브 커서 (대조군)'}`);
+say(`  모드      : ${COLD ? 'cold — 다이제스트 없음 · 라이브 커서 없음 (L3 계약)' : 'warm — 다이제스트 + 라이브 커서 (진단)'}`);
 say(`  정답지    : ${ck.rel}`);
 say(`  RQ · 단계 : ${ck.data.rq} · ${ck.data.to}   (전이 ${ck.data.from} → ${ck.data.to}, ${ck.ts})`);
-say(`  PASS 기준 : ${BAR.minScore}/5 · 읽은 파일 ≤${BAR.maxFiles} · ≤${BAR.maxMinutes}분`);
+say(`  PASS 기준 : ${BAR.minScore}/5 · 읽은 파일 ≤${BAR.maxFiles} · ${BAR.maxMinutes == null ? '시간 기준 없음' : `≤${BAR.maxMinutes}분`}`);
+if (!COLD) {
+  say('              warm 은 계약이 아니라 진단이다 — T.04 를 재는 것은 cold 하나뿐이고');
+  say('              시간 병목은 상태 복원이 아니라 CLI 기동+모델 지연이라 판정 대상이 아니다.');
+}
 say('');
 
 // 워크트리를 만들 sha 선택.
@@ -582,7 +600,7 @@ try {
   say('');
 
   const args = ['-p', PROMPT, '--output-format', 'stream-json', '--verbose', '--max-turns', '30', '--allowedTools', ...ALLOWED_TOOLS];
-  const hardTimeout = Math.max(BAR.maxMinutes * 2, 10) * 60 * 1000;
+  const hardTimeout = Math.max((BAR.maxMinutes ?? 5) * 2, 10) * 60 * 1000;
   say(`  실행      : claude -p (5문항) · 하드 타임아웃 ${Math.round(hardTimeout / 60000)}분`);
   const t0 = Date.now();
   const run = spawnSync('claude', args, { cwd: wt, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, timeout: hardTimeout });
@@ -591,7 +609,7 @@ try {
 
   if (run.error && run.error.code === 'ETIMEDOUT') {
     say('');
-    say(`시간 초과 — ${Math.round(hardTimeout / 60000)}분 안에 끝나지 않았다. 기준은 ${BAR.maxMinutes}분이다.`);
+    say(`시간 초과 — ${Math.round(hardTimeout / 60000)}분 안에 끝나지 않았다${BAR.maxMinutes == null ? ' (하드 타임아웃)' : `. 기준은 ${BAR.maxMinutes}분이다`}.`);
     say('고치는 법: 상태 파일이 답을 담고 있는지 먼저 보라. 오래 걸린다는 것은 대개 저장소를 뒤지고 있다는 뜻이다.');
     emit({ script: 'resume-test', mode: COLD ? 'cold' : 'warm', status: 'fail', reason: 'timeout', elapsed_minutes: Number(minutes.toFixed(2)) }, EXIT_FAIL);
   }
@@ -660,12 +678,12 @@ try {
   say(`  읽은 파일 ${tools.files.length}개 / 예산 ${BAR.maxFiles}`);
   for (const f of tools.files) say(`    · ${f}`);
   if (tools.searches.length) say(`  검색 ${tools.searches.length}건 (읽기로 세지 않는다): ${tools.searches.slice(0, 6).join(' ')}`);
-  say(`  소요 ${minutes.toFixed(2)}분 / 기준 ${BAR.maxMinutes}분`);
+  say(`  소요 ${minutes.toFixed(2)}분${BAR.maxMinutes == null ? '  (계측만 — warm 은 시간으로 판정하지 않는다)' : ` / 기준 ${BAR.maxMinutes}분`}`);
   if (resultEv?.total_cost_usd != null) say(`  비용 $${Number(resultEv.total_cost_usd).toFixed(4)} · 턴 ${resultEv.num_turns ?? '?'}`);
   say('');
 
   const filesOk = tools.files.length <= BAR.maxFiles;
-  const timeOk = minutes <= BAR.maxMinutes;
+  const timeOk = BAR.maxMinutes == null || minutes <= BAR.maxMinutes;
   const scoreOk = score >= BAR.minScore;
   const pass = scoreOk && filesOk && timeOk && !inconclusive;
 
@@ -688,7 +706,7 @@ try {
   };
 
   if (pass) {
-    say(`요약: PASS — ${score}/5 · 읽은 파일 ${tools.files.length}/${BAR.maxFiles} · ${minutes.toFixed(2)}/${BAR.maxMinutes}분`);
+    say(`요약: PASS — ${score}/5 · 읽은 파일 ${tools.files.length}/${BAR.maxFiles} · ${minutes.toFixed(2)}분${BAR.maxMinutes == null ? '(미판정)' : `/${BAR.maxMinutes}분`}`);
     if (COLD) say('cold 통과 = 커밋된 체크포인트만으로 새 세션이 복원됐다. T.04 상태 계약이 실증됐다.');
     emit(payload, EXIT_PASS);
   }
@@ -697,7 +715,7 @@ try {
     say('고치는 법: judge 실행 실패 사유를 보라. 판정 못 한 것을 통과로 적으면 이 시험의 의미가 사라진다.');
     emit(payload, EXIT_UNAVAILABLE);
   }
-  say(`요약: FAIL — ${score}/5 · 읽은 파일 ${tools.files.length}/${BAR.maxFiles} · ${minutes.toFixed(2)}/${BAR.maxMinutes}분`);
+  say(`요약: FAIL — ${score}/5 · 읽은 파일 ${tools.files.length}/${BAR.maxFiles} · ${minutes.toFixed(2)}분${BAR.maxMinutes == null ? '(미판정)' : `/${BAR.maxMinutes}분`}`);
   if (!scoreOk) say('  · 문항 미달 — 체크포인트가 담지 못한 항목이 무엇인지 위 "기대/답안"을 보라.');
   if (!filesOk) say(`  · 파일 예산 초과 — 저장소를 뒤져서 맞혔다는 뜻이다. 맞혀도 계약 이행이 아니다.`);
   if (!timeOk) say('  · 시간 초과 — 상태 파일이 답을 바로 주지 못했다.');

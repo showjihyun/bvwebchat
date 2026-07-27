@@ -413,10 +413,12 @@ const CHECKS = {
     if (!j) return { ok: false, indeterminate: true, detail: `재개 시험 출력을 파싱하지 못했다 (exit ${r.status})` };
     const scoreOk = j.score >= (args.min_score ?? 5);
     const filesOk = j.files_read <= (args.max_files ?? 7);
-    const timeOk = j.elapsed_minutes <= (args.max_minutes ?? 5);
+    // warm 위임에는 시간 기준이 없다 — 계약을 재는 것은 cold 하나뿐이다.
+    const timeBar = args.cold === false ? null : (args.max_minutes ?? 5);
+    const timeOk = timeBar == null || j.elapsed_minutes <= timeBar;
     return {
       ok: scoreOk && filesOk && timeOk,
-      detail: `${j.mode}: ${j.score}/5 · 파일 ${j.files_read}/${args.max_files ?? 7} · ${j.elapsed_minutes}/${args.max_minutes ?? 5}분 → ${scoreOk && filesOk && timeOk ? 'PASS' : 'FAIL'}`,
+      detail: `${j.mode}: ${j.score}/5 · 파일 ${j.files_read}/${args.max_files ?? 7} · ${j.elapsed_minutes}분${timeBar == null ? '(미판정)' : `/${timeBar}분`} → ${scoreOk && filesOk && timeOk ? 'PASS' : 'FAIL'}`,
       sub: j,
     };
   },
