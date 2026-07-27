@@ -319,6 +319,31 @@ function removeMember(state: ChatState, room: RoomName, socketId: string): { rem
   return { removed: true, becameEmpty: members.length === 0 };
 }
 
+/**
+ * RQ-18 / RQ-15: resume 시 room 멤버 기록의 죽은 socket.id를 새 socket.id로
+ * **제자리에서** 교체한다.
+ *
+ * 제자리 교체(인덱스 대입)여야 하는 이유: 참여자 목록은 join 순서를 그대로
+ * 표시하므로(RQ-15), 제거 후 push로 바꾸면 재접속한 사람이 목록 맨 뒤로
+ * 밀려 순서가 관찰 가능하게 달라진다.
+ *
+ * 죽은 id가 없으면(이미 정리됐거나 유예가 만료된 뒤) 중복만 피해 덧붙이고,
+ * 장부에 room 키 자체가 없으면 이 소켓 하나로 새로 만든다.
+ */
+function replaceMember(state: ChatState, room: RoomName, staleSocketId: string, socketId: string): void {
+  const members = state.members.get(room);
+  if (members === undefined) {
+    state.members.set(room, [socketId]);
+    return;
+  }
+  const staleIndex = members.indexOf(staleSocketId);
+  if (staleIndex !== -1) {
+    members[staleIndex] = socketId;
+  } else if (!members.includes(socketId)) {
+    members.push(socketId);
+  }
+}
+
 type ChatServer = SocketIOServer<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, SocketData>;
 type ChatSocket = Socket<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, SocketData>;
 
@@ -740,17 +765,7 @@ function handleResume(
   for (const room of session.rooms) {
     socket.join(room);
     if (room === GLOBAL_ROOM) continue;
-    const members = state.members.get(room);
-    if (members === undefined) {
-      state.members.set(room, [socket.id]);
-      continue;
-    }
-    const staleIndex = members.indexOf(previousSocketId);
-    if (staleIndex !== -1) {
-      members[staleIndex] = socket.id;
-    } else if (!members.includes(socket.id)) {
-      members.push(socket.id);
-    }
+    replaceMember(state, room, previousSocketId, socket.id);
   }
 
   const unread: Record<RoomName, number> = {};
