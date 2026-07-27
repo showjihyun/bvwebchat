@@ -30,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import _state as st  # noqa: E402
 
 GUARD_TIMEOUT_S = 900  # 전체 검증(vitest 포함)이 들어간다
+SESSION_MAX_LINES = 60  # session.json 분량 계약 (자문 — 초과해도 쓰기는 한다)
 
 
 def _out(*args: object) -> None:
@@ -487,6 +488,117 @@ def cmd_resume(root: Path, ctx: dict, args) -> int:
     return 0
 
 
+def _merge_list(existing, incoming, append: bool):
+    """append=True 면 중복을 빼고 뒤에 붙이고, False 면 통째로 갈아끼운다."""
+    incoming = [str(x) for x in (incoming or [])]
+    if not append:
+        return incoming
+    out = list(existing or [])
+    for item in incoming:
+        if item not in out:
+            out.append(item)
+    return out
+
+
+def cmd_session(root: Path, ctx: dict, args) -> int:
+    """session.json 의 유일한 쓰기 경로.
+
+    이 서브커맨드가 존재하는 이유: stop_state 훅이 "session.json 을 갱신하라"고
+    차단하는데, Write 도구는 settings.json 이 막고 Bash 리다이렉트는 게이트가
+    막는다. **순응할 길이 닫힌 게이트는 우회가 습관이 되고, 그 순간 장식이
+    된다**(계획서 §8-5). 차단을 유지하면서 길을 여는 게 옳은 해법이다.
+
+    불변식은 그대로다: .harness/state/ 의 writer 는 phase.py 하나다.
+    """
+    path = st.state_dir(root) / st.SESSION_FILE
+    data, status = st.read_json(path)
+    data = data or {"schema": 1}
+    if status == "corrupt":
+        _out(f"[경고] {path.name} 이 손상돼 있었다. 새로 쓴다 (이전 내용은 복구하지 않는다).")
+        data = {"schema": 1}
+
+    if args.from_json:
+        try:
+            raw = (sys.stdin.read() if args.from_json == "-"
+                   else (root / args.from_json).read_text(encoding="utf-8"))
+            incoming = json.loads(raw)
+        except (OSError, json.JSONDecodeError) as e:
+            _out(f"[거부] --from-json 을 읽지 못했다: {e}")
+            return 1
+        if not isinstance(incoming, dict):
+            _out("[거부] --from-json 은 최상위가 객체(dict)여야 한다.")
+            return 1
+        incoming.pop("updated", None)  # 갱신일은 호출자가 정하지 않는다
+        data.update(incoming)
+
+    if args.rq or args.title:
+        task = dict(data.get("task") or {})
+        if args.rq:
+            task["rq"] = args.rq
+        if args.title:
+            task["title"] = args.title
+        data["task"] = task
+    if args.goal:
+        data["goal"] = args.goal
+    if args.acceptance:
+        data["acceptance"] = _merge_list(data.get("acceptance"), args.acceptance, False)
+    if args.done:
+        # done 만 누적이다 — 이번 세션의 성과는 지난 세션의 성과를 지우지 않는다
+        data["done"] = _merge_list(data.get("done"), args.done, True)
+    if args.next:
+        data["next"] = _merge_list(data.get("next"), args.next, False)
+    if args.open:
+        data["open_questions"] = _merge_list(data.get("open_questions"), args.open, False)
+
+    # updated 와 branch 는 CLI 가 찍는다. 사람이 손으로 쓰는 타임스탬프는 반드시
+    # 거짓말을 한다 — 문서를 고치면서 날짜를 안 고치거나, 날짜만 고친다.
+    data["updated"] = st.iso_now()
+    if ctx["branch"]:
+        data["branch"] = ctx["branch"]
+
+    st.write_json_atomic(path, data)
+
+    n_lines = len(path.read_text(encoding="utf-8").splitlines())
+    _out(f"[세션 갱신] {path.relative_to(root).as_posix()} · updated={data['updated']}")
+    _out(f"  RQ    : {(data.get('task') or {}).get('rq') or '(미설정)'}")
+    _out(f"  goal  : {(data.get('goal') or '(미설정)')[:80]}")
+    for label, key in (("done", "done"), ("next", "next"), ("open", "open_questions")):
+        vals = data.get(key) or []
+        if vals:
+            _out(f"  {label:5s} : {len(vals)}건 · 최근 {str(vals[-1])[:70]}")
+    if n_lines > SESSION_MAX_LINES:
+        _out(f"  [예산 초과] {n_lines}줄 (계약 상한 {SESSION_MAX_LINES}). 길면 안 읽히고, 안 읽히는")
+        _out(f"  계약은 없는 계약이다. 끝난 항목을 done 에서 걷어내거나 요약해 줄여라.")
+        _out(f"  — 경고일 뿐 쓰기는 했다. 여기서 거부하면 순응할 길이 또 닫힌다.")
+    else:
+        _out(f"  분량  : {n_lines}줄 / 상한 {SESSION_MAX_LINES}")
+    missing = [f for f in ("task.rq", "goal", "acceptance")
+               if not (data.get("task", {}).get("rq") if f == "task.rq" else data.get(f))]
+    if missing:
+        _out(f"  [주의] session_declared 가드가 요구하는 필드가 비어 있다: {', '.join(missing)}")
+        _out(f"         이 상태로는 PLAN → RED 전이가 거부된다.")
+    return 0
+
+
+def cmd_decide(root: Path, ctx: dict, args) -> int:
+    """decisions.jsonl 의 유일한 쓰기 경로.
+
+    이 파일은 어느 단계의 write_allow 에도 없었다 — 즉 커밋 대상 내구 기록인데
+    쓸 수단이 없었다. 여기서 닫는다. 근거(--why)를 필수로 둔 이유는 하나다:
+    **무엇을 결정했는지는 코드가 보여주지만, 왜는 아무 데도 안 남는다.**
+    """
+    rec = {
+        "ts": st.iso_now(), "rq": ctx["rq"], "branch": ctx["branch"],
+        "head_sha": ctx["sha"], "phase": ctx["phase"],
+        "decision": args.decision, "rationale": args.why,
+    }
+    st.append_jsonl(st.state_dir(root) / st.DECISIONS_LOG, rec)
+    _out(f"[결정 기록] {st.DECISIONS_LOG} (단계 {ctx['phase']}, RQ {ctx['rq']})")
+    _out(f"  결정: {args.decision}")
+    _out(f"  근거: {args.why}")
+    return 0
+
+
 def main() -> int:
     for stream in (sys.stdout, sys.stderr):
         try:
@@ -504,6 +616,22 @@ def main() -> int:
     p_force = sub.add_parser("force", help="가드를 건너뛴 강제 전이 (사유 필수)")
     p_force.add_argument("phase")
     p_force.add_argument("--reason", required=True)
+
+    p_sess = sub.add_parser("session", help="session.json 갱신 (상태 계약 이행)")
+    p_sess.add_argument("--rq", help="task.rq")
+    p_sess.add_argument("--title", help="task.title")
+    p_sess.add_argument("--goal", help="왜 이 작업을 하는가 (무엇이 아니라)")
+    p_sess.add_argument("--acceptance", action="append", help="완료 조건 (반복 가능, 교체)")
+    p_sess.add_argument("--done", action="append", help="끝난 것 (반복 가능, 누적)")
+    p_sess.add_argument("--next", action="append", help="다음 할 것 (반복 가능, 교체)")
+    p_sess.add_argument("--open", action="append", help="열린 질문 (반복 가능, 교체)")
+    p_sess.add_argument("--from-json", metavar="PATH", dest="from_json",
+                        help="구조화 입력. '-' 이면 stdin. 최상위 키 단위 병합")
+
+    p_dec = sub.add_parser("decide", help="decisions.jsonl 에 결정+근거 append")
+    p_dec.add_argument("decision")
+    p_dec.add_argument("--why", required=True, help="근거 — 이게 없으면 기록할 가치가 없다")
+
     args = ap.parse_args()
 
     root = st.project_root()
@@ -520,7 +648,8 @@ def main() -> int:
               f"phase.json은 phase.py만 쓴다.", file=sys.stderr)
 
     return {"show": cmd_show, "why": cmd_why, "enter": cmd_enter,
-            "force": cmd_force, "resume": cmd_resume}[args.cmd](root, ctx, args)
+            "force": cmd_force, "resume": cmd_resume,
+            "session": cmd_session, "decide": cmd_decide}[args.cmd](root, ctx, args)
 
 
 if __name__ == "__main__":
