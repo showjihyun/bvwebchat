@@ -354,6 +354,9 @@ def cmd_show(root: Path, ctx: dict, args) -> int:
     _out(f"쓰기 금지 : {' '.join(pd.get('write_deny', [])) or '(명시 없음 — 허용 외 전부 default-deny)'}")
     _out(f"다음    : {' '.join(targets_from(matrix, ctx['phase']))}")
     _out(f"힌트    : {pd.get('exit_hint', '')}")
+    for prob in st.hook_wiring_problems(root):
+        _out(f"[배선 경고] settings.json → {prob}  ← 이 상태로는 해당 matcher 의 도구가 "
+             f"전부 막힌다(python 은 파일 부재에 exit 2 = 차단을 낸다)")
     return 0
 
 

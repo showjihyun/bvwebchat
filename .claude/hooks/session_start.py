@@ -67,6 +67,10 @@ def main() -> None:
 
     lines = [f"[하네스] RQ {rq} · 단계 {phase}({mode}) · {branch or '?'}@{(sha or '')[:8]}"
              + (f" · 상태 {sstatus} → IDLE 강등" if sstatus in ("corrupt", "tampered") else "")]
+    # 배선 파손은 헤더 바로 뒤에 넣는다 — 15줄 상한에서 잘려나가면 안 되는
+    # 유일한 항목이다. 이게 떠 있으면 다른 줄은 전부 무의미하다.
+    for prob in st.hook_wiring_problems(root):
+        lines.append(f"[🚨 배선 파손] settings.json → {prob} · 해당 matcher 의 도구가 전부 막힌다")
     lines.append(f"[왜] {clip(session.get('goal'), WHY_WIDTH) or '(미선언 — checkpoint-resume 스킬로 세션을 선언하라)'}")
 
     # 마지막 검증: 전이 로그가 곧 증거다 (사람의 기억이 아니라)

@@ -371,6 +371,32 @@ def is_warn_only(matrix: dict, phase: str) -> bool:
     return phase in ((matrix.get("enforce") or {}).get("warn_only") or [])
 
 
+def hook_wiring_problems(root: Path) -> list[str]:
+    """settings.json 이 참조하는 훅 스크립트가 실재하는지 본다.
+
+    이 검사가 존재하는 이유는 **종료 코드 충돌** 하나다. 파이썬은 스크립트
+    파일을 열지 못하면 exit 2 로 죽는데, 훅 프로토콜에서 exit 2 는 '도구
+    차단'이다. 따라서 settings.json 이 없는 파일을 가리키는 순간, 그 matcher 에
+    걸리는 모든 도구가 정책과 무관하게 막힌다. 훅 스크립트는 실행조차 되지
+    않으므로 **스스로는 절대 방어할 수 없다** — 밖에서 보는 눈이 필요하다.
+
+    실측(2026-07-27): 파일 부재 exit 2(차단) / 구문 오류·런타임 예외 exit 1
+    (비차단) / 인터프리터 부재 exit 127(비차단). 즉 위험한 건 '부재' 하나뿐이다.
+    """
+    data, status = read_json(root / ".claude/settings.json")
+    if status != "ok" or data is None:
+        return []
+    problems = []
+    for event, groups in ((data.get("hooks") or {})).items():
+        for group in groups if isinstance(groups, list) else []:
+            for hook in (group or {}).get("hooks") or []:
+                cmd = str((hook or {}).get("command") or "")
+                for token in cmd.replace('"', " ").replace("'", " ").split():
+                    if token.endswith((".py", ".mjs", ".js", ".sh")) and not (root / token).exists():
+                        problems.append(f"{event}: {token} 없음")
+    return problems
+
+
 def utc_stamp() -> str:
     """파일명 안전한 ISO 8601 basic (콜론 없음 — Windows 파일명 제약)."""
     import datetime

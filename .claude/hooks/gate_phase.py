@@ -269,4 +269,20 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    # 게이트 자신이 죽으면 **통과시킨다**. 판정 못 하는 게이트가 저장소 전체를
+    # 잠그면, 그 잠금을 푸는 데 필요한 도구까지 같이 잠긴다 — matcher 가 Bash 를
+    # 포섭한 뒤로는 세션 안에 복구 경로가 없다.
+    #
+    # 파이썬은 미처리 예외에 exit 1 을 내고 그것은 이미 비차단이지만, 명시적으로
+    # 0을 내는 편이 낫다: 의도가 코드에 적히고, 에이전트가 읽는 것이 트레이스백이
+    # 아니라 한 문장의 진단이 된다.
+    try:
+        main()
+    except SystemExit:
+        raise
+    except BaseException as exc:  # noqa: BLE001 — 여기서 좁히면 방어가 새어나간다
+        import traceback
+        warn(f"[phase-gate] 게이트 자신이 죽었다 ({type(exc).__name__}: {exc}) — "
+             f"판정하지 않고 통과시킨다(fail-OPEN). 이 훅을 고치기 전까지 단계 경계는 "
+             f"강제되지 않는다.\n" + traceback.format_exc(limit=3))
+        sys.exit(0)
