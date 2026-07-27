@@ -20,6 +20,7 @@ const ROOT = resolve(import.meta.dirname, '..');
 const MATRIX = join(ROOT, 'harness/policy/phase-matrix.json');
 const RISK = join(ROOT, 'harness/policy/tool-risk.json');
 const README = join(ROOT, 'harness/policy/README.md');
+const SETTINGS = join(ROOT, '.claude/settings.json');
 
 const problems = [];
 const notes = [];
@@ -435,6 +436,117 @@ function checkPatterns(m) {
   }
 }
 
+// ── P10 enforced_by 대조 ────────────────────────────────────────────────────
+/**
+ * tool-risk.json 의 enforced_by 는 **검증되지 않는 주장**이었다. P7 은 이 파일 내부의
+ * 일관성만 봤고, policy-lint 는 settings.json 을 한 번도 읽지 않았다.
+ *
+ * 2026-07-27 실제 사고: eval-b.mjs·resume-test.mjs 는 R2(경계 이탈)로 분류되고
+ * enforced_by "settings.json ask" 라고 선언돼 있었는데, settings.json 의 allow 에
+ * 넓은 패턴 Bash(node scripts/:*) 가 있어 그 분류를 통째로 삼켰다. 집행이 0이었고,
+ * 그래서 eval-b.mjs 가 사람 프롬프트 없이 실행돼 정션을 따라가 저장소 node_modules 를
+ * 파괴했다. 분류는 옳았고, 집행이 없었고, 그 사실을 아무 린트도 검사하지 않았다 —
+ * no_pending_spec(P8) 과 정확히 같은 형태이고 그때도 P1~P7 은 전부 초록이었다.
+ *
+ * 판정은 실제 우선순위(deny > ask > allow > 미지=unknown_prefix_policy)로 계산한다.
+ * 선언된 등급과 어긋나면: R2/R3 은 보안 구멍이므로 blocking, R0/R1 은 마찰이므로 advisory.
+ */
+function parseBashEntries(list) {
+  const out = [];
+  for (const e of list || []) {
+    const m = /^Bash\((.*)\)$/.exec(String(e));
+    if (!m) continue;
+    const body = m[1];
+    if (body.endsWith(":*")) out.push({ kind: "prefix", value: body.slice(0, -2) });
+    else out.push({ kind: "exact", value: body });
+  }
+  return out;
+}
+
+/** 이 등급 접두사로 시작하는 명령 전체를 이 엔트리가 덮는가. */
+function covers(entry, prefix) {
+  if (entry.kind === "exact") return entry.value === prefix;
+  return prefix.startsWith(entry.value);
+}
+
+function checkEnforcement(r) {
+  if (!existsSync(SETTINGS)) {
+    fail('P10', '.claude/settings.json 이 없다 — tool-risk.json 의 enforced_by 를 대조할 수 없다', 'settings.json 을 만들어라. 등급 분류는 집행되지 않으면 문서일 뿐이다.');
+    return;
+  }
+  let s;
+  try {
+    s = JSON.parse(readFileSync(SETTINGS, 'utf8'));
+  } catch (e) {
+    fail('P10', '.claude/settings.json 파싱 실패: ' + e.message, 'JSON 문법을 고쳐라. 이 파일이 깨지면 permissions 가 통째로 적용되지 않는다.');
+    return;
+  }
+  const perm = s.permissions || {};
+  const groups = {
+    deny: parseBashEntries(perm.deny),
+    ask: parseBashEntries(perm.ask),
+    allow: parseBashEntries(perm.allow),
+  };
+  const unknown = ((r.unknown_prefix_policy || {}).decision) || "ask";
+  const expected = { R0: "allow", R1: "allow", R2: "ask", R3: "deny" };
+  const why = {
+    R0: "관찰 전용이라 전 단계 허용이어야 한다",
+    R1: "gate_phase.py 가 단계×경로로 판정해야 하므로 도구 자체는 허용이어야 한다",
+    R2: "비가역·외부 노출이라 사람이 보는 앞에서 실행돼야 한다",
+    R3: "이력 파괴·비밀 노출·통제면 훼손이라 프롬프트 없이 거부돼야 한다",
+  };
+
+  const missing = new Map();
+  for (const [tier, prefixes] of Object.entries(r.bash_prefixes || {})) {
+    const want = expected[tier];
+    if (!want) continue;
+    for (const pre of prefixes) {
+      const hit = { deny: groups.deny.find((e) => covers(e, pre)), ask: groups.ask.find((e) => covers(e, pre)), allow: groups.allow.find((e) => covers(e, pre)) };
+      const effective = hit.deny ? "deny" : hit.ask ? "ask" : hit.allow ? "allow" : unknown;
+      if (effective === want) continue;
+
+      const shadow = hit.allow && (want === "ask" || want === "deny");
+      const detail =
+        effective === unknown && !hit.deny && !hit.ask && !hit.allow
+          ? "settings.json 의 어느 목록에도 없다 → 미지 접두사 정책(" + unknown + ")이 적용된다"
+          : "settings.json 이 " + effective + " 로 판정한다" + (shadow ? " — allow 패턴 Bash(" + hit.allow.value + (hit.allow.kind === "prefix" ? ":*" : "") + ") 가 이 접두사를 삼킨다" : "");
+
+      const how =
+        want === "deny"
+          ? "settings.json 의 deny 에 Bash(" + pre + ":*) 를 추가하라. R3 는 프롬프트 없이 거부돼야 한다."
+          : want === "ask"
+            ? "settings.json 의 ask 에 Bash(" + pre + ":*) 를 추가하고, 이 접두사를 삼키는 더 넓은 allow 패턴이 있으면 좁혀라. " +
+              "2026-07-27 에 정확히 이 형태로 eval-b.mjs 가 승인 없이 실행돼 node_modules 를 파괴했다 — enforced_by 를 보장으로 믿은 것이 그 사고의 전제였다."
+            : "settings.json 의 allow 에 Bash(" + pre + ":*) 를 추가하라. 관찰·로컬 변경까지 매번 물으면 프롬프트 피로가 쌓이고, " +
+              "그러면 사람이 내용을 안 보고 승인하기 시작한다 — 그 순간 ask 는 allow 와 같아진다.";
+
+      const msg = tier + " " + JSON.stringify(pre) + " 의 선언된 집행은 " + want + " 인데 " + detail + " (" + why[tier] + ")";
+      if (tier === "R2" || tier === "R3") fail("P10", msg, how);
+      else {
+        if (!missing.has(tier)) missing.set(tier, { list: [], how, effective });
+        missing.get(tier).list.push(pre);
+      }
+    }
+  }
+
+  for (const [tier, g] of missing) {
+    note(
+      "P10",
+      tier + " 접두사 " + g.list.length + "개가 settings.json 에 없어 " + g.effective + " 로 판정된다: " +
+        g.list.join(", ") +
+        " — 관찰·로컬 변경까지 매번 물으면 프롬프트 피로가 쌓이고, 그러면 사람이 내용을 안 보고 승인하기 시작한다. " +
+        "그 순간 ask 는 allow 와 같아진다 (advisory)"
+    );
+  }
+
+  const lim = (r._limitation || "").trim();
+  note(
+    "P10",
+    "한계: 이 검사는 **도구 표면 안에서의 일관성**만 본다. 스크립트가 spawnSync 로 같은 명령을 부르면 등급을 조회하지 않으므로 P10 이 통과해도 그 층의 구멍은 남는다" +
+      (lim ? " (tool-risk.json _limitation 참조)" : "")
+  );
+}
+
 // ── P9 생성물 동기화 ────────────────────────────────────────────────────────
 /**
  * README.md는 생성물이고 "손으로 고치지 않는다"고 못 박혀 있다. 그래서 아무도 다시 안 본다 —
@@ -603,6 +715,7 @@ if (matrix) {
 if (matrix) checkPatterns(matrix);
 if (risk) checkRisk(risk);
 if (matrix && risk && !args.includes('--print')) checkGenerated(matrix, risk);
+if (risk) checkEnforcement(risk);
 
 console.log('정책 린트 — harness/policy/');
 console.log('');
@@ -627,6 +740,7 @@ const checks = [
   ['P7', 'tool-risk 무결성'],
   ['P8', '매칭 불가능한 패턴 없음'],
   ['P9', '생성물(README) 동기화'],
+  ['P10', 'enforced_by 대조 (settings.json 실집행)'],
 ];
 for (const [id, label] of checks) {
   const n = problems.filter((p) => p.id === id).length;
