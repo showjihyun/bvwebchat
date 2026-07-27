@@ -13,6 +13,7 @@
  * (재생성마다 diff가 나면 아무도 재생성하지 않는다).
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { resolve, join } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '..');
@@ -434,6 +435,33 @@ function checkPatterns(m) {
   }
 }
 
+// ── P9 생성물 동기화 ────────────────────────────────────────────────────────
+/**
+ * README.md는 생성물이고 "손으로 고치지 않는다"고 못 박혀 있다. 그래서 아무도 다시 안 본다 —
+ * 정책 JSON만 커밋하고 재생성을 빠뜨리면 **표와 정책이 조용히 어긋난 채로 남는다.**
+ * 표를 생성물로 만든 이유가 어긋날 자리를 없애는 것이었는데, 재생성을 강제하지 않으면
+ * 그 자리가 "재생성을 잊는 것"으로 옮겨갈 뿐이다.
+ *
+ * 기계적으로 판정 가능하고(렌더 결과와 파일 비교) 고치는 법이 명령 하나이므로 blocking이다.
+ * --print 모드에서는 스스로 재생성하므로 이 검사를 돌리지 않는다.
+ */
+function checkGenerated(m, r) {
+  const rendered = renderReadme(m, r);
+  if (!existsSync(README)) {
+    fail('P9', 'harness/policy/README.md가 없다 — 정책의 사람용 표가 생성되지 않았다', 'node scripts/policy-lint.mjs --print 로 생성하고 커밋하라.');
+    return;
+  }
+  if (readFileSync(README, 'utf8') !== rendered) {
+    fail(
+      'P9',
+      'harness/policy/README.md가 정책 JSON과 어긋났다 — 생성물이 낡았다',
+      'node scripts/policy-lint.mjs --print 로 재생성하고 **같은 커밋에 포함하라**. ' +
+        'README는 손으로 고치는 파일이 아니므로 어긋난 채로 두면 아무도 다시 안 본다 — ' +
+        '표를 생성물로 만든 목적이 사라진다.'
+    );
+  }
+}
+
 // ── README 생성 ─────────────────────────────────────────────────────────────
 function cell(v) {
   if (v === undefined || v === null) return '—';
@@ -574,6 +602,7 @@ if (matrix) {
 }
 if (matrix) checkPatterns(matrix);
 if (risk) checkRisk(risk);
+if (matrix && risk && !args.includes('--print')) checkGenerated(matrix, risk);
 
 console.log('정책 린트 — harness/policy/');
 console.log('');
@@ -597,10 +626,20 @@ const checks = [
   ['P6', 'deny가 자기 allow를 가리지 않음'],
   ['P7', 'tool-risk 무결성'],
   ['P8', '매칭 불가능한 패턴 없음'],
+  ['P9', '생성물(README) 동기화'],
 ];
 for (const [id, label] of checks) {
   const n = problems.filter((p) => p.id === id).length;
-  console.log(`  ${n === 0 ? 'PASS' : 'FAIL'}  ${id}  ${label}${n ? ` — ${n}건` : ''}`);
+  // --print 는 스스로 재생성하므로 P9 를 돌리지 않는다. 안 돈 검사를 PASS 로 찍으면
+  // '검사했고 통과했다'로 읽힌다 — 안 한 것과 통과한 것은 다르다.
+  const skipped = id === 'P9' && args.includes('--print');
+  const mark = skipped ? 'SKIP' : n === 0 ? 'PASS' : 'FAIL';
+  const suffix = skipped
+    ? ' (--print 가 재생성한다)'
+    : n
+      ? ` — ${n}건`
+      : '';
+  console.log(`  ${mark}  ${id}  ${label}${suffix}`);
 }
 
 if (notes.length) {
@@ -634,6 +673,16 @@ if (args.includes('--print')) {
       ? '  harness/policy/README.md — 변경 없음 (정책과 표가 일치한다)'
       : `  harness/policy/README.md ${prev === null ? '생성' : '갱신'} — ${out.split('\n').length}줄`
   );
+
+  // 디스크가 최신인 것과 "커밋해야 하는가"는 다른 질문이다. 재생성한 뒤에는 후자가 남는다.
+  const tracked = spawnSync(
+    'git',
+    ['diff', '--quiet', 'HEAD', '--', 'harness/policy/README.md'],
+    { cwd: ROOT, encoding: 'utf8' }
+  );
+  if (!tracked.error && tracked.status === 1) {
+    console.log('  ⚠ 커밋되지 않았다 — 정책 JSON과 같은 커밋에 README.md를 포함하라.');
+  }
 }
 
 console.log('');
