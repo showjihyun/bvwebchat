@@ -59,7 +59,9 @@
       "Bash(mkdir:*)",
       "Bash(touch:*)",
       "Bash(cp:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Edit(./evals/golden/**)",
+      "Write(./evals/golden/**)"
     ],
     "ask": [
       "Bash(git push:*)",
@@ -73,8 +75,6 @@
       "Bash(node scripts/eval-b.mjs:*)",
       "Bash(node scripts/resume-test.mjs:*)",
       "Bash(python harness/phase.py force:*)",
-      "Edit(./evals/golden/**)",
-      "Write(./evals/golden/**)",
       "WebFetch",
       "WebSearch"
     ],

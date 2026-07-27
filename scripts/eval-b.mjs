@@ -136,9 +136,16 @@ const INPUTS_HASH = inputsHash();
 
 // ── 골든 케이스 로딩 ────────────────────────────────────────────────────────
 /**
- * `evals/golden/**` 는 사람 승인 게이트(permissions.ask) 뒤에 있다 — **정답은 사람이 쓴다.**
- * 러너는 이 파일을 읽기만 하고 절대 고치지 않는다. 스키마가 실행 불가하면
+ * **러너는 이 파일을 읽기만 하고 절대 고치지 않는다.** 스키마가 실행 불가하면
  * 그 사실을 보고하지 크래시하지 않는다.
+ *
+ * 2026-07-27까지 `evals/golden/**` 는 permissions.ask 뒤에 있었고 이 주석은
+ * 그것을 "정답은 사람이 쓴다"의 강제 수단으로 인용했다. 사용자 판단으로 도구
+ * 쓰기는 allow 가 됐다(매 편집마다 묻는 마찰이 승인을 형식화한다 — 프롬프트
+ * 피로가 쌓이면 ask 는 allow 와 같아진다). 셸 리다이렉트 차단은 유지된다.
+ * **따라서 "평가받는 것이 자기 정답을 고치지 않는다"를 지키는 것은 이제
+ * 권한이 아니라 이 규칙 자체다** — 러너가 골든을 쓰지 않는 것, 그리고
+ * reviewer 가 diff 에서 골든 변경을 본다는 것.
  */
 function loadCases() {
   if (!existsSync(GOLDEN)) return { cases: [], problem: `골든 파일이 없다: ${relative(ROOT, GOLDEN).replace(/\\/g, '/')}` };
@@ -799,7 +806,7 @@ function runCase(c, prev) {
       why: exec.why,
       auto: [],
       judge: [],
-      hint: '골든 스키마에 auto rubric 블록을 추가해야 채점된다. evals/golden/** 는 사람 승인 게이트 뒤에 있으므로 러너가 고치지 않는다 — 제안은 _workspace/ 에 둔다.',
+      hint: '골든 스키마에 auto rubric 블록을 추가해야 채점된다. 러너는 골든을 읽기만 하고 고치지 않는다(평가받는 것이 자기 정답을 쓰지 않는다) — 제안은 _workspace/ 에 둔다.',
     };
   }
   const setup = setupOf(c);
@@ -851,7 +858,7 @@ function runCase(c, prev) {
         why: `전제가 깨졌다 — ${pp}`,
         auto: [],
         judge: [],
-        hint: setup.precondition?.why || '케이스의 전제가 더 이상 성립하지 않는다. 골든 케이스를 갱신하라 (evals/golden/** 는 사람 승인 게이트 뒤에 있다).',
+        hint: setup.precondition?.why || '케이스의 전제가 더 이상 성립하지 않는다. 골든 케이스를 갱신하라 — 러너는 골든을 고치지 않으므로 사람이 판단해야 한다.',
       };
     }
 
@@ -1014,7 +1021,7 @@ function verifyArtifact() {
     for (const j of c.judge || []) if ((j.consecutive_failures || 0) >= 2) judgeFail.push(`${c.id} · ${j.text} · ${j.reason}`);
     if (c.status === 'not_runnable') notRunnable.push(`${c.id}: ${c.why}`);
   }
-  if (autoFail.length) problems.push(`auto rubric 실패 ${autoFail.length}건:\n     ${autoFail.join('\n     ')}\n     고치는 법: 하네스를 고쳐라. 골든을 고치는 것이 아니다 — 골든이 틀렸다고 판단되면 사람 승인 게이트를 거친다.`);
+  if (autoFail.length) problems.push(`auto rubric 실패 ${autoFail.length}건:\n     ${autoFail.join('\n     ')}\n     고치는 법: 하네스를 고쳐라. 골든을 손대는 것이 아니다 — 골든이 틀렸다고 판단되면 근거를 note 에 남기고 고친다. 실패를 지우려고 고치는 것과 구별되는 것은 그 근거뿐이다.`);
   if (judgeFail.length) problems.push(`추론 rubric 2회 연속 실패 ${judgeFail.length}건:\n     ${judgeFail.join('\n     ')}\n     고치는 법: 2회 연속은 판정 분산이 아니라 실제 회귀다. 트랜스크립트를 읽고 원인을 고쳐라.`);
 
   say(`아티팩트: evals/results/track-b/${chosen.file}${exact ? ' (HEAD 정확 일치)' : ' (최신)'}`);
@@ -1163,7 +1170,7 @@ if (autoFailures.length || judgeBlocking.length) {
   say('');
   say(`트랙 B 실패 — auto rubric ${autoFailures.length}건${judgeBlocking.length ? ` · 추론 2연속 ${judgeBlocking.length}건` : ''}.`);
   say('고치는 법: 위 각 항목의 detail 이 무엇을 관측했는지 말한다. 하네스를 고쳐라 —');
-  say('  골든을 느슨하게 고치는 것은 해법이 아니다(evals/golden/** 는 사람 승인 게이트 뒤에 있다).');
+  say('  골든을 느슨하게 고치는 것은 해법이 아니다 — 실패를 지우는 것이지 고치는 것이 아니다.');
   emit({ script: 'eval-b', ...artifact, status: 'fail' }, EXIT_FAIL);
 }
 say('');

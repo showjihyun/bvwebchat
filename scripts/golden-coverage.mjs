@@ -513,7 +513,8 @@ if (uncoveredRqs.length) {
       console.log('     고치는 법 3가지:');
       console.log('      1) (권장) GA 케이스를 추가한다 → evals/golden/track-a-product.jsonl 에 한 줄:');
       console.log(`         {"id":"GA-XX","spec":"${r.rq}","given":"...","when":"...","then":"...","verify":"tests/integration/...","status":"todo"}`);
-      console.log('         (사람 승인 게이트를 거친다 — 골든 정답은 사람이 쓴다)');
+      console.log('         (Write·Edit 도구로 고친다. 셸 리다이렉트는 차단된다 — 편집을');
+      console.log('          단계 게이트와 트레이스가 보는 표면으로 끌어오기 위해서다)');
       console.log('      2) 배포 아티팩트에서 검증되는 종류라면 → scripts/smoke.sh 에 추가하고');
       console.log(`         harness/rq-coverage.json 의 rq.${r.rq} 를 kind:"smoke" 로 매핑한다`);
       console.log('      3) ADR 의 구조적 제약으로 충족된다면 → harness/rq-coverage.json 의');
