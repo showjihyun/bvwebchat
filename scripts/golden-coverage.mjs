@@ -107,6 +107,9 @@ readFileSync(GOLDEN, 'utf8')
     }
   });
 
+// 골든이 커버하는 RQ 집합 — 분류의 우선 원천이자 중복 판정의 기준이다.
+const goldenSpecs = new Set(cases.map((c) => String(c.spec || '').toUpperCase()).filter(Boolean));
+
 // ── 매핑 로드: GA 케이스가 없지만 다른 경로로 검증되는 RQ ───────────────────
 // 파일이 없어도 죽지 않는다. 다만 그 RQ들이 미커버로 잡히므로 침묵하지도 않는다.
 const integrity = []; // 파일 수준 무결성 문제 — 특정 RQ의 상태가 아니라 매핑 파일 자체의 문제
@@ -136,6 +139,24 @@ if (!existsSync(MAPPING)) {
       integrity.push({
         what: `harness/rq-coverage.json이 ${id}를 매핑하는데 specs/requirements.md에 그런 RQ가 없다`,
         how: `RQ ID 오타이거나 삭제된 요구사항이다. 매핑에서 빼거나 ID를 고쳐라 (요구사항: ${reqIds.join(', ')}).`,
+      });
+      continue;
+    }
+    // 중복 원천: 골든 케이스가 있는 RQ 를 매핑에도 적으면 거부한다.
+    // kind:"golden" 을 적는 경우는 아래에서 잡지만, 진짜 위험한 건 GA 가 있는 RQ 를
+    // constraint/smoke 로 적는 것이다 — 분류는 골든이 이기므로 매핑이 조용히 죽고,
+    // 나중에 그 GA 가 사라지면 RQ 가 미커버로 드러나는 대신 "제약 충족"으로 조용히
+    // 내려앉는다. 회귀를 잡아야 할 그물이 회귀를 덮는 뚜껑이 된다.
+    if (goldenSpecs.has(id)) {
+      integrity.push({
+        what:
+          'harness/rq-coverage.json이 ' + id + '를 매핑하는데 이 RQ는 이미 GA 케이스로 커버된다 (' +
+          cases.filter((c) => String(c.spec || '').toUpperCase() === id).map((c) => c.id).join(' ') +
+          ') — 중복 원천이다',
+        how:
+          '매핑에서 이 항목을 지워라. golden 분류는 evals/golden의 spec 필드에서 유도되므로 여기 적을 필요가 없고, ' +
+          '적어 두면 지금은 골든이 이겨서 죽은 줄로 남았다가 그 GA가 삭제되는 순간 되살아나 RQ를 "제약 충족"으로 통과시킨다. ' +
+          '미커버로 드러나야 할 회귀가 이 줄 하나에 가려진다.',
       });
       continue;
     }
