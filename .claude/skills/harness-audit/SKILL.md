@@ -108,6 +108,8 @@ Write/Edit이 죽었다. 정책 거부가 아니라 훅 파손이었고, 둘은 
 | `doc-freshness` C2가 대량으로 빨감 | `--pr` 범위로 좁혀 이 변경이 만든 것만 책임진다. 저장소 전체 낡음을 게이트로 걸면 게이트가 그날로 무시된다 |
 | 발견이 0건 | 그것도 보고한다. 제안 없이 종료해도 된다 — 없는 문제를 만들지 않는다 |
 
-> **미검증 (2026-07-27)**: `scripts/hooks-selftest.mjs`·`scripts/eval-b.mjs`는
-> 아직 저장소에 없다. 위 절차는 계약이며, 스크립트가 생기기 전까지 해당 행은
-> ⬜로 보고한다.
+> **배선 상태 (2026-07-27 확인)**: 1~3번 스크립트는 실재한다
+> (`doc-freshness.mjs` · `policy-lint.mjs` · `hooks-selftest.mjs`). 4번
+> `scripts/eval-b.mjs`는 아직 없다 — 그 행은 ⬜로 보고하고, 골든
+> `evals/golden/track-b-harness.jsonl`의 실행 가능 스키마만 확인한다.
+> 어느 것도 CI(`.github/workflows/harness.yml`)에는 아직 배선되지 않았다.

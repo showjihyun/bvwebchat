@@ -61,7 +61,7 @@ Sensor로 두는 것은 낭비이고, 반대로 추론이 필요한 판단을 �
 | 트래젝토리 로그 (schema 2) | Comp | Stop · SubagentStop | `log_trajectory.py` — `agent`·`phase`·`rq`·`branch`·`tokens`·`errors[]`·`blocked[]`·`file_edit_counts` | ✅ |
 | 도구 실패 로그 | Comp | PostToolUse | `post_observe.py` → `.harness/logs/tools.jsonl` (실패·차단만 기록 — 성공은 질문에 답하지 않으면서 파일만 키운다) | ✅ |
 | 상태 갱신 강제 | Comp | Stop | `stop_state.py` — R1 쓰기가 있었는데 `session.json` 미갱신이면 세션당 **1회** 차단 | ✅ |
-| 게이트 차단 집계 (M8) | Comp | 주간 | `metrics.mjs` (미구현) ← `blocked[]` | ⬜ 스크립트 미구현 |
+| 게이트 차단 집계 (M8) | Comp | 주간 | `metrics.mjs` ← `tools.jsonl`의 `gate_block`(정본) × `trajectory.jsonl`의 `blocked[]`(교차검증) | 🔄 스크립트 ✅ / 주간 실행은 수동 |
 
 ### S2 — 자동 테스트
 
@@ -86,7 +86,7 @@ ADR-0005 결정5의 예산은 5초이고, 초과 시 실패가 아니라 경고�
 | 골든 정답 수정 승인 게이트 | Comp | `evals/golden/**` 쓰기 | permissions `ask` | ✅ |
 | 독립 평가 에이전트 (evaluator) | Inf | 각 RQ 구현 직후 | `tdd-workflow` Phase 3 → `evaluator_pass` 가드 | ✅ |
 | PR 리뷰 게이트 (reviewer) | Inf | 머지 전 | `review-gate` 스킬 → `reviewer_approve` 가드 | ✅ |
-| 트랙 B 하네스 회귀 평가 | Comp(auto) + Inf(judge) | 하네스 변경 시 · 주간 | `eval-b.mjs` → `evals/results/track-b/<sha>.json` → `track_b_passing` 가드 | ⬜ 스크립트 미구현 (골든 스키마는 `track-b-harness.jsonl` 참조) |
+| 트랙 B 하네스 회귀 평가 | Comp(auto) + Inf(judge) | 하네스 변경 시 · 주간 | `eval-b.mjs` → `evals/results/track-b/<sha>.json` → `track_b_passing` 가드 | 🔄 골든 7케이스 실행 가능 스키마 ✅ (auto 13 · judge 9) / 러너 제작 중 |
 
 이 계열의 상한은 `evaluator` 하나에 걸려 있다. 추론 센서를 결정론으로 위장하지 않는다.
 
@@ -96,7 +96,8 @@ ADR-0005 결정5의 예산은 5초이고, 초과 시 실패가 아니라 경고�
 |---|---|---|---|---|
 | 배포 아티팩트 빌드 + 골든 스모크 | Comp | main 머지 → 배포 | `deploy.yml` → Docker 빌드 → `smoke.sh`(health + GA-01 + GA-04) | ✅ (2026-07-21 기준 최근 5회 연속 성공 — `gh run list --workflow=deploy.yml`) |
 | flake 시그니처 수집 | Comp | 리팩터 전후 · 의심 시 | `check.mjs --repeat N` — `assert`/`collect`/`crash` 3모집단 분류 | ✅ 수동 호출 |
-| git 이력 재유도 (단계 순서 대조) | Comp | CI | `phase-audit.mjs` (미구현) — Bash 우회의 **탐지** 경로 | ⬜ 스크립트 미구현 |
+| git 이력 재유도 (단계 순서 대조) | Comp | CI | `phase-audit.mjs [--base <ref>] [--all] [--strict]` — Bash 우회의 **탐지** 경로 (예방이 아니다) | 🔄 스크립트 ✅ / CI 미배선 |
+| 재개 시험 (L3 졸업 시험 · GB-06) | Comp | 상태 계약 변경 시 | `resume-test.mjs --cold` — worktree 격리 + `claude -p` 5문항 채점 | ⬜ 제작 중 |
 
 배포 후 스모크의 🟡는 해제됐다. RQ-05/RQ-17이 종결됐고 `deploy.yml`·`smoke.sh`가
 실제로 초록이다. 컨테이너는 S4의 **유일한 실환경 기질**이다 — `vitest`는 Vite로,
@@ -114,7 +115,8 @@ flake 판정 기준은 횟수가 아니다. 같은 코드가 동시 실행 에�
 |---|---|---|---|---|
 | 문서 신선도 C1~C6 | Comp | SessionStart(`--digest`) · CI(`--pr`, blocking) · 감사(`--full`) | `doc-freshness.mjs` | 🔄 스크립트 ✅ / 3개 배선 중 SessionStart는 mtime 자문으로 대체, CI 미배선 |
 | 정책 정합성 P1~P7 | Comp | 하네스 변경 시 | `policy-lint.mjs` (`--print`로 `policy/README.md` 생성) | 🔄 스크립트 ✅ / CI 미배선 |
-| 훅 자기 시험 | Comp | 하네스 변경 시 · CI | `hooks-selftest.mjs` — `settings.json`의 커맨드 문자열 그대로 합성 페이로드를 먹여 allow/deny 단언 | ⬜ 미구현 |
+| 훅 자기 시험 | Comp | 하네스 변경 시 · CI | `hooks-selftest.mjs [--audit]` — `settings.json`의 커맨드 문자열 그대로 합성 페이로드를 먹여 allow/deny 단언 + 참조 훅 파일의 실재 검사 | 🔄 스크립트 ✅ / CI 미배선 |
+| 지표 실측 M1~M8 | Comp | 주간 | `metrics.mjs report --since 7d` → `harness/reports/<ISO주차>.md` | ✅ (첫 실측 `2026-W31.md`) |
 | changelog 동행 | Comp | `HARNESS→REVIEW` 전이 | `changelog_updated` 가드 | ✅ |
 
 **테스트 없는 게이트는 연극이다.** 훅이 조용히 죽어 항상 allow를 반환하는 상태와

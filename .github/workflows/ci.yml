@@ -1,5 +1,7 @@
-# PR 게이트 — 스택 확정(ADR-0001) 후 TODO를 채우면 활성화된다.
+# PR 게이트 — 활성. ADR-0001(스택 확정) 이후 실명령으로 채워졌다(2026-07-17).
 # 원칙: 머지 게이트는 결정론적 센서(lint·test)만. 느린/추론적 검사는 게이트 밖.
+# 추론적 검사(reviewer·evaluator)는 로컬 스킬이 맡고, 브랜치 보호가 이 잡을
+# 필수 status check(`gate`)로 요구한다.
 name: ci
 on:
   pull_request:
