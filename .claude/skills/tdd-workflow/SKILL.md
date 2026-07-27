@@ -52,7 +52,7 @@ Agent 도구 호출 시 `model` 파라미터를 명시한다 (에이전트 front
    - `_workspace/{RQ-ID}/` 없음 → 초기 실행 (Phase 1부터)
    - 존재 + 부분 수정 요청 → 부분 재실행 (해당 Phase의 에이전트만 재호출,
      기존 산출물을 입력으로 전달)
-   - 존재 + 새로 시작 요청 → 기존 폴더를 `_workspace_prev/`로 이동 후 초기 실행
+   - 존재 + 새로 시작 요청 → 기존 폴더를 `_workspace_prev/{RQ-ID}/`로 이동 후 초기 실행
 4. `python harness/phase.py enter PLAN`
 
 ## Phase 1: Red — test-writer (별도 세션, sonnet)

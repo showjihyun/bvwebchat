@@ -109,7 +109,12 @@ Write/Edit이 죽었다. 정책 거부가 아니라 훅 파손이었고, 둘은 
 | 발견이 0건 | 그것도 보고한다. 제안 없이 종료해도 된다 — 없는 문제를 만들지 않는다 |
 
 > **배선 상태 (2026-07-27 확인)**: 1~3번 스크립트는 실재한다
-> (`doc-freshness.mjs` · `policy-lint.mjs` · `hooks-selftest.mjs`). 4번
-> `scripts/eval-b.mjs`는 아직 없다 — 그 행은 ⬜로 보고하고, 골든
+> (`doc-freshness.mjs` · `policy-lint.mjs` · `hooks-selftest.mjs`).
+> 4번 러너는 아직 없다 — 그 행은 ⬜로 보고하고,
 > `evals/golden/track-b-harness.jsonl`의 실행 가능 스키마만 확인한다.
-> 어느 것도 CI(`.github/workflows/harness.yml`)에는 아직 배선되지 않았다.
+> 어느 것도 CI 워크플로에는 아직 배선되지 않았다:
+>
+> ```
+> scripts/eval-b.mjs             (부재)
+> .github/workflows/harness.yml  (부재 — W4 범위)
+> ```
