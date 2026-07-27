@@ -301,6 +301,107 @@ function checkRisk(r) {
   }
 }
 
+
+// ── P8 매칭 불가능한 패턴 ────────────────────────────────────────────────────
+/**
+ * 문법도 배선도 완벽한데 **의미만 죽은** 가드를 잡는다.
+ *
+ * 실제 사례 (2026-07-27, W2a 발견): no_pending_spec의 패턴이
+ *   "^- \\*\\*RQ-[0-9]+\\*\\* .*\\ud83d\\udfe1"
+ * 였다. JSON의 \\u는 리터럴 '\u' 두 글자를 낳고, 파이썬 re는 그것을 **짝 없는
+ * 서로게이트 2개**로 읽는다. 그런데 파이썬 문자열에서 🟡는 단일 코드포인트 U+1F7E1이라
+ * 서로게이트 쌍으로 쪼개지지 않는다 → **어떤 입력에도 매칭되지 않는다.**
+ * 가드는 늘 0건을 돌려주고 expect:0과 일치해 **항상 통과**했다.
+ * SPEC→PLAN과 PLAN→RED 양쪽에서 스펙 동결이 전혀 강제되지 않고 있었다.
+ * gate_spec_freeze.py를 "영구 no-op"이라고 지우고 기능을 이 가드로 흡수했는데,
+ * 그 가드가 다른 이유로 똑같이 no-op였다.
+ *
+ * **반드시 정적 검사여야 한다.** JS 문자열은 UTF-16이라 /\ud83d\udfe1/는 🟡와 실제로
+ * 매칭된다 — 정규식을 JS에서 돌려 확인하면 통과하는데 파이썬 가드는 여전히 죽어 있다.
+ * 검사가 검사 대상의 언어를 잘못 고르면 검사 자체가 위양성 통과를 만든다.
+ * P1~P7이 전부 PASS인 상태에서 이 결함이 살아 있었다는 것이 이 검사의 존재 이유다.
+ */
+const SURROGATE_ESCAPE = /\\u[dD][89a-fA-F][0-9a-fA-F]{2}|\\U0000[dD][89a-fA-F][0-9a-fA-F]{2}/;
+
+/** 문자열 안의 짝 없는 서로게이트 코드 유닛 위치. 쌍을 이룬 것은 정상이므로 건너뛴다. */
+function unpairedSurrogates(str) {
+  const out = [];
+  for (let i = 0; i < str.length; i++) {
+    const c = str.charCodeAt(i);
+    if (c >= 0xd800 && c <= 0xdbff) {
+      const next = str.charCodeAt(i + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) i++;
+      else out.push(i);
+    } else if (c >= 0xdc00 && c <= 0xdfff) {
+      out.push(i);
+    }
+  }
+  return out;
+}
+
+function checkPatterns(m) {
+  for (const [name, g] of Object.entries(m.guards || {})) {
+    const pat = g.pattern;
+    if (typeof pat !== 'string' || !pat) continue;
+
+    const esc = SURROGATE_ESCAPE.exec(pat);
+    if (esc) {
+      fail(
+        'P8',
+        `guards.${name}의 패턴에 서로게이트 이스케이프 '${esc[0]}'가 있다 — 파이썬 re에서 이 패턴은 어떤 입력에도 매칭되지 않는다`,
+        `이스케이프를 지우고 **문자를 그대로** 써라 (예: \\ud83d\\udfe1 → 🟡). 파이썬 문자열의 이모지는 단일 코드포인트라 ` +
+          `서로게이트 쌍으로 쪼개지지 않는다. 지금 이 가드는 늘 0건을 돌려주고 expect와 일치해 **항상 통과**한다 — ` +
+          `즉 게이트가 꺼져 있는데 초록으로 보인다. JS에서 같은 정규식을 돌리면 매칭되므로 실행으로는 확인되지 않는다.`
+      );
+    }
+
+    const lone = unpairedSurrogates(pat);
+    if (lone.length) {
+      fail(
+        'P8',
+        `guards.${name}의 패턴에 짝 없는 서로게이트 문자가 ${lone.length}개 있다 (위치 ${lone.join(', ')})`,
+        `패턴을 UTF-8로 다시 저장하고 해당 문자를 올바른 코드포인트로 써라. 짝 없는 서로게이트는 파이썬과 JS가 다르게 해석해 ` +
+          `양쪽에서 다른 판정이 나온다 — 같은 정책 파일이 언어마다 다르게 집행되는 상태다.`
+      );
+    }
+
+    // ── 부가 신호 (권위 없음): "0건이라 통과"와 "매칭 능력이 없어 통과"를 구별한다
+    if (g.expect !== 0 || !g.file || g.file.includes('${')) continue;
+    const abs = join(ROOT, g.file);
+    if (!existsSync(abs)) {
+      note('P8', `guards.${name}의 대상 파일 ${g.file}이 없다 — 판정할 대상 자체가 없다 (advisory)`);
+      continue;
+    }
+    let re;
+    try {
+      re = new RegExp(pat);
+    } catch {
+      note('P8', `guards.${name}의 패턴을 JS로 컴파일할 수 없다 (파이썬 전용 문법일 수 있다) — 정적 검사만 적용했다 (advisory)`);
+      continue;
+    }
+    const lines = readFileSync(abs, 'utf8').split(/\r?\n/);
+    if (lines.some((l) => re.test(l))) continue; // 매칭이 있으면 살아 있는 패턴이다
+
+    // 매칭 0건 — 위반이 없어서인가, 노릴 대상이 아예 없어서인가
+    const head = pat.split('.*')[0];
+    let relaxed = null;
+    if (head && head !== pat) {
+      try {
+        const rre = new RegExp(head);
+        relaxed = lines.filter((l) => rre.test(l)).length;
+      } catch {
+        relaxed = null;
+      }
+    }
+    if (relaxed === 0) {
+      note(
+        'P8',
+        `guards.${name}: 패턴이 0건인데 완화 패턴('${head}')도 0건이다 — '위반이 없다'인지 '검사 대상이 없다'인지 구별되지 않는다 (advisory)`
+      );
+    }
+  }
+}
+
 // ── README 생성 ─────────────────────────────────────────────────────────────
 function cell(v) {
   if (v === undefined || v === null) return '—';
@@ -439,6 +540,7 @@ if (matrix) {
   checkGuards(matrix);
   checkShadowing(matrix);
 }
+if (matrix) checkPatterns(matrix);
 if (risk) checkRisk(risk);
 
 console.log('정책 린트 — harness/policy/');
@@ -462,6 +564,7 @@ const checks = [
   ['P5', '미정의 가드 참조 없음'],
   ['P6', 'deny가 자기 allow를 가리지 않음'],
   ['P7', 'tool-risk 무결성'],
+  ['P8', '매칭 불가능한 패턴 없음'],
 ];
 for (const [id, label] of checks) {
   const n = problems.filter((p) => p.id === id).length;
