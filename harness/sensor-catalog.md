@@ -134,7 +134,7 @@ ADR-0005 결정5의 예산은 5초이고, 초과 시 실패가 아니라 경고�
 | 배포 아티팩트 빌드 + 골든 스모크 | Comp | main 머지 → 배포 | `deploy.yml` → Docker 빌드 → `smoke.sh`(health + GA-01 + GA-04) | ✅ (2026-07-21 기준 최근 5회 연속 성공 — `gh run list --workflow=deploy.yml`) |
 | flake 시그니처 수집 | Comp | 리팩터 전후 · 의심 시 | `check.mjs --repeat N` — `assert`/`collect`/`crash` 3모집단 분류 | ✅ 수동 호출 |
 | git 이력 재유도 (단계 순서 대조) | Comp | CI | `phase-audit.mjs [--base <ref>] [--all] [--strict]` — Bash 우회의 **탐지** 경로(예방이 아니다). 인자 없으면 `origin/main...HEAD` 범위, 저장소 전체는 `--all`. **기록과의 모순만** 차단하고 이력 자체의 이상은 advisory(`--strict`로 승격) | 🔄 스크립트 ✅ / CI 미배선 |
-| 재개 시험 (L3 졸업 시험 · GB-06) | Comp | 상태 계약 변경 시 | `resume-test.mjs --cold` — worktree 격리 + `claude -p` 5문항 채점 (정답지 = 체크포인트 파일 자체) | 🔄 스크립트 ✅ / **첫 통과 미확인** |
+| 재개 시험 (L3 졸업 시험 · GB-06) | Comp | 상태 계약 변경 시 | `resume-test.mjs --cold` — worktree 격리 + `claude -p` 5문항 채점 (정답지 = 체크포인트 파일 자체). `--warm`은 다이제스트 진단이고 시간을 판정하지 않는다 | ✅ **cold 통과** — 서로 다른 체크포인트로 2회, 둘 다 5/5 · 파일 4/7 · 예산 5분 내. 읽은 파일이 전부 `.harness/state/` 안이었고, 라이브 커서는 gitignore라 신선한 워크트리에 없으므로 **커밋된 기록만으로 복원됐다** |
 
 배포 후 스모크의 🟡는 해제됐다. RQ-05/RQ-17이 종결됐고 `deploy.yml`·`smoke.sh`가
 실제로 초록이다. 컨테이너는 S4의 **유일한 실환경 기질**이다 — `vitest`는 Vite로,
