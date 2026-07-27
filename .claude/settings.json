@@ -61,7 +61,8 @@
       "Bash(cp:*)",
       "Bash(mv:*)",
       "Edit(./evals/golden/**)",
-      "Write(./evals/golden/**)"
+      "Write(./evals/golden/**)",
+      "Bash"
     ],
     "ask": [
       "Bash(git push:*)",
@@ -75,6 +76,8 @@
       "Bash(node scripts/eval-b.mjs:*)",
       "Bash(node scripts/resume-test.mjs:*)",
       "Bash(python harness/phase.py force:*)",
+      "Bash(gh release:*)",
+      "Bash(npm publish:*)",
       "WebFetch",
       "WebSearch"
     ],

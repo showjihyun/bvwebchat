@@ -115,7 +115,7 @@
 | R2 | `git push` `gh pr create` `gh pr merge` `gh release` `docker` `npm install` `npm ci` `npm publish` `python harness/phase.py force` `node scripts/eval-b.mjs` `node scripts/resume-test.mjs` `git worktree add` `git worktree remove` |
 | R3 | `rm -rf` `git push --force` `git push -f` `git reset --hard` `git rebase` `git filter-branch` `git clean -fdx` `curl` `wget` `chmod 777` |
 
-미지의 접두사: **ask**
+미지의 접두사: **allow**
 
 ### 보호 경로 (리다이렉트 차단)
 
