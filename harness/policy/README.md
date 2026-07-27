@@ -11,7 +11,7 @@
 | 항목 | 값 |
 |---|---|
 | 기본 | `block` |
-| 경고만(warn_only) | `SPEC` `PLAN` `HARNESS` `RELEASE` `IDLE` |
+| 경고만(warn_only) | `SPEC` `PLAN` `RELEASE` `IDLE` |
 
 `warn_only` 단계는 차단 대신 stderr 경고만 낸다. 게이트의 첫 주가 가장 위험하므로
 (차단이 잦으면 `force`가 습관이 되고 그 순간 전체가 장식이 된다) 일부 단계를 유예한다.

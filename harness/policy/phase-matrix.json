@@ -4,7 +4,7 @@
 
   "enforce": {
     "default": "block",
-    "warn_only": ["SPEC", "PLAN", "HARNESS", "RELEASE", "IDLE"],
+    "warn_only": ["SPEC", "PLAN", "RELEASE", "IDLE"],
     "_doc": "warn_only 단계는 차단 대신 stderr 경고만 낸다. 게이트의 첫 주가 가장 위험하므로(force 습관화) RED/GREEN/EVAL/REVIEW부터 켜고 나머지는 유예한다. force 비율이 5%를 넘으면 에이전트가 아니라 이 매트릭스가 틀렸다는 신호다."
   },
 
@@ -129,14 +129,16 @@
     "evaluator_pass": {
       "kind": "file_contains",
       "file": "_workspace/${rq}/03_evaluator_report.md",
-      "pattern": "판정[^\\n]*PASS",
+      "pattern": "(?m)^\\s*판정\\s*:\\s*PASS\\s*$",
+      "_anchored": "2026-07-27 앵커 추가 — reviewer_approve 와 같은 결함이었다. 평가 보고서가 'PASS 판정을 내리지 않는다' 같은 문장을 쓰면 이전 패턴이 매칭됐다. FAIL/BLOCKED 보고서가 가드를 여는 것을 막는다.",
       "newer_than_glob": "src/**",
       "fail_hint": "evaluator PASS 보고서가 없거나, 보고서 작성 이후 src/**가 또 변경됐다. tdd-workflow Phase 3를 (재)실행하라."
     },
     "reviewer_approve": {
       "kind": "file_contains",
       "file": "_workspace/review/${branch_slug}.md",
-      "pattern": "판정[^\\n]*APPROVE",
+      "pattern": "(?m)^\\s*판정\\s*:\\s*APPROVE\\s*$",
+      "_anchored": "2026-07-27 앵커 추가 — 이전 패턴 `판정[^\\n]*APPROVE` 는 앵커가 없어 한 줄 안에 '판정'과 'APPROVE' 가 함께 나오기만 하면 매칭됐다. 재리뷰가 실증했다: **REQUEST_CHANGES 를 선언한 보고서가 이 가드를 열 수 있었다** — 그 보고서가 이 결함을 서술하는 행에 두 단어가 함께 들어갔기 때문이다. 결함을 서술하는 행위 자체가 결함을 발동시키는 가드는, 결함을 서술하지 못하게 하는 가드다. reviewer.md 가 `판정:` 단독 줄 형식을 의무화하므로 계약이 맞아떨어진다.",
       "fail_hint": "reviewer APPROVE가 없다. review-gate 스킬을 실행하라. blocker가 있는데 급하다는 이유로 우회하면 이 게이트는 그날로 장식이 된다."
     },
     "track_b_passing": {

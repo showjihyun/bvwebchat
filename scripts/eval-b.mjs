@@ -45,6 +45,29 @@ const EXIT_FAIL = 1;
 const EXIT_UNAVAILABLE = 2;
 const EXIT_UNPREPARED = 3;
 
+/**
+ * 현재 살아 있는 케이스 워크트리의 정리 함수. 정상 경로는 try/finally 가 부르고,
+ * 비정상 종료(Ctrl-C · SIGTERM · 상위 프로세스 종료)는 아래 배선이 부른다.
+ *
+ * 이 배선이 없으면 중단 시 **node_modules 정션을 가진 워크트리가 살아남고**,
+ * 다음에 누군가 `git worktree remove --force` 를 부르는 순간 저장소의 진짜
+ * node_modules 가 날아간다 — 2026-07-27 에 3연 재현으로 확정한 경로다.
+ * cleanup() 이 정션 unlink 를 먼저 하고 사후 검사까지 하므로, 그 함수가
+ * 불리느냐 마느냐가 사고와 무사고를 가른다.
+ *
+ * 이 러너는 케이스당 `claude -p` 를 20분 타임아웃으로 띄우는 중단이 잦은
+ * 워크로드다(GB-02 는 4회 중 두 번 882·1109초에서 세션이 끝났다). 이론적
+ * 위험이 아니다.
+ */
+let activeCleanup = null;
+process.on('exit', () => { if (activeCleanup) activeCleanup(); });
+for (const sig of ['SIGINT', 'SIGTERM']) {
+  process.on(sig, () => {
+    if (activeCleanup) activeCleanup();
+    process.exit(EXIT_UNPREPARED);
+  });
+}
+
 // ── 인자 ────────────────────────────────────────────────────────────────────
 const argv = process.argv.slice(2);
 if (argv.includes('--help') || argv.includes('-h')) {
@@ -827,6 +850,7 @@ function runCase(c, prev) {
   const cleanup = () => {
     if (cleaned) return;
     cleaned = true;
+    activeCleanup = null;
     // 무엇보다 먼저. --keep 이어도 끊는다 — 링크를 남긴 채 나중에 손으로
     // worktree remove 하면 그때 저장소의 node_modules 가 날아간다.
     unlinkNodeModules(join(wt, 'node_modules'));
@@ -843,6 +867,9 @@ function runCase(c, prev) {
     if (setup.branch) git(['branch', '-D', setup.branch]);
     assertNodeModulesIntact();
   };
+  // 비정상 종료 경로가 이 케이스의 cleanup 을 부를 수 있게 등록한다.
+  // finally 는 정상 경로만 덮는다 — Ctrl-C 는 finally 를 실행하지 않는다.
+  activeCleanup = cleanup;
 
   try {
     const add = git(['worktree', 'add', '--detach', wt, HEAD_SHA]);
@@ -1006,6 +1033,35 @@ function verifyArtifact() {
   const blocked = golden.filter((g) => g.status === 'blocked');
   const required = golden.filter((g) => g.status !== 'blocked');
   const missingCases = required.map((g) => g.id).filter((id) => !(d.cases || {})[id]);
+
+  // ── blocked 의 바닥 ────────────────────────────────────────────────────
+  // 제외 자체는 정당할 수 있지만 **제외에 한계가 없으면 가드가 빈 채로 열린다.**
+  // required 가 0이면 missingCases 도 0이고 problems 에 아무것도 안 쌓여서
+  // track_b_passing 이 '아무것도 평가하지 않고' 통과한다. 세 겹으로 막는다.
+  if (required.length === 0) {
+    problems.push(
+      `골든 ${golden.length}건이 전부 blocked 다 — 이 가드는 아무것도 검증하지 않는다.\n` +
+        `     고치는 법: 최소 1건은 실행 가능해야 한다. 전부 막혔다면 그것은 '통과'가 아니라 '평가셋이 죽었다'는 뜻이고,\n` +
+        `     그 상태로 HARNESS→REVIEW 를 여는 것은 게이트를 우회하는 것과 같다.`
+    );
+  }
+  const MAX_BLOCKED_RATIO = 1 / 3;
+  if (golden.length && blocked.length / golden.length > MAX_BLOCKED_RATIO) {
+    problems.push(
+      `blocked 가 ${blocked.length}/${golden.length} 로 상한(1/3)을 넘었다: ${blocked.map((g) => g.id).join(' ')}\n` +
+        `     고치는 법: 평가셋의 3분의 1 이상이 막히면 남은 것으로 '하네스가 회귀하지 않았다'를 말할 수 없다.\n` +
+        `     막힌 케이스를 되살리거나(측정 방식을 대상에 맞게 재설계), 새 케이스를 추가해 분모를 회복하라.\n` +
+        `     상한을 올리는 것은 해법이 아니다 — 그건 게이트가 얼마나 비었는지를 숨기는 것이다.`
+    );
+  }
+  const unjustified = blocked.filter((g) => !String(g.note || '').trim());
+  if (unjustified.length) {
+    problems.push(
+      `근거 없는 blocked ${unjustified.length}건: ${unjustified.map((g) => g.id).join(' ')}\n` +
+        `     고치는 법: note 에 왜 막혔는지·무엇을 포기했는지·되살리는 조건을 적어라.\n` +
+        `     근거 없는 blocked 는 제외가 아니라 그냥 미측정이고, 그것을 통과로 세면 커버리지가 거짓이 된다.`
+    );
+  }
   if (missingCases.length) {
     problems.push(
       `골든 ${golden.length}건 중 ${missingCases.length}건이 아티팩트에 없다: ${missingCases.join(' ')}\n` +

@@ -441,11 +441,20 @@ function checkPatterns(m) {
  * tool-risk.json 의 enforced_by 는 **검증되지 않는 주장**이었다. P7 은 이 파일 내부의
  * 일관성만 봤고, policy-lint 는 settings.json 을 한 번도 읽지 않았다.
  *
- * 2026-07-27 실제 사고: eval-b.mjs·resume-test.mjs 는 R2(경계 이탈)로 분류되고
- * enforced_by "settings.json ask" 라고 선언돼 있었는데, settings.json 의 allow 에
- * 넓은 패턴 Bash(node scripts/:*) 가 있어 그 분류를 통째로 삼켰다. 집행이 0이었고,
- * 그래서 eval-b.mjs 가 사람 프롬프트 없이 실행돼 정션을 따라가 저장소 node_modules 를
- * 파괴했다. 분류는 옳았고, 집행이 없었고, 그 사실을 아무 린트도 검사하지 않았다 —
+ * 2026-07-27 실제 사고 (인과를 정확히 적는다 — 이전 서술은 틀렸다):
+ * eval-b.mjs·resume-test.mjs 는 R2(경계 이탈)로 분류되고 enforced_by
+ * "settings.json ask" 라고 선언돼 있었다. 그런데 `git show 901ebfa:.claude/settings.json`
+ * 실측 — **그 시점 ask 목록에 두 항목이 아예 없었다.** 넓은 패턴
+ * Bash(node scripts/:*) 가 그 **공백을 덮어** 실행을 통과시켰다.
+ *
+ * 이전에 이 자리에 "넓은 allow 가 분류를 통째로 삼켰다"고 적었던 것은 사실이
+ * 아니고, 다음 사람에게 "P10 이 allow 그림자를 막아준다"고 잘못 가르친다.
+ * 실제로 그를 지키는 것은 P10 이 아니라 **deny > ask > allow 우선순위 가정**이다.
+ * 즉 명시된 ask 가 있으면 넓은 allow 는 그것을 이기지 못한다 — 그래서 shadow 를
+ * 실패로 올리면 오탐이 되고, 이 검사가 실제로 잡는 것은 **분류됐는데 어느
+ * 목록에도 없는 항목**이다(사고의 진짜 형태).
+ *
+ * 분류는 옳았고, 집행이 없었고, 그 사실을 아무 린트도 검사하지 않았다 —
  * no_pending_spec(P8) 과 정확히 같은 형태이고 그때도 P1~P7 은 전부 초록이었다.
  *
  * 판정은 실제 우선순위(deny > ask > allow > 미지=unknown_prefix_policy)로 계산한다.
@@ -542,7 +551,7 @@ function checkEnforcement(r) {
   const lim = (r._limitation || "").trim();
   note(
     "P10",
-    "한계: 이 검사는 **도구 표면 안에서의 일관성**만 본다. 스크립트가 spawnSync 로 같은 명령을 부르면 등급을 조회하지 않으므로 P10 이 통과해도 그 층의 구멍은 남는다" +
+    "한계 2가지: (1) 이 검사는 **도구 표면 안에서의 일관성**만 본다. 스크립트가 spawnSync 로 같은 명령을 부르면 등급을 조회하지 않으므로 P10 이 통과해도 그 층의 구멍은 남는다. (2) 판정이 **deny > ask > allow 우선순위를 가정**한다 — 명시된 ask 가 있으면 넓은 allow 가 그것을 이기지 못한다는 전제다. **그 가정 자체는 이 저장소에서 실증되지 않았다**(hooks-selftest 는 gate_phase.py 를 재지 settings.json 우선순위를 재지 않는다). 가정이 틀리면 P10 이 초록인 채로 집행이 없을 수 있다 — 운영 규칙 8의 '선언된 집행이 실제로 일어나는지 아무도 확인하지 않았다'가 한 층 위로 옮겨간 형태다" +
       (lim ? " (tool-risk.json _limitation 참조)" : "")
   );
 }
