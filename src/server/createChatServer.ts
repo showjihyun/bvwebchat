@@ -404,6 +404,22 @@ function isNonBlankString(value: unknown): value is string {
 }
 
 /**
+ * ADR-0004 결정3 / RQ-13 GA-24: room **생성(join)** 요청에서 'global'을
+ * 예약 이름으로 거부하기 위한 검사 — 대소문자를 무시한다.
+ *
+ * ⚠️ 이름에 `ForCreation`이 붙은 것은 스타일이 아니라 **경계 표시**다.
+ * leave 경로의 global 검사는 대소문자를 무시하지 않고 `=== GLOBAL_ROOM`
+ * 정확 일치이며, 이 비대칭은 의도적으로 보존된다(ADR-0007 결과 절).
+ * 오늘 `leave({room:'GLOBAL'})`은 ok:true를 돌려주고 socket.leave('GLOBAL')과
+ * 유령 room에 대한 participants 방송까지 수행한다 — 어떤 통합 테스트도 이
+ * 경로를 덮지 않으므로, 이 함수를 leave 쪽에 재사용하면 **테스트가 전부
+ * 초록인 채로 행동이 바뀐다.** 여기서만 쓴다.
+ */
+function isReservedRoomNameForCreation(room: string): boolean {
+  return room.toLowerCase() === GLOBAL_ROOM;
+}
+
+/**
  * base가 미점유면 그대로, 점유 중이면 "base-2", "base-3", ... 형태로 최초로
  * 비어 있는 접미사를 찾아 반환한다 (RQ-10 GA-11). 형식은 스펙이 강제하지
  * 않으므로(원문 "예: alice-2") 이 구분자·시작값을 이 세션의 설계 결정으로
@@ -602,7 +618,7 @@ function handleJoin(
   // ADR-0004 결정 3 / RQ-13 GA-24: 'global'은 대소문자 무관 예약 이름 — 사용자의
   // room 생성 요청에서 거부한다. socket.join·roomMembers 갱신·'rooms' 방송
   // 모두 발생시키지 않는다("사용자 생성 room 집합"이 전혀 바뀌지 않으므로).
-  if (payload.room.toLowerCase() === GLOBAL_ROOM) {
+  if (isReservedRoomNameForCreation(payload.room)) {
     ack({ ok: false, error: `'${GLOBAL_ROOM}'은 예약된 이름이라 room 생성에 사용할 수 없다` });
     return;
   }
@@ -700,6 +716,11 @@ function handleLeave(
 
   // ADR-0004 결정 1: global은 예약된 상설 room이며 탈퇴할 수 없다. 멤버십은
   // 유지한 채 ack만 거부해 클라이언트가 "나갔다"고 오인하지 않게 한다.
+  //
+  // ⚠️ 이 검사는 **정확 일치**다 — join의 isReservedRoomNameForCreation
+  // (대소문자 무시)과 의도적으로 다르다. 여기에 그 함수를 끌어다 쓰면
+  // leave({room:'GLOBAL'})의 결과가 ok:true → ok:false로 바뀌는데, 이를
+  // 덮는 테스트가 없어 무증상 행동 변경이 된다(ADR-0007 결과 절).
   if (payload.room === GLOBAL_ROOM) {
     ack({ ok: false, error: 'global room은 탈퇴할 수 없다' });
     return;
