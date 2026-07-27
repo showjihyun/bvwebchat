@@ -33,14 +33,27 @@
       `npm run dev`. 참여자 목록·안 읽음·히스토리·global·닉네임 고유화 UI는
       각 서버 RQ(15/18/11/04/10) 구현 시 확장. 다음: RQ-02
 
-- [ ] 🔄 **서버 모듈 분해 (2026-07-27, ADR-0007)**: `createChatServer.ts` 822줄 →
-      `src/server/chat/` 8모듈 + 조립점. 행동 보존 리팩터 —
-      공개 계약 `createChatServer(requestListener?)` 무변경, `tests/` 무수정.
+- [x] ✅ **서버 모듈 분해 (2026-07-27, ADR-0007)**: `createChatServer.ts` 822줄 →
+      `src/server/chat/` 8모듈 + 조립점 51줄. 행동 보존 리팩터 —
+      공개 계약 `createChatServer(requestListener?)` 무변경, **`tests/` 무수정(0줄)**.
       참조: `docs/adr/0007-server-module-boundaries.md`,
       `_workspace/harness-redesign/01_server-split-design.md`.
-      검증: Step 0 baseline `npx vitest run` ×10 = 9/10 (1회 fork-pool 워커
-      크래시 flake, 단언 diff 없음 — progress.md 기록과 일치), `npm run build` OK
-      (`dist/server/main.js` 14,032 B). 커밋마다 eslint → tsc → vitest ×3.
+      커밋 17개(Phase A 인플레이스 9 → Phase B 파일 이동 8), 커밋마다
+      eslint → tsc → vitest ×3, 페이즈마다 `npm run build`.
+      - **구속 규칙 4개**(ADR-0007): 인스턴스별 상태 / 단방향 계층 /
+        순수 코어(ESLint `no-restricted-imports`로 기계 강제, 고의 위반으로
+        발화 실증) / 타이머 소유권(`setTimeout` 전역 맨몸 호출 — departure.ts 1곳).
+      - `rg '^(const|let)\s+\w+.*new (Map|Set)' src/server/` → **0건**
+        (`createChatState` 밖 모듈 스코프 가변 상태 없음).
+      - `npm run build` OK. `dist/server/main.js` 14,032 → 15,353 B (+1,321).
+        번들 실측: `protocol.ts` 흔적 0건(타입 전용 소거 확인), socket.io
+        import 1건(external 유지), 예상 밖 모듈 유입 없음.
+      - ⚠️ **flake 베이스라인은 머신 부하에 따라 이동한다**(이번 작업의 발견).
+        Step 0(단독 실행) 9/10 → 동시 에이전트 5개 상태에서 재측정 시
+        **미변경 원본 HEAD가 7/10**(worktree 대조군), 분해 후 6/10.
+        `--pool=threads`는 양쪽 다 클린(6/6). 전 과정에서 **단언 수준 실패 0건**.
+        ⇒ 수용 기준은 "실패 횟수"가 아니라 "단언 수준 실패 0 + 모든 실패가
+        워커 크래시 시그니처(`Worker exited unexpectedly`, 단언 diff 없음)"여야 한다.
 
 ## 작업 원장 — RQ 구현
 
