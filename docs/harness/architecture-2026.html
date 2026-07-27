@@ -1273,6 +1273,7 @@
             <li>9 단계</li>
             <li>4 센서 계열</li>
             <li>M1~M8</li>
+            <li>7 트렌드 · 6 안티패턴 대조</li>
             <li>단일 HTML · 오프라인</li>
           </ul>
         </div>
@@ -2523,12 +2524,92 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
       <div class="container">
         <div class="section-head reveal">
           <div>
-            <p class="section-label">09 · Anti-pattern self-audit</p>
-            <h2 id="audit-title">이 설계가 밟을 수 있는 지뢰.</h2>
+            <p class="section-label">09 · Conformance self-audit</p>
+            <h2 id="audit-title">일곱 개의 이동과 여섯 개의 지뢰.</h2>
           </div>
           <p class="section-intro">
-            필드 리포트 §05의 안티패턴 6개에 대해 이 설계가 위험한지 아닌지를 한 줄씩 판정한다.
-            "해당 없음"으로 넘긴 항목은 없다 — 하나는 실제로 위반 위험이 가장 크다.
+            필드 리포트가 합성한 트렌드 7개와 안티패턴 6개를 이 설계에 하나씩 대조한다.
+            검증 12번(<code>evaluator</code>, 별도 세션)이 채점하는 항목이 정확히 이 둘이므로,
+            채점표를 먼저 공개해 둔다. "해당 없음"으로 넘긴 항목은 없다.
+          </p>
+        </div>
+
+        <div class="sub-head reveal" style="margin-top:0;padding-top:0;border-top:0">
+          <h3>T.01~T.07 — 각 트렌드가 이 설계의 어디에 있는가</h3>
+          <p>
+            트렌드를 인용하는 것과 구현하는 것은 다르다. 마지막 열은 <b>구현되지 않은 부분</b>을 적는 자리이며,
+            비워 두지 않았다.
+          </p>
+        </div>
+
+        <div class="table-wrap reveal">
+          <table class="grid-table w-wide">
+            <thead>
+              <tr>
+                <th style="width:8%">Trend</th>
+                <th style="width:24%">리포트가 요구한 것</th>
+                <th style="width:36%">이 설계의 구현 지점</th>
+                <th style="width:32%">구현되지 않은 부분 (정직)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="tag">T.01<small>하네스 적합도</small></span></td>
+                <td>모델 벤치마크보다 먼저 "현재 하네스 + 현재 과업"의 <b>회귀 평가셋</b>을 만든다</td>
+                <td>트랙 B를 실행 가능하게 만드는 것이 이 설계의 절반이다 — <code>eval-b.mjs</code> auto rubric + <code>.github/workflows/harness.yml</code> 5종 blocking (아래 anti-06)</td>
+                <td>모델 교체 실험은 <b>하지 않는다</b>. 이 저장소에서 조정하는 변수는 하네스뿐이라 T.01의 "같은 모델에서 점수를 올린다"는 대조군이 없다. 7케이스 규모도 스모크 수준이다(W4).</td>
+              </tr>
+              <tr>
+                <td><span class="tag">T.02<small>탐색 가능한 환경</small></span></td>
+                <td>Map → retrieve → verify freshness. 짧은 진입점, 계층형 문서, 소유자·갱신일 검사</td>
+                <td><code>CLAUDE.md</code> 57줄 포인터 구조 <b>유지</b> + <code>max_lines: 100</code> 기계 강제(C5) · <code>doc-freshness.mjs</code> 6종 · 메타데이터는 <code>harness/doc-map.json</code> 한 곳에만 (§02)</td>
+                <td>이 축은 <b>이미 부합하고 있었다</b> — 새로 추가한 것은 문서가 아니라 <b>검사</b>뿐이다. 리포트가 말한 "주기적 정리 에이전트"는 만들지 않고 <code>harness-audit</code> 스킬로 대체했다(§08).</td>
+              </tr>
+              <tr>
+                <td><span class="tag">T.03<small>종료 조건으로서의 검증</small></span></td>
+                <td><b>사양 대조 없는 테스트 통과는 완료가 아니다.</b> 도구 실행·자동 테스트·요구사항 충족·변경 영향 회귀를 <b>서로 다른 센서</b>로</td>
+                <td>§05의 S1~S4 — 각 계열이 다른 <b>기질</b>(도구 호출 결과 / 소스 트리 / <code>evals/golden</code> / Docker·반복 실행 분포)로 답한다. S3가 <code>GREEN→EVAL</code> 가드의 골든 커버리지 검사로 기계화된다</td>
+                <td>S3의 결정론 부분은 "케이스에 대응하는 테스트가 <b>실재하는가</b>"까지다. 그 테스트가 케이스를 <b>제대로</b> 검증하는지는 여전히 <code>evaluator</code>(추론)의 몫이다 — W1이 말하는 상한이 여기다.</td>
+              </tr>
+              <tr>
+                <td><span class="tag">T.04<small>재개 가능성</small></span></td>
+                <td>새 세션이 <b>5분 안에</b> "무엇을 왜 했고 다음은 무엇인지" 복원한다</td>
+                <td>§06 전체. <code>.harness/state/</code> 수명 분리 · <code>session.json</code> ≤60줄 · <code>goal</code>이 <b>"왜"</b>를 요구 · SessionStart digest ≤15줄 · <code>resume-test.mjs</code> PASS 기준 <b>cold 5/5 · ≤7파일 · ≤5분</b></td>
+                <td><b>아직 통과 실적이 없다.</b> 검증 9번이 이 설계의 합격/불합격을 가르는 이유가 그것이다. 리포트가 인용한 지속 상태 연구(≈80% 오류 / 3.5배 토큰)는 Qwen3-8B와 합성 Knapsack 과제의 2×2 통제 실험이라 이 저장소에 그대로 적용되는 비율이 아니다.</td>
+              </tr>
+              <tr>
+                <td><span class="tag">T.05<small>토폴로지 설계</small></span></td>
+                <td>단일 에이전트 → 도구 → 스킬 → <b>필요한 경우에만</b> 다중 에이전트</td>
+                <td>§08의 4단 사다리를 결정 규칙으로 고정. <b>에이전트 0개 추가</b>, 기존 4개는 전원 격리 이득으로 정당화, 거부 5건을 이유와 함께 기록, 팀 모드(SendMessage) 금지</td>
+                <td>AdaptOrch가 보고한 12–23% 개선은 <b>과업별로 토폴로지를 바꿀 때</b>의 수치이고, 이 설계는 정적 단일 토폴로지를 택했다. 즉 이 축에서는 리포트의 상한을 의도적으로 포기한다 — 1인 저장소에 동적 라우팅은 L4(§03)다.</td>
+              </tr>
+              <tr>
+                <td><span class="tag">T.06<small>구조적 통제</small></span></td>
+                <td>정책을 프롬프트가 아니라 <b>도구 카탈로그·상태 전이·샌드박스 경계</b>로 강제한다</td>
+                <td>§04 전체 — 이 설계의 최대 업그레이드. phase × path 매트릭스(default-deny) + R0~R3의 강제 주체 분담 + 전이 가드. D3의 "부탁"이 코드가 된다</td>
+                <td><b>Bash가 구멍으로 남는다</b>(W2) — <code>node -e</code>는 매트릭스를 우회하고, 방어는 예방이 아니라 <code>phase-audit</code>의 사후 탐지다. 리포트가 인용한 statewright의 2/10 → 10/10도 <b>5개 SWE-bench 과제, 2개 모델의 총 10회 시도, 제작자 자체 보고</b>이며 협조적 모델에서의 탐색 공간 축소였다.</td>
+              </tr>
+              <tr>
+                <td><span class="tag">T.07<small>학습 신호로서의 관측성</small></span></td>
+                <td>실패 트레이스 → 분류 → 하네스 변경 → 회귀 평가 → 점진 배포. <b>"동일 파일을 몇 번 고쳤는지"</b>까지 기록</td>
+                <td><code>trajectory.jsonl</code> v2의 <code>file_edit_counts</code>가 T.07이 명시한 바로 그 필드다. 신설 <code>phase.jsonl</code>·<code>tools.jsonl</code>, M1~M8(§07), 주간 학습 루프는 <code>retro-metrics</code> 스킬이 돈다</td>
+                <td>루프의 마지막 고리 — <b>회고에서 골든 케이스를 승격하는 판단은 사람이 한다</b>. 정답(then/rubric)은 반드시 사람이 쓴다는 <code>evals/README.md</code>의 규칙을 유지하며, <code>evals/golden/**</code>는 R2(<code>permissions.ask</code>)로 남는다.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="micro-note">
+          리포트는 T.07에서 사람의 역할이 "모든 출력을 줄 단위로 확인"에서 "목표·경계·센서·에스컬레이션을 설계하는
+          on-the-loop 운영자"로 이동한다고 정리한다. 이 설계서가 그 이동의 산출물이다 — 사람이 하는 일이
+          코드 검토에서 <b>매트릭스와 가드를 고치는 일</b>로 옮겨간다. 그 근거로 인용된 "AI 사용 약 60% vs 완전 위임 가능 0–20%"는
+          Anthropic 내부·사회 영향 연구를 요약한 2026 전망 보고서의 수치이고, 표본·문항 세부는 원 보고서 본문만으로 제한적이다.
+        </p>
+
+        <div class="sub-head reveal">
+          <h3>안티패턴 6개 — 이 설계가 밟을 수 있는 지뢰</h3>
+          <p>
+            하나는 실제로 위반 위험이 가장 크다. 그 항목은 "방어했다"가 아니라 "인정하고 자를 순서를 정했다"로 적는다.
           </p>
         </div>
 
