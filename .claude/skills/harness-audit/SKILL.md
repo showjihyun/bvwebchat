@@ -117,13 +117,24 @@ Write/Edit이 죽었다. 정책 거부가 아니라 훅 파손이었고, 둘은 
 | `doc-freshness` C2가 대량으로 빨감 | `--pr` 범위로 좁혀 이 변경이 만든 것만 책임진다. 저장소 전체 낡음을 게이트로 걸면 게이트가 그날로 무시된다 |
 | 발견이 0건 | 그것도 보고한다. 제안 없이 종료해도 된다 — 없는 문제를 만들지 않는다 |
 
-> **배선 상태 (2026-07-27 확인)**: 1~3번 스크립트는 실재한다
-> (`doc-freshness.mjs` · `policy-lint.mjs` · `hooks-selftest.mjs`).
-> 4번 러너는 아직 없다 — 그 행은 ⬜로 보고하고,
-> `evals/golden/track-b-harness.jsonl`의 실행 가능 스키마만 확인한다.
-> 어느 것도 CI 워크플로에는 아직 배선되지 않았다:
+> **배선 상태 (2026-07-27 재확인)**: 1~4번 스크립트가 전부 실재한다 —
+> `doc-freshness.mjs` · `policy-lint.mjs` · `hooks-selftest.mjs` · `eval-b.mjs`.
+>
+> CI 배선은 **부분적**이다:
 >
 > ```
-> scripts/eval-b.mjs             (부재)
-> .github/workflows/harness.yml  (부재 — W4 범위)
+> ci.yml gate 잡              policy-lint · hooks-selftest   ← 배선됨
+> doc-freshness --pr          미배선
+> phase-audit · golden-coverage · eval-b 아티팩트 검증  미배선
+> .github/workflows/harness.yml  부재
 > ```
+>
+> 이 두 종이 먼저 배선된 이유: `hook.py`의 fail-OPEN 정당화("통과는 로그에
+> 남고 사후에 잡힌다")는 **사후에 잡는 센서가 자동으로 돌 때만** 성립한다.
+> 사람이 기억할 때만 도는 센서는 그 정당화를 뒷받침하지 못한다.
+>
+> **이 블록이 낡으면 이 스킬은 자기가 감사하는 대상을 잘못 알게 된다.**
+> 실제로 그랬다 — 2026-07-27 감사에서 이 블록이 `eval-b.mjs`를 부재로,
+> CI 배선을 전무로 적고 있었고 둘 다 거짓이었다. 이 절차의 에러 핸들링
+> 규칙("없는 검사를 통과로 적지 않는다")과 방향만 반대인 같은 병이다.
+> 배선을 바꾸면 이 블록을 같은 커밋에서 갱신하라.
