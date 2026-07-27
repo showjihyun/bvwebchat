@@ -22,6 +22,11 @@
  *   인터프리터 부재      exit 127 → 비차단.
  *
  * 부재는 시끄럽게 죽고 구문 오류는 침묵한다. **침묵하는 쪽이 더 위험하다** — 아무도 모른다.
+ *
+ * 2026-07-27 배선이 디스패처(`hook.py <handler>`)로 바뀌면서 **핸들러 부재의 종료 코드가
+ * 2(차단)에서 0(통과)으로 바뀌었다.** settings.json의 파일 참조가 6→1로 줄어 드리프트 표면은
+ * 작아졌지만, 그 대가로 **핸들러 부재가 무증상이 됐다.** 이 계열의 탐지 책임이 전적으로
+ * 이 스크립트로 넘어왔다 — 이 검사가 없으면 훅이 사라져도 아무도 모른다.
  * 그래서 이 스크립트는 두 계열을 모두 본다: (a) 참조 파일 실재 → 부재면 하드 실패,
  * (b) 각 훅이 실제로 컴파일되고 합성 페이로드에 기대 판정을 내는가.
  *
@@ -148,7 +153,38 @@ function compileCheck(interp, tok, abs) {
 
 // ── L1 이식성 감사 (모든 훅, 모든 이벤트) ───────────────────────────────────
 const SCRIPT_EXT = /\.(py|mjs|cjs|js|sh|ps1)$/;
+const HOOK_DIR_REL = '.claude/hooks';
+
+/**
+ * 커맨드 문자열 → **실제로 실행되는** 훅 스크립트 목록.
+ *
+ * 두 배선 형태를 모두 지원한다 (둘 다 유효하고, 되돌릴 여지를 남긴다):
+ *   직접     python .claude/hooks/gate_phase.py
+ *   디스패처  python .claude/hooks/hook.py gate_phase   →  .claude/hooks/gate_phase.py
+ *
+ * 마지막 토큰을 경로로 읽으면 디스패처 배선에서 핸들러 5개가 통째로 "미참조"가 되고,
+ * 정작 디스패처만 정상으로 보인다 — 판정이 정확히 뒤집힌다.
+ */
+function resolveHookScripts(argvv) {
+  const out = [];
+  for (let i = 0; i < argvv.length; i++) {
+    const tok = argvv[i];
+    if (!SCRIPT_EXT.test(tok) || isAbsolute(tok)) continue;
+    const path = tok.replace(/^\.\//, '').replace(/\\/g, '/');
+    out.push({ path, via: 'direct' });
+    if (!/(^|\/)hook\.py$/.test(path)) continue;
+    const handler = argvv[i + 1];
+    if (!handler || handler.startsWith('-')) continue;
+    const dir = path.slice(0, path.lastIndexOf('/') + 1);
+    out.push({ path: dir + (handler.endsWith('.py') ? handler : handler + '.py'), via: 'dispatcher' });
+  }
+  return out;
+}
+
 const auditRows = [];
+const referencedScripts = new Set();
+let dispatcherUsed = false;
+
 for (const h of hooks) {
   const argvv = tokenize(h.command);
   const row = { ...h, argv: argvv, notes: [] };
@@ -156,56 +192,64 @@ for (const h of hooks) {
   const resolved = interp ? which(interp) : null;
 
   if (!interp) {
-    fail(`빈 훅 커맨드 (${h.event})`, 'settings.json에서 이 훅 항목을 지우거나 커맨드를 채워라.');
+    fail('빈 훅 커맨드 (' + h.event + ')', 'settings.json에서 이 훅 항목을 지우거나 커맨드를 채워라.');
   } else if (!resolved) {
     fail(
-      `${h.event} 훅의 인터프리터 '${interp}'를 PATH에서 찾을 수 없다 — 이 훅은 무음 실패한다 (fail-open)`,
-      `PATH에 있는 이름으로 바꿔라. 이 저장소는 python3→python으로 이미 한 번 물렸다(changelog 2026-07-16). ` +
-        `CI(ubuntu-latest)와 Windows 양쪽에 존재하는 이름인지 확인하라.`
+      h.event + " 훅의 인터프리터 '" + interp + "'를 PATH에서 찾을 수 없다 — 이 훅은 무음 실패한다 (fail-open)",
+      'PATH에 있는 이름으로 바꿔라. 이 저장소는 python3→python으로 이미 한 번 물렸다(changelog 2026-07-16). ' +
+        'CI(ubuntu-latest)와 Windows 양쪽에 존재하는 이름인지 확인하라.'
     );
   } else {
-    row.notes.push(`인터프리터 OK: ${interp}`);
+    row.notes.push('인터프리터 OK: ' + interp);
   }
 
   for (const tok of argvv) {
     if (/^[A-Za-z]:[\\/]/.test(tok) || (tok.startsWith('/') && !tok.startsWith('//'))) {
       fail(
-        `${h.event} 훅에 절대경로가 있다: ${tok}`,
-        `저장소 루트 기준 상대경로로 바꿔라. 절대경로는 다른 머신·CI·워크트리에서 즉시 깨진다 ` +
-          `(changelog 2026-07-16: 'C:\\Program Files\\Git\\bin\\bash.exe'로 한 번 물렸다).`
+        h.event + ' 훅에 절대경로가 있다: ' + tok,
+        '저장소 루트 기준 상대경로로 바꿔라. 절대경로는 다른 머신·CI·워크트리에서 즉시 깨진다 ' +
+          "(changelog 2026-07-16: 'C:\\Program Files\\Git\\bin\\bash.exe'로 한 번 물렸다)."
       );
     }
     if (tok.includes('\\') && !tok.startsWith('-')) {
-      fail(`${h.event} 훅 경로에 역슬래시가 있다: ${tok}`, '슬래시(/)로 바꿔라. 역슬래시 경로는 ubuntu-latest에서 파일명의 일부로 해석된다.');
+      fail(h.event + ' 훅 경로에 역슬래시가 있다: ' + tok, '슬래시(/)로 바꿔라. 역슬래시 경로는 ubuntu-latest에서 파일명의 일부로 해석된다.');
     }
-    if (SCRIPT_EXT.test(tok) && !isAbsolute(tok)) {
-      const abs = join(ROOT, tok);
-      if (!existsSync(abs)) {
-        fail(
-          `${h.event} 훅이 실재하지 않는 스크립트를 가리킨다: ${tok}`,
-          `파일을 만들거나 settings.json에서 이 훅을 빼라. 존재하지 않는 훅은 매 도구 호출마다 오류를 내고, ` +
-            `PreToolUse라면 **해당 도구 전체가 막힌다** — 실제로 이 저장소에서 발생했다.`
-        );
-      } else {
-        const buf = readFileSync(abs);
-        if (buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) {
-          fail(`${tok}에 UTF-8 BOM이 있다`, 'BOM 없이 저장하라. 셔뱅 앞의 BOM은 인터프리터가 파일을 실행 불가로 판단하게 만든다.');
-        }
-        if (tok.endsWith('.sh') && buf.includes(Buffer.from('\r\n'))) {
-          fail(`${tok}에 CRLF 줄바꿈이 있다`, 'LF로 바꿔라. CRLF 셸 스크립트는 리눅스에서 "bad interpreter" 오류를 낸다.');
-        }
-        const syntax = resolved ? compileCheck(interp, tok, abs) : null;
-        if (syntax) {
-          fail(
-            `${h.event} 훅 ${tok}이 컴파일되지 않는다 — ${syntax}`,
-            `구문 오류는 exit 1이고, 훅 프로토콜은 exit 1을 **비차단**으로 읽는다 — 게이트가 아무 말 없이 꺼진 채 ` +
-              `모든 쓰기가 통과한다(fail-open). 파일 부재(exit 2)는 시끄럽게 막기라도 하지만 이건 침묵한다. ` +
-              `위 위치를 고쳐라. 이 검사가 없으면 게이트가 꺼진 것을 아무도 모른다.`
-          );
-        } else {
-          row.notes.push(`스크립트 OK: ${tok}`);
-        }
-      }
+  }
+
+  for (const s of resolveHookScripts(argvv)) {
+    referencedScripts.add(s.path);
+    if (s.via === 'dispatcher') dispatcherUsed = true;
+    const abs = join(ROOT, s.path);
+    if (!existsSync(abs)) {
+      fail(
+        h.event + ' 훅이 실재하지 않는 스크립트를 가리킨다: ' + s.path + (s.via === 'dispatcher' ? ' (디스패처 핸들러)' : ''),
+        s.via === 'dispatcher'
+          ? '핸들러 파일을 만들거나 settings.json에서 이 훅을 빼라. 디스패처는 부재를 exit 0 + 경고로 바꾸므로 ' +
+            '**도구는 막히지 않는다 — 대신 그 훅이 아무 일도 하지 않는다.** 게이트가 있다고 믿는 채로 없는 상태이고, ' +
+            '증상이 전혀 없다. 이 린트가 그 계열의 유일한 탐지 수단이다.'
+          : '파일을 만들거나 settings.json에서 이 훅을 빼라. 직접 참조에서 파일 부재는 python이 exit 2로 죽고, ' +
+            '훅 프로토콜은 exit 2를 **차단**으로 읽는다 — PreToolUse라면 해당 matcher의 모든 도구가 막힌다 ' +
+            '(2026-07-27 저장소 전체 Write 마비가 이것이었다).'
+      );
+      continue;
+    }
+    const buf = readFileSync(abs);
+    if (buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) {
+      fail(s.path + '에 UTF-8 BOM이 있다', 'BOM 없이 저장하라. 셔뱅 앞의 BOM은 인터프리터가 파일을 실행 불가로 판단하게 만든다.');
+    }
+    if (s.path.endsWith('.sh') && buf.includes(Buffer.from('\r\n'))) {
+      fail(s.path + '에 CRLF 줄바꿈이 있다', 'LF로 바꿔라. CRLF 셸 스크립트는 리눅스에서 "bad interpreter" 오류를 낸다.');
+    }
+    const syntax = resolved ? compileCheck(interp, s.path, abs) : null;
+    if (syntax) {
+      fail(
+        h.event + ' 훅 ' + s.path + '이 컴파일되지 않는다 — ' + syntax,
+        '구문 오류는 exit 1이고, 훅 프로토콜은 exit 1을 **비차단**으로 읽는다 — 게이트가 아무 말 없이 꺼진 채 ' +
+          '모든 쓰기가 통과한다(fail-open). 파일 부재보다 조용하다. 위 위치를 고쳐라 — ' +
+          '이 검사가 없으면 게이트가 꺼진 것을 아무도 모른다.'
+      );
+    } else {
+      row.notes.push('스크립트 OK: ' + s.path + (s.via === 'dispatcher' ? ' (디스패처 경유)' : ''));
     }
   }
   auditRows.push(row);
@@ -220,25 +264,19 @@ if (preToolHooks.length === 0) {
   );
 }
 
-// 고아 훅 — 디스크에 있는데 settings.json이 부르지 않는다. 실패가 아니라 경고다.
-const HOOK_DIR = join(ROOT, '.claude/hooks');
+// 고아 훅 — 디스크에 있는데 직접 참조도 디스패처 인자도 아닌 것. 실패가 아니라 경고다.
+const HOOK_DIR = join(ROOT, HOOK_DIR_REL);
 if (existsSync(HOOK_DIR)) {
-  const referenced = new Set(
-    hooks
-      .flatMap((h) => tokenize(h.command))
-      .filter((t) => SCRIPT_EXT.test(t))
-      .map((t) => t.replace(/^\.\//, '').replace(/\\/g, '/'))
-  );
   for (const f of readdirSync(HOOK_DIR)) {
     if (!SCRIPT_EXT.test(f)) continue;
-    const rel = `.claude/hooks/${f}`;
-    if (!referenced.has(rel)) {
-      warn(
-        `${rel}은 디스크에 있지만 settings.json이 부르지 않는다 — 고아 훅`,
-        '지웠다고 생각했는데 안 지워졌거나, 배선을 빠뜨렸다. 쓸 것이면 settings.json에 배선하고 아니면 파일을 지워라. ' +
-          '고아 훅은 다음 사람이 "이건 왜 안 도나"로 시간을 쓰게 만들고, 최악의 경우 "이미 막고 있다"고 착각하게 만든다.'
-      );
-    }
+    const rel = HOOK_DIR_REL + '/' + f;
+    if (referencedScripts.has(rel)) continue;
+    warn(
+      rel + '은 디스크에 있지만 settings.json이 직접 참조하지도, 디스패처 인자로 부르지도 않는다 — 고아 훅',
+      '지웠다고 생각했는데 안 지워졌거나, 배선을 빠뜨렸다. 쓸 것이면 배선하고 아니면 파일을 지워라. ' +
+        '고아 훅은 다음 사람이 "이건 왜 안 도나"로 시간을 쓰게 만들고, 최악의 경우 "이미 막고 있다"고 착각하게 만든다. ' +
+        '상시로 켜져 있는 경고는 그 자체가 다음 경고를 무시하게 만드는 훈련이므로, 이 상태를 오래 두지 마라.'
+    );
   }
 }
 
@@ -246,7 +284,7 @@ if (existsSync(HOOK_DIR)) {
 console.log('훅 자기검사 — .claude/settings.json의 커맨드 문자열을 그대로 실행한다');
 console.log('');
 console.log('── L1 이식성 감사 ────────────────────────────────────────────────────');
-console.log(`  ${hooks.length}개 훅 배선`);
+console.log(`  ${hooks.length}개 훅 배선 · 참조 스크립트 ${referencedScripts.size}개${dispatcherUsed ? ' (디스패처 경유 — 핸들러 부재가 무증상이므로 이 검사가 유일한 탐지 수단이다)' : ''}`);
 for (const r of auditRows) {
   const bad = findings.some((f) => f.what.includes(r.event) && f.what.includes(r.argv[r.argv.length - 1] || ''));
   console.log(`  ${bad ? 'FAIL' : 'PASS'}  ${r.event.padEnd(14)} [${r.matcher}]  ${r.command}`);
