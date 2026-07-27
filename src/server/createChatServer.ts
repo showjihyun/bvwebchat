@@ -274,6 +274,29 @@ function listRooms(state: ChatState): RoomName[] {
   return [GLOBAL_ROOM, ...userRooms];
 }
 
+/**
+ * RQ-15: room의 멤버 순서 기록 맨 뒤에 이 소켓을 덧붙인다(참여 순).
+ *
+ * 반환하는 두 값은 각각 서로 다른 방송을 게이팅하며, **읽는 시점이 다르다**:
+ * - `isNewUserRoom` — push **직전**에 멤버가 0명(키 부재 포함)이었는가.
+ *   "사용자 생성 room 집합"의 0→1 전이이며 RQ-13 GA-21의 'rooms' 방송 조건이다.
+ *   push 뒤에 계산하면 매 join마다 참이 되어 전 접속자에게 헛방송이 나간다.
+ * - `memberCount` — push **직후**의 멤버 수. RQ-15의 "1인일 때 participants
+ *   방송 생략" 조건(> 1)이 이 값을 쓴다. 순서를 뒤집으면 조건이 반전된다.
+ */
+function addMember(
+  state: ChatState,
+  room: RoomName,
+  socketId: string
+): { isNewUserRoom: boolean; memberCount: number } {
+  const existingMembers = state.members.get(room);
+  const isNewUserRoom = existingMembers === undefined || existingMembers.length === 0;
+  const members = existingMembers ?? [];
+  members.push(socketId);
+  state.members.set(room, members);
+  return { isNewUserRoom, memberCount: members.length };
+}
+
 type ChatServer = SocketIOServer<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, SocketData>;
 type ChatSocket = Socket<ClientToServerEvents, ServerToClientEvents, DefaultEventsMap, SocketData>;
 
@@ -441,11 +464,7 @@ function handleJoin(
   // append). RQ-13: 이 join 직전에 멤버가 0명(키 부재 포함)이었는지를 먼저
   // 확인해 둔다 — "사용자 생성 room 집합"에 새로 추가되는 순간(0→1 전이)인지
   // 판단하는 데 쓴다(신설 계약 3번).
-  const existingMembers = state.members.get(payload.room);
-  const isNewUserRoom = existingMembers === undefined || existingMembers.length === 0;
-  const members = existingMembers ?? [];
-  members.push(socket.id);
-  state.members.set(payload.room, members);
+  const { isNewUserRoom, memberCount } = addMember(state, payload.room, socket.id);
 
   // room이 비어 있다가 이 join으로 최초 멤버(1명)가 된 경우는 방송을
   // 생략한다 — 알려야 할 "기존 멤버"가 아직 존재하지 않기 때문이다(설계
@@ -456,7 +475,7 @@ function handleJoin(
   // 실측으로 재현된다(join ack와 참여자 방송이 별도 네트워크 왕복이라 도착
   // 순서가 보장되지 않음). 멤버가 2명 이상일 때만 방송하면 이 경합이
   // 구조적으로 사라진다.
-  if (members.length > 1) {
+  if (memberCount > 1) {
     broadcastParticipants(io, state, payload.room);
   }
 
