@@ -1,4 +1,14 @@
 .harness/logs/
+
+# 상태 계약 (T.04) — 분할선은 '라이브 커서' vs '내구 기록'이다.
+# phase.json/session.json/.key 를 커밋하면 모든 커밋이 상태 변화로 더러워지고
+# 병합 충돌이 난다. 반대로 checkpoints/**·decisions.jsonl 은 반드시 커밋한다 —
+# 없으면 신선한 클론에서 재개가 불가능해 상태 계약 자체가 깨진다.
+.harness/state/phase.json
+.harness/state/session.json
+.harness/state/.key
+.harness/state/.tmp-*
+
 _workspace/
 *.zip
 design-handoff*/

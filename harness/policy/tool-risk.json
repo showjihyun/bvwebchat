@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "_doc": "위험 등급 분류. 축은 '가역성 × 경계 이탈'이며 파일 경로가 아니라 도구의 성질로 나눈다. 메커니즘 분담: R0/R2/R3은 .claude/settings.json permissions가 전담하고(단계 무관 정적 정책), R1만 .claude/hooks/gate_phase.py가 판정한다(단계 의존). 이 분담이 '훅은 정확히 한 가지 일만 한다'를 지킨다 — 안티패턴 02 방어.",
+
+  "tiers": {
+    "R0": {
+      "label": "관찰",
+      "definition": "상태 변경 없음, 외부 송신 없음. 저장소·환경·네트워크 중 어느 것도 바꾸지 않는다.",
+      "policy": "모든 단계에서 항상 허용",
+      "enforced_by": "settings.json allow"
+    },
+    "R1": {
+      "label": "로컬 변경",
+      "definition": "저장소 안에서 가역. 변경이 워킹트리·인덱스·로컬 커밋에 국한된다.",
+      "policy": "phase × path 매트릭스로 판정 (phase-matrix.json)",
+      "enforced_by": "hooks/gate_phase.py"
+    },
+    "R2": {
+      "label": "경계 이탈",
+      "definition": "비가역이거나 외부에 보인다. 원격 푸시·컨테이너·네트워크 설치·골든 정답·사람 판단이 필요한 것.",
+      "policy": "permissions.ask — 사람 승인",
+      "enforced_by": "settings.json ask"
+    },
+    "R3": {
+      "label": "금지",
+      "definition": "이력을 파괴하거나, 비밀을 노출하거나, 통제면 자체를 훼손한다.",
+      "policy": "permissions.deny — 프롬프트 없이 거부, 전 단계 공통",
+      "enforced_by": "settings.json deny"
+    }
+  },
+
+  "file_tools": {
+    "R0": ["Read", "Glob", "Grep", "NotebookRead"],
+    "R1": ["Write", "Edit", "MultiEdit", "NotebookEdit"]
+  },
+
+  "bash_prefixes": {
+    "R0": [
+      "git status", "git diff", "git log", "git show", "git branch",
+      "git rev-parse", "git merge-base", "git ls-files", "git check-ignore",
+      "git worktree list", "git blame",
+      "gh pr view", "gh pr diff", "gh pr checks", "gh pr list",
+      "node scripts/phase-audit.mjs", "node scripts/doc-freshness.mjs",
+      "node scripts/golden-coverage.mjs", "node scripts/metrics.mjs",
+      "node scripts/policy-lint.mjs", "node scripts/hooks-selftest.mjs",
+      "python harness/phase.py show", "python harness/phase.py why",
+      "ls", "cat", "wc", "head", "tail", "rg", "find"
+    ],
+    "R1": [
+      "git add", "git commit", "git switch", "git checkout -b", "git restore",
+      "git stash", "git revert",
+      "node scripts/check.mjs", "bash scripts/check.sh",
+      "npm test", "npm run", "npx vitest", "npx eslint", "npx tsc",
+      "python harness/phase.py enter",
+      "mkdir", "touch", "cp", "mv"
+    ],
+    "R2": [
+      "git push", "gh pr create", "gh pr merge", "gh release",
+      "docker", "npm install", "npm ci", "npm publish",
+      "python harness/phase.py force",
+      "node scripts/eval-b.mjs", "node scripts/resume-test.mjs",
+      "git worktree add", "git worktree remove"
+    ],
+    "R3": [
+      "rm -rf", "git push --force", "git push -f", "git reset --hard",
+      "git rebase", "git filter-branch", "git clean -fdx",
+      "curl", "wget", "chmod 777"
+    ]
+  },
+
+  "protected_paths": {
+    "_doc": "Bash 리다이렉트로 통제면을 우회하는 시도를 탐지한다. gate_phase.py가 명령 문자열에서 '> <path>' / '>> <path>' 패턴을 스캔해 이 목록과 대조하고 deny한다. 예방이 아니라 탐지다 — node -e 'fs.writeFileSync(...)' 같은 우회는 파싱으로 못 막으며, CI의 phase-audit.mjs가 git 이력에서 순서를 독립 재유도해 사후 대조한다.",
+    "deny_redirect": [
+      ".harness/state/",
+      "evals/golden/",
+      ".claude/settings.json",
+      "harness/policy/"
+    ]
+  },
+
+  "unknown_prefix_policy": {
+    "decision": "ask",
+    "_doc": "미지의 셸 명령은 사람에게 묻는다. 셸을 통째로 봉쇄하지 않는 것은 의도된 선택이다 — 리포트가 경고한 Azure SRE의 '100개 전용 도구 폭증'을 피하기 위해 범용 셸을 유지하고 대가(탐지적 통제)를 명시한다."
+  }
+}

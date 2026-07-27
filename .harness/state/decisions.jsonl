@@ -1,0 +1,4 @@
+{"decision":"단계→도구 상태 머신을 프롬프트가 아니라 훅+상태 파일로 강제한다","rationale":"coder.md의 '테스트 파일은 절대 수정하지 않는다'는 부탁이며, 부탁은 압박이 오면 진다. 구조(불가능) > 게이트(차단) > 센서(관측) > Guide(권고).","rq":"HARNESS-L3","ts":"2026-07-27T02:00:00Z"}
+{"decision":"phase.json/session.json/.key는 gitignore, checkpoints/**와 decisions.jsonl은 커밋한다","rationale":"라이브 커서를 커밋하면 모든 커밋이 상태 변화로 더러워지고 병합 충돌이 난다. 반대로 체크포인트를 커밋 안 하면 다른 머신에서 재개가 불가능해 T.04 상태 계약이 깨진다. 분할선은 '라이브 vs 내구'다.","rq":"HARNESS-L3","ts":"2026-07-27T02:00:00Z"}
+{"decision":"가드 실행은 phase.py enter 안에서만 하고 게이트는 서브프로세스를 절대 띄우지 않는다","rationale":"게이트는 매 Write마다 뜬다. 예산 ≤150ms. 느린 게이트는 꺼지는 게이트다. 전이는 하루 몇 번이므로 거기서는 전체 테스트를 돌려도 된다.","rq":"HARNESS-L3","ts":"2026-07-27T02:00:00Z"}
+{"decision":"gate_spec_freeze.py를 삭제하고 기능을 PLAN→RED 가드 no_pending_spec으로 흡수한다","rationale":"requirements.md의 🟡이 0건이라 영구 no-op인데도 매 Write마다 파이썬 프로세스를 붙였다. 같은 보장을 매 쓰기 검사에서 전이 1회 검사로 옮기면 메커니즘이 2→1로 준다(anti-02).","rq":"HARNESS-L3","ts":"2026-07-27T02:00:00Z"}
