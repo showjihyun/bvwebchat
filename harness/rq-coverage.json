@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+
+  "_doc": "RQ별 검증 경로 매핑. scripts/golden-coverage.mjs가 소비한다.\n\n왜 이 파일이 생겼나: golden-coverage의 분모가 골든 파일(GA 케이스)이던 시절, GA가 없는 RQ는 분모 밖이라 '미커버'로 셀 수조차 없었다. 2026-07-27 실측에서 RQ 14개 중 3개(RQ-05·16·17)가 그 상태였고 센서는 '27/27 통과'를 냈다 — 분모에 없는 것은 실패하지 않는다. 분모를 specs/requirements.md에서 유도하면 RQ가 분모 밖에 있는 상태가 구성상 불가능해지고, 대신 'GA 케이스가 없지만 다른 경로로 검증되는 RQ'를 적을 자리가 필요해진다. 그 자리가 이 파일이다.\n\n적지 않는 것 — golden 분류. 그 매핑은 evals/golden/track-a-product.jsonl의 spec 필드에서 유도한다. 같은 사실을 두 곳에 적으면 반드시 어긋나고, 어긋났을 때 어느 쪽이 진실인지 아무도 모른다.\n\n이 파일의 위험과 그 방어: 여기에 한 줄을 추가하면 그 RQ는 GA 케이스 없이도 통과한다. 즉 이 파일은 '검증 면제 목록'으로 오용될 수 있다. 방어는 근거를 기계가 검사하는 것이다 — 각 항목은 refs로 근거 파일을 대야 하고, 센서는 (1) 그 파일들이 실재하는지 (2) 그중 최소 하나가 해당 RQ ID를 실제로 언급하는지 검사한다. 근거 없이 분류만 적으면 센서가 막는다. 그래도 이 방어는 '문서가 그 RQ를 언급한다'까지이지 '그 문서의 주장이 옳다'가 아니다 — 뒤쪽은 사람의 일이다.",
+
+  "requirements_source": "specs/requirements.md",
+
+  "kinds": {
+    "smoke": "배포 아티팩트에 대해 scripts/smoke.sh가 검증한다. 증거는 테스트 파일이 아니라 기동된 컨테이너다.",
+    "constraint": "ADR의 구조적 제약으로 충족되며 별도 테스트 대상이 아니다. 근거 ADR을 refs에 댄다.",
+    "golden": "이 파일에 적지 않는다 — evals/golden/track-a-product.jsonl의 spec 필드에서 유도한다. 여기 적으면 센서가 중복 원천으로 보고 거부한다."
+  },
+
+  "rq": {
+    "RQ-05": {
+      "kind": "smoke",
+      "why": "배포 가능성은 소스 트리에서 관측되지 않는다. vitest는 Vite로, 배포 아티팩트는 esbuild 번들로 해석하므로 초록 vitest가 이미지의 동작을 증명하지 않는다(센서 카탈로그 S4). deploy.yml이 Docker 이미지를 빌드하고 컨테이너를 기동한 뒤 그 URL로 scripts/smoke.sh를 부른다. 스모크는 새 테스트가 아니라 트랙 A 골든의 프로덕션 승격이다 — health + 잘못된 요청('/%') 후 서버 생존 + GA-01(room 격리) + GA-04(global 전파)를 실제 socket.io-client로 재실행한다(ADR-0006 결정 4·5). 스모크 실패 = 배포 실패다.",
+      "scope_note": "CI가 보장하는 것은 '아티팩트가 골든을 통과한다'까지다. 사내망 실배포는 GitHub 러너가 도달할 수 없어 docs/deploy.md의 수동 절차로 둔다 — 그 마지막 한 걸음은 사람이 한다.",
+      "refs": [
+        "scripts/smoke.sh",
+        "scripts/smoke/ga01-room-isolation.mjs",
+        "scripts/smoke/ga04-global-broadcast.mjs",
+        ".github/workflows/deploy.yml",
+        "docs/adr/0006-deployment.md",
+        "docs/deploy.md"
+      ]
+    },
+
+    "RQ-16": {
+      "kind": "constraint",
+      "why": "동시 100명이 단일 프로세스 이벤트 루프로 충분하다는 것이 ADR-0001의 전제이자 결과다 — 결과 항: '순서 보장이 단일 프로세스 전제에 기댐 … RQ-16(100명)에서는 불필요'. 즉 이 RQ는 코드가 만족시키는 동작이 아니라 아키텍처 선택이 성립시키는 제약이다. ADR-0006 결과도 같은 말을 명시한다: '동시 100명(RQ-16)은 단일 프로세스 이벤트 루프로 충분(ADR-0001 전제) — 스모크는 기능 검증이며 부하 검증은 범위 밖'.",
+      "scope_note": "이 매핑이 뜻하는 것은 '100명을 측정했다'가 아니라 '측정하지 않기로 한 결정이 ADR에 있다'이다. 부하 검증을 요구하기로 정하면 이 항목을 smoke나 golden으로 옮겨야 하고, 그 결정은 새 ADR이 먼저다.",
+      "refs": [
+        "docs/adr/0001-realtime-transport.md",
+        "docs/adr/0006-deployment.md",
+        "docs/progress.md"
+      ]
+    },
+
+    "RQ-17": {
+      "kind": "constraint",
+      "why": "ADR-0006 결정 1·3이 이 RQ를 구조로 충족한다. 프로덕션 서버(src/server/main.ts)가 빌드된 클라이언트를 정적 서빙하고 같은 http 서버에 Socket.IO를 붙여 PORT 하나로 노출하며, 멀티스테이지 Docker 이미지 하나가 '단일 서버'다(근거 항: '단일 컨테이너는 RQ-17 단일 서버와 1:1'). HTTPS는 사내망 리버스 프록시(선택)에 위임하고 컨테이너는 평문 단일 포트인데, 이는 RQ-17이 HTTPS를 선택 사항으로 두는 것과 일치한다(ADR-0006 결과 항).",
+      "scope_note": "RQ-05 스모크가 단일 포트 성질을 부수적으로 통과시킨다 — 같은 BASE_URL로 health와 소켓을 함께 치기 때문이다. 그러나 '사내망에 반입해 돌아간다'는 CI가 도달할 수 없는 범위이고, 구조적 보장은 ADR-0006의 결정이지 스모크가 아니다. 그래서 smoke가 아니라 constraint다.",
+      "refs": [
+        "docs/adr/0006-deployment.md",
+        "docs/deploy.md",
+        "Dockerfile"
+      ]
+    }
+  }
+}
