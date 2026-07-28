@@ -464,9 +464,7 @@ def stale_session(root: Path) -> str | None:
     session = st.read_session(root)
     updated = session.get("updated") or ""
     head_iso = _newest_commit_iso(root)
-    if not head_iso or not updated:
-        return None
-    if _epoch(updated) >= _epoch(head_iso):
+    if not session_is_stale(updated, head_iso):
         return None
     return (
         f"session.updated = {updated}\n"
@@ -478,6 +476,55 @@ def stale_session(root: Path) -> str | None:
         f"\n"
         f"git 은 네가 무엇을 했는지 이미 안다. git 이 모르는 건 왜다."
     )
+
+
+def session_is_stale(updated: str, head_iso: str) -> bool:
+    """전이를 막아야 하면 True. **순수 함수다** — 인자로만 판정하므로 시험할 수 있다.
+
+    분리한 이유: P11 에는 음성 시험을 붙이고 이 게이트에는 안 붙였다는 지적을 두 회차
+    연속 받았다. *"테스트 없는 게이트는 연극이다"* 를 이 저장소가 훅에 대해 선언해 놓고
+    새 게이트에는 적용하지 않았다. 시험은 `python harness/phase.py self-test`.
+
+    판정 불가(둘 중 하나가 비었거나 파싱 실패)는 **통과**시킨다 — 여기서 fail-closed 로
+    가면 시각을 못 읽는 환경에서 전이 자체가 불가능해진다. 그 대가는 `stale_session`
+    docstring 에 적었다.
+    """
+    if not updated or not head_iso:
+        return False
+    u, h = _epoch(updated), _epoch(head_iso)
+    if u == 0.0 or h == 0.0:
+        return False
+    return u < h
+
+
+def cmd_self_test() -> int:
+    """R6 게이트(`session_is_stale`)가 무엇을 차단으로 판정하는지 고정한다.
+
+    게이트가 조용히 통과하는 상태와 정상 동작하는 상태는 이 시험 없이 구별되지 않는다 —
+    이 저장소가 훅에 대해 선언한 문장(*"테스트 없는 게이트는 연극이다"*)을 전이 게이트에도
+    적용한다.
+    """
+    cases = [
+        ("세션이 더 최신",        "2026-07-28T10:00:00Z", "2026-07-28T09:00:00+00:00", False),
+        ("동시각",                "2026-07-28T09:00:00Z", "2026-07-28T09:00:00+00:00", False),
+        ("세션이 낡음",           "2026-07-27T14:58:19Z", "2026-07-28T12:53:24+09:00", True),
+        ("시간대 다름(KST 최신)", "2026-07-28T03:00:00Z", "2026-07-28T13:00:00+09:00", True),
+        ("시간대 다름(UTC 최신)", "2026-07-28T05:00:00Z", "2026-07-28T13:00:00+09:00", False),
+        ("세션 없음",             "",                     "2026-07-28T09:00:00+00:00", False),
+        ("HEAD 없음",             "2026-07-28T10:00:00Z", "",                          False),
+        ("파싱 불가",             "어제",                 "2026-07-28T09:00:00+00:00", False),
+    ]
+    bad = 0
+    for name, updated, head, want in cases:
+        got = session_is_stale(updated, head)
+        ok = got == want
+        if not ok:
+            bad += 1
+        _out(f"  {'PASS' if ok else 'FAIL'}  {name:<22} 기대 {'차단' if want else '통과'} · "
+             f"실측 {'차단' if got else '통과'}")
+    _out("")
+    _out(f"전이 게이트 자기시험 실패 {bad}건." if bad else "전이 게이트 자기시험 8건 통과.")
+    return 1 if bad else 0
 
 
 def _newest_commit_iso(root: Path) -> str:
@@ -752,6 +799,7 @@ def main() -> int:
     p_force.add_argument("phase")
     p_force.add_argument("--reason", required=True)
 
+    sub.add_parser("self-test", help="전이 게이트 음성 시험 (R6 상태 신선도)")
     p_sess = sub.add_parser("session", help="session.json 갱신 (상태 계약 이행)")
     p_sess.add_argument("--rq", help="task.rq")
     p_sess.add_argument("--title", help="task.title")
@@ -768,6 +816,9 @@ def main() -> int:
     p_dec.add_argument("--why", required=True, help="근거 — 이게 없으면 기록할 가치가 없다")
 
     args = ap.parse_args()
+
+    if args.cmd == "self-test":
+        return cmd_self_test()
 
     root = st.project_root()
     matrix, risk, pstatus = st.load_policy(root)

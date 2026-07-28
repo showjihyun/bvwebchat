@@ -588,9 +588,41 @@ const RECURRENCE_THRESHOLD = 2;
  * 두 곳이 어긋나면 대장을 쓰는 사람이 게이트가 무엇을 받는지 알 수 없다.
  */
 const RECURRENCE_OPEN_WORDS = ['미처방', '처방 실패', '미정', '미결', '관찰 중'];
-const RECURRENCE_CLOSED_WORDS = ['✅', '처방됨', '완료'];
+const RECURRENCE_CLOSED_WORDS = ['✅', '처방됨', '재처방됨', '완료'];
 const RECURRENCE_OPEN = new RegExp(RECURRENCE_OPEN_WORDS.join('|'));
-const RECURRENCE_CLOSED = new RegExp(`(${RECURRENCE_CLOSED_WORDS.join('|')})`);
+const RECURRENCE_CLOSED = new Set(RECURRENCE_CLOSED_WORDS);
+
+/**
+ * 상태 칸 → 판정용 **첫 토큰**. 부분일치를 버린 이유가 전부 여기 있다.
+ *
+ * `/(✅|처방됨|완료)/.test(s)` 는 **`미완료` 를 닫힘으로 읽는다** — `미완료` 안에
+ * `완료` 가 들어 있기 때문이다. 5차 재리뷰가 `미완료`·`처방 미완료`·`완료되지 않음`·
+ * `완료 예정`·`처방됨 아님`·`~~처방됨~~` 여섯으로 뚫었고 전부 exit 0 이었다.
+ * **이건 "판정 불가"보다 한 칸 더 나쁘다** — 게이트가 모르는 값을 통과시키는 것이
+ * 아니라 **"미완료"를 "완료"로 읽는** 역방향 판정이다.
+ *
+ * 그래서 꾸밈(이모지·기호)과 괄호 주석을 걷어낸 뒤 **첫 토큰만** 집합과 정확 비교한다.
+ * 대장의 실제 값 `⚠️ 처방됨, 사각지대 확인 (2026-07-28)` · `✅ 재처방됨 (…, 2차)` 는
+ * 첫 토큰이 각각 `처방됨`·`✅` 라 통과하고, `미완료` 는 첫 토큰이 `미완료` 라 막힌다.
+ */
+function recurrenceStatusToken(status) {
+  const s = String(status)
+    .replace(/\(.*?\)/g, ' ')                 // 괄호 주석
+    .replace(/[^\p{L}\p{N}✅]/gu, ' ')         // 이모지·기호·구두점·취소선
+    .trim();
+  return s.split(/\s+/).filter(Boolean)[0] || '';
+}
+
+/**
+ * 부정·미래·취소 표지. **첫 토큰 검사만으로는 부족하다** — 자기시험이 그것을 잡았다:
+ * `완료 예정` 은 첫 토큰이 `완료`, `❌ 처방됨 아님` 은 첫 토큰이 `처방됨` 이라
+ * 둘 다 닫힘으로 읽혔다. 5차 재리뷰의 처방(첫 토큰 정확 일치)도 이 둘은 못 막는다.
+ *
+ * 상태 칸이 자유 서술인 한 **뒤에 붙는 한 단어가 앞을 뒤집을 수 있다.** 그래서
+ * 첫 토큰이 닫힘이어도 이 표지가 어디든 있으면 판정 불가로 돌린다 — 뒤집힌 판정보다
+ * 판정 불가가 낫다.
+ */
+const RECURRENCE_NEGATION = /아님|아니|않|못|예정|취소|보류|~~|❌|❓|\?/u;
 
 /** 셀 안의 `\|` 를 구분자로 읽지 않는다. 이 저장소의 표는 실제로 `\|\|` 를 쓴다. */
 function splitRow(line) {
@@ -607,23 +639,30 @@ export function judgeRecurrence(text) {
   const lines = text.split('\n');
 
   // `## 대장` 절이 있는데 행이 0이면 **파싱 실패**다. "반복이 없다"와 구별한다.
-  const hasSection = lines.some((l) => /^##\s*대장\s*$/.test(l));
-  const headerIdx = lines.findIndex((l) => /^\|\s*ID\s*\|/.test(l));
-  if (!hasSection) {
+  // 절 **범위**를 실제로 좁힌다. 이전에는 `hasSection` 이 존재만 보고 행 스캔은
+  // 파일 전체를 훑어, **같은 파일의 다른 표**가 대장 행으로 읽혔다(4차 리뷰 m-c).
+  // 상세 절에 표를 하나 더 넣자마자 P11 이 그 표의 헤더를 손상된 행으로 판정했다.
+  const sectionStart = lines.findIndex((l) => /^##\s*대장\s*$/.test(l));
+  if (sectionStart < 0) {
     problems.push('`## 대장` 절이 없다 — 대장 형식이 깨졌거나 다른 파일이다');
     return { problems, rows: [], open: [] };
   }
+  let sectionEnd = lines.length;
+  for (let i = sectionStart + 1; i < lines.length; i++) {
+    if (/^##\s/.test(lines[i])) { sectionEnd = i; break; }
+  }
+  const headerIdx = lines.findIndex(
+    (l, i) => i > sectionStart && i < sectionEnd && /^\|\s*ID\s*\|/.test(l));
   if (headerIdx < 0) {
-    problems.push('`| ID | …` 헤더 행을 찾지 못했다 — 표 파싱 실패');
+    problems.push('`## 대장` 절 안에서 `| ID | …` 헤더 행을 찾지 못했다 — 표 파싱 실패');
     return { problems, rows: [], open: [] };
   }
   const width = splitRow(lines[headerIdx]).length;
 
   const rows = [];
-  for (let i = 0; i < lines.length; i++) {
+  for (let i = headerIdx + 1; i < sectionEnd; i++) {
     const l = lines[i];
     if (!/^\s*\|/.test(l)) continue;
-    if (i === headerIdx) continue;
     if (/^\s*\|[\s:|-]+\|\s*$/.test(l)) continue; // 구분선
     const cells = splitRow(l);
     // 파이프로 시작하는 표 행인데 ID 형식이 아니면 **조용히 넘기지 않는다.**
@@ -666,10 +705,13 @@ export function judgeRecurrence(text) {
       problems.push(`${id}: 처방·상태 칸이 비어 있다 — 판정할 수 없다`);
     } else if (RECURRENCE_OPEN.test(cell)) {
       if (n >= RECURRENCE_THRESHOLD) open.push(`${id}(${n}회) ${String(cause).replace(/\*/g, '').slice(0, 60)}`);
-    } else if (!RECURRENCE_CLOSED.test(String(status).trim())) {
+    } else if (!RECURRENCE_CLOSED.has(recurrenceStatusToken(status))
+               || RECURRENCE_NEGATION.test(String(status))) {
       problems.push(
-        `${id}: 상태 "${String(status).trim().slice(0, 24)}" 를 판정할 수 없다 — ` +
-        `닫힌 어휘(${RECURRENCE_CLOSED_WORDS.join(' · ')})나 열린 어휘(${RECURRENCE_OPEN_WORDS.join(' · ')})를 쓰라`
+        `${id}: 상태 "${String(status).trim().slice(0, 24)}" 를 판정할 수 없다 ` +
+        `(첫 토큰 "${recurrenceStatusToken(status) || '없음'}") — ` +
+        `닫힌 어휘(${RECURRENCE_CLOSED_WORDS.join(' · ')})나 열린 어휘(${RECURRENCE_OPEN_WORDS.join(' · ')})를 쓰라. ` +
+        `**첫 토큰 정확 일치**로 검사하므로 "미완료"·"완료 예정" 처럼 닫힌 단어를 품은 부정형·미래형은 막힌다`
       );
     }
   }
@@ -726,6 +768,21 @@ function selfTest() {
     ['A4 상태 "보류"',          ok.replace('`Guide` — 처방함', '보류').replace('✅ 처방됨', '⏸ 보류'), true],
     ['A5 상태 "TBD"',           ok.replace('`Guide` — 처방함', 'TBD').replace('✅ 처방됨', 'TBD'),      true],
     ['A6 처방·상태 빈 칸',      ok.replace('`Guide` — 처방함', ' ').replace('✅ 처방됨', ' '),          true],
+    // D1·D4·D6 — 5차 재리뷰가 뚫은 **부분일치**. `미완료` 안에 `완료` 가 있어
+    // 닫힘으로 읽혔다. 모르는 값을 통과시키는 것(A4~A6)보다 한 칸 더 나쁘다 —
+    // 게이트가 "미완료"를 "완료"로 **읽는다**.
+    ['D1 상태 "미완료"',        ok.replace('`Guide` — 처방함', '아직 없다').replace('✅ 처방됨', '미완료'),     true],
+    ['D4 상태 "완료 예정"',     ok.replace('`Guide` — 처방함', '아직 없다').replace('✅ 처방됨', '완료 예정'),  true],
+    ['D6 상태 "처방됨 아님"',   ok.replace('`Guide` — 처방함', '아직 없다').replace('✅ 처방됨', '❌ 처방됨 아님'), true],
+    // 대장의 실제 값 두 형태는 통과해야 한다 — 꾸밈·괄호 주석이 붙어 있다.
+    ['D11 실제값 ⚠️+괄호',      ok.replace('✅ 처방됨', '⚠️ 처방됨, 사각지대 확인 (2026-07-28)'),            false],
+    ['D12 실제값 재처방됨',     ok.replace('✅ 처방됨', '✅ 재처방됨 (2026-07-28, 2차)'),                     false],
+    // 절 범위 — 같은 파일의 **다른 표**가 대장 행으로 읽히면 안 된다(4차 m-c).
+    // 상세 절에 표를 하나 넣자마자 실제로 차단이 났다.
+    ['E1 상세 절의 다른 표',
+      `${ok}\n## R2 상세\n\n| 회차 | 무엇이 | 왜 |\n|---|---|---|\n| 4차 | 판정 축 | 형식만 봤다 |\n`, false],
+    ['E2 대장 절이 비어 있음',
+      `${H}\n## R1 상세\n\n| ID | 원인 | 횟수 | 마지막 | 처방 | 상태 |\n|---|---|---|---|---|---|\n| R1 | x | **9** | d | c | ✅ |\n`, true],
   ];
   let bad = 0;
   for (const [name, text, mustFail] of cases) {
@@ -736,7 +793,7 @@ function selfTest() {
     console.log(`  ${pass ? 'PASS' : 'FAIL'}  ${name.padEnd(22)} 기대 ${mustFail ? '차단' : '통과'} · 실측 ${didFail ? '차단' : '통과'}` +
       (didFail ? `  (${[...problems, ...open][0]?.slice(0, 70)})` : ''));
   }
-  console.log(bad ? `\nP11 자기시험 실패 ${bad}건 — 파서가 뚫린다.` : '\nP11 자기시험 11건 통과.');
+  console.log(bad ? `\nP11 자기시험 실패 ${bad}건 — 파서가 뚫린다.` : '\nP11 자기시험 18건 통과.');
   process.exit(bad ? 1 : 0);
 }
 

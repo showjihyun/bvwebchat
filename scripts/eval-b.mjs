@@ -71,9 +71,33 @@ for (const sig of ['SIGINT', 'SIGTERM']) {
 // ── 인자 ────────────────────────────────────────────────────────────────────
 const argv = process.argv.slice(2);
 if (argv.includes('--help') || argv.includes('-h')) {
-  console.log('사용법: node scripts/eval-b.mjs [--all | --case GB-0X | --verify-artifact] [--dry-run] [--force] [--keep] [--json] [--verbose]');
+  console.log('사용법: node scripts/eval-b.mjs [--all | --case GB-0X | --verify-artifact | --self-test] [--dry-run] [--force] [--keep] [--json] [--verbose]');
+  console.log('  --self-test  준비 게이트 음성 시험 (LLM 미실행 · 비용 0)');
   console.log('종료 코드: 0 통과 · 1 실패 · 2 실행 불가(CLI 부재/미인증) · 3 준비 불가(골든/워크트리)');
   process.exit(EXIT_PASS);
+}
+if (argv.includes('--self-test')) {
+  // `requireCleanState` 가 무엇을 차단으로 판정하는지 합성 케이스로 고정한다.
+  // 게이트가 조용히 통과하는 상태와 정상 동작하는 상태는 이 시험 없이 구별되지 않는다.
+  const cases = [
+    ['깨끗',                    '',                                                  0],
+    ['공백만',                  '   \n  \n',                                         0],
+    ['상태 수정 1건',           ' M .harness/state/phase.jsonl',                      1],
+    ['미추적 체크포인트',       '?? .harness/state/checkpoints/X/1.json',             1],
+    ['하네스 입력(CLAUDE.md)',  ' M CLAUDE.md',                                       1],
+    ['정답지 수정',             ' M evals/golden/track-b-harness.jsonl',              1],
+    ['스테이징된 정책',         'M  harness/policy/phase-matrix.json',                1],
+    ['여러 건',                 ' M CLAUDE.md\n?? .claude/skills/x/SKILL.md\n M harness/phase.py', 3],
+  ];
+  let bad = 0;
+  for (const [name, porcelain, want] of cases) {
+    const got = judgeDirtyPaths(porcelain).length;
+    const ok = got === want;
+    if (!ok) bad++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(22)} 기대 ${want ? `차단 ${want}건` : '통과'} · 실측 ${got ? `차단 ${got}건` : '통과'}`);
+  }
+  console.log(bad ? `\neval-b 준비 게이트 자기시험 실패 ${bad}건.` : '\neval-b 준비 게이트 자기시험 8건 통과.');
+  process.exit(bad ? EXIT_FAIL : EXIT_PASS);
 }
 const VERIFY_ONLY = argv.includes('--verify-artifact');
 const DRY_RUN = argv.includes('--dry-run');
@@ -110,6 +134,16 @@ const BRANCH = git(['rev-parse', '--abbrev-ref', 'HEAD']).out;
  *   2) 아티팩트 유효성 — `--verify-artifact` 가 "이 결과가 지금 하네스의 결과인가"를
  *      판정하는 근거. head_sha 동일성만 보면 아티팩트를 커밋하는 순간 HEAD 가 바뀌어
  *      **가드가 원리적으로 만족 불가능해진다** (아래 verifyArtifact 주석 참조).
+ *
+ * **전제 — 워킹트리 = HEAD.** `inputsHash()` 는 `readFileSync` 로 **디스크(워킹트리)** 를
+ * 읽고, 케이스는 `git worktree add --detach … HEAD_SHA` 로 만든 **HEAD** 사본에서 돈다.
+ * 둘이 다르면 아티팩트의 `inputs_hash` 는 **평가되지 않은 것**을 서술한다:
+ * 미커밋 상태로 평가 → 해시는 변경 후 값, 결과는 변경 전 코드 → 나중에 커밋하면
+ * `--verify-artifact` 가 해시 일치로 통과. 그 변경은 한 번도 평가되지 않았다.
+ * 5차 재리뷰 B-k 가 격리 저장소에서 실증했다.
+ *
+ * 이 전제는 `requireCleanState()` 가 **집행**한다 — HASH_GLOBS 가 미커밋이면 평가를
+ * 시작하지 않는다. 전제를 주석으로만 두면 그것이 곧 R1(존재하지 않는 방어를 단언)이다.
  */
 /**
  * 해시 대상 — **"에이전트의 행동이 달라지는가"** 가 포함 기준이다.
@@ -1208,25 +1242,50 @@ if (DRY_RUN) {
  * 차이는 **1초 뒤에 아느냐 $7 뒤에 아느냐**뿐이다. 실제로 2026-07-28 실행이
  * 5 pass · 1 fail 로 $7.7 를 쓰고 나서 이것을 알려줬다.
  */
+/**
+ * `git status --porcelain` 출력 → 차단해야 하는 경로 목록. **순수 함수다** —
+ * 인자로만 판정하므로 합성 케이스로 시험할 수 있다(`--self-test`).
+ *
+ * 분리한 이유: P11 에는 음성 시험을 붙이고 이 게이트에는 안 붙였다는 지적을
+ * 두 회차 연속 받았다(4차 P-2, 5차 §3-1). **시험 없는 게이트는 연극이다**를
+ * 이 저장소가 훅에 대해 선언해 놓고 새 게이트에는 적용하지 않았다.
+ */
+export function judgeDirtyPaths(porcelain) {
+  return String(porcelain || '').split('\n').map((l) => l.trim()).filter(Boolean);
+}
+
 function requireCleanState() {
-  const r = spawnSync('git', ['status', '--porcelain', '--', '.harness/state'],
+  // 검사 범위는 `.harness/state` + **HASH_GLOBS 전부**다. 5차 재리뷰 B-k 가 후자를
+  // 실증했다: `inputsHash()` 는 `readFileSync` 로 **워킹트리**를 읽는데 케이스는
+  // `git worktree add --detach … HEAD_SHA` 로 만든 **HEAD** 사본에서 돈다.
+  // 하네스 입력이 미커밋이면 **평가는 그것을 보지 못한 채 아티팩트에 그 해시를 박고**,
+  // 나중에 그 변경을 커밋하면 `--verify-artifact` 가 해시 일치로 통과한다 —
+  // 한 번도 평가되지 않은 변경이 `track_b_passing` 을 초록으로 지나간다.
+  const scope = ['.harness/state', ...HASH_GLOBS];
+  const r = spawnSync('git', ['status', '--porcelain', '--', ...scope],
     { cwd: ROOT, encoding: 'utf8' });
   if (r.status !== 0) return; // git 을 못 부르면 이 검사의 관할이 아니다
-  const dirty = (r.stdout || '').split('\n').map((l) => l.trim()).filter(Boolean);
+  const dirty = judgeDirtyPaths(r.stdout);
   if (!dirty.length) return;
-  say('.harness/state 에 커밋되지 않은 변경이 있다 — 평가를 시작하지 않는다.');
+  say('평가 대상이 미커밋 상태다 — 평가를 시작하지 않는다.');
   say('');
-  for (const l of dirty.slice(0, 8)) say(`    ${l}`);
+  for (const l of dirty.slice(0, 12)) say(`    ${l}`);
+  if (dirty.length > 12) say(`    … 외 ${dirty.length - 12}건`);
   say('');
-  say('  평가는 격리 워크트리에서 돌고 워크트리는 **커밋된 것만** 본다. 이대로 돌리면');
-  say('  GB-06(재개 시험)이 checkpoint_uncommitted 로 반드시 실패한다 — 지금 막지 않으면');
-  say('  그 사실을 20분과 $7 뒤에 알게 된다.');
+  say('  평가는 격리 워크트리에서 돌고 워크트리는 **커밋된 것만** 본다.');
   say('');
-  say('  고치는 법:  git commit -- .harness/state -m "chore(state): 체크포인트"');
+  say('  · .harness/state 가 미커밋이면 → GB-06(재개 시험)이 checkpoint_uncommitted 로 실패한다.');
+  say('  · 하네스 입력(정책·훅·에이전트·스킬·CLAUDE.md·settings·정답지)이 미커밋이면 →');
+  say('    **평가는 그것을 보지 못한 채 아티팩트에 그 해시를 박는다.** 나중에 커밋하면');
+  say('    --verify-artifact 가 해시 일치로 통과하고, 그 변경은 한 번도 평가되지 않은 채');
+  say('    track_b_passing 을 지나간다. 초록이 거짓이 되는 경로다.');
+  say('');
+  say('  고치는 법:  git commit -- <위 경로들>');
   say('');
   say('  (recurrence R4. 1차 Guide 처방이 실패해 게이트로 올라왔다 — R3 의 pathspec');
-  say('   규율을 정확히 지킬수록 상태 파일이 커밋에서 빠지기 때문이다.)');
-  emit({ script: 'eval-b', status: 'unprepared', reason: 'state_uncommitted', dirty }, EXIT_UNPREPARED);
+  say('   규율을 정확히 지킬수록 상태 파일이 커밋에서 빠지기 때문이다. 5차 재리뷰 B-k 로');
+  say('   범위가 HASH_GLOBS 까지 넓어졌다 — 같은 근거가 그쪽에 더 강하게 적용된다.)');
+  emit({ script: 'eval-b', status: 'unprepared', reason: 'inputs_uncommitted', dirty }, EXIT_UNPREPARED);
 }
 requireCleanState();
 
