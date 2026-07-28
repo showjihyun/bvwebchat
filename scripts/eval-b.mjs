@@ -1194,6 +1194,42 @@ if (DRY_RUN) {
   emit({ script: 'eval-b', mode: 'dry-run', head_sha: HEAD_SHA, inputs_hash: INPUTS_HASH, cases: cases.map((c) => ({ id: c.id, ...executability(c), auto: undefined, judge: undefined })) }, EXIT_PASS);
 }
 
+/**
+ * R4 의 2차 처방 — `게이트`. 1차 처방(`Guide`: 전이 → 커밋 → 평가)은 **실패했다.**
+ * 처방을 쓴 다음 날 4번째가 났다(2026-07-28, GB-06 `checkpoint_uncommitted`).
+ *
+ * 왜 Guide 로는 안 되는가: R3 의 처방(`git commit -- <경로>` 만 쓴다)과 **정면으로
+ * 당긴다.** pathspec 을 정확히 지킬수록 방금 편집한 파일만 실리고 `.harness/state` 는
+ * 빠진다. 두 규칙이 반대로 당기는데 그것을 조정하는 자리가 없었고, 사람의 기억이
+ * 그 자리를 대신하고 있었다.
+ *
+ * 여기에 두는 이유: 평가는 격리 워크트리에서 돌고 워크트리는 **커밋된 것만 본다.**
+ * 그러므로 이 검사는 첫 케이스가 뜨기 전에 끝난다 — 실패는 어차피 확정돼 있고,
+ * 차이는 **1초 뒤에 아느냐 $7 뒤에 아느냐**뿐이다. 실제로 2026-07-28 실행이
+ * 5 pass · 1 fail 로 $7.7 를 쓰고 나서 이것을 알려줬다.
+ */
+function requireCleanState() {
+  const r = spawnSync('git', ['status', '--porcelain', '--', '.harness/state'],
+    { cwd: ROOT, encoding: 'utf8' });
+  if (r.status !== 0) return; // git 을 못 부르면 이 검사의 관할이 아니다
+  const dirty = (r.stdout || '').split('\n').map((l) => l.trim()).filter(Boolean);
+  if (!dirty.length) return;
+  say('.harness/state 에 커밋되지 않은 변경이 있다 — 평가를 시작하지 않는다.');
+  say('');
+  for (const l of dirty.slice(0, 8)) say(`    ${l}`);
+  say('');
+  say('  평가는 격리 워크트리에서 돌고 워크트리는 **커밋된 것만** 본다. 이대로 돌리면');
+  say('  GB-06(재개 시험)이 checkpoint_uncommitted 로 반드시 실패한다 — 지금 막지 않으면');
+  say('  그 사실을 20분과 $7 뒤에 알게 된다.');
+  say('');
+  say('  고치는 법:  git commit -- .harness/state -m "chore(state): 체크포인트"');
+  say('');
+  say('  (recurrence R4. 1차 Guide 처방이 실패해 게이트로 올라왔다 — R3 의 pathspec');
+  say('   규율을 정확히 지킬수록 상태 파일이 커밋에서 빠지기 때문이다.)');
+  emit({ script: 'eval-b', status: 'unprepared', reason: 'state_uncommitted', dirty }, EXIT_UNPREPARED);
+}
+requireCleanState();
+
 const cli = claudeOnPath();
 if (!cli.ok) {
   say(`claude CLI 를 실행할 수 없다: ${cli.why}`);
@@ -1232,7 +1268,18 @@ say('');
 // ── 아티팩트 기록 ───────────────────────────────────────────────────────────
 // 부분 실행(--case)이면 이전 결과를 보존하며 병합한다. 한 케이스를 돌렸다고
 // 나머지 6건의 기록이 사라지면 가드가 볼 것이 없어진다.
-const merged = { ...(cacheValid ? prevArt?.cases || {} : {}), ...results };
+//
+// 병합 조건은 `cacheValid` 가 아니라 **입력 해시 일치**다. 둘은 다르다:
+// `cacheValid` 는 `!FORCE` 를 포함하므로 `--force` 가 병합까지 껐고, 그 결과
+// `--case GB-06 --force`(실패한 한 건만 다시 돌리기)가 나머지 5건의 기록을
+// 통째로 버려 아티팩트를 1건짜리로 만들었다. **`--force` 는 "선택한 것을 다시
+// 돌려라"는 뜻이지 "이력을 버려라"가 아니다.** 위 주석이 선언한 의도와 구현이
+// 어긋나 있었다 (2026-07-28 GB-06 재실행 때 드러남).
+//
+// 해시가 다르면 이전 결과는 **다른 하네스**의 것이므로 병합하지 않는다 —
+// 그것이 `track_b_passing` 이 지키는 불변식이다.
+const prevReusable = prevArt && prevArt.inputs_hash === INPUTS_HASH ? prevArt.cases || {} : {};
+const merged = { ...prevReusable, ...results };
 const artifact = {
   schema: 1,
   script: 'eval-b',

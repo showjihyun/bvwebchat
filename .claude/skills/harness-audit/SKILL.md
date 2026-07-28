@@ -43,7 +43,8 @@ node scripts/eval-b.mjs ...
 | # | 명령 | 무엇을 답하는가 | 실패 시 |
 |---|---|---|---|
 | 1 | `node scripts/doc-freshness.mjs --full` | 문서가 코드보다 낡았는가 (C1~C6) | blocking: C1·C2·C4·C5 |
-| 2 | `node scripts/policy-lint.mjs` | 정책이 자기모순인가 (도달 불가 단계·빈 allow-set·끊긴 전이 그래프) | blocking |
+| 2 | `node scripts/policy-lint.mjs` | 정책이 자기모순인가 (P1~P11 — 도달 불가 단계·빈 allow-set·끊긴 전이 그래프·매칭 불가 패턴·`enforced_by` 대조·**반복 대장 미처방**) | blocking |
+| 2-1 | `node scripts/policy-lint.mjs --self-test` | **P11 파서가 뚫리는가** (음성 11건: 형식 깨짐 6 + 상태 어휘·빈 칸 3 + 통과 2) | blocking |
 | 3 | `node scripts/hooks-selftest.mjs` | **게이트가 실제로 작동하는가** | blocking |
 | 4 | `node scripts/eval-b.mjs` | 하네스 회귀 평가 GB-01~07 | auto rubric만 blocking |
 | 5 | 센서 카탈로그 대조 (아래) | 문서의 지도가 실제 배선과 일치하는가 | 보고 |

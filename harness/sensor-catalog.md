@@ -35,7 +35,7 @@ Sensor로 두는 것은 낭비이고, 반대로 추론이 필요한 판단을 �
 | R1 단계×경로 매트릭스 | RED에서 `src/**` 쓰기, GREEN에서 `tests/**` 쓰기, HARNESS에서 `src/**`·`tests/**` 쓰기 | `.claude/hooks/gate_phase.py` (서브프로세스 0, 예산 ≤150ms) | ✅ |
 | 리다이렉트 차단 | `> .harness/state/…` · `> evals/golden/…` 등 통제면 우회 셸 리다이렉트 | `gate_phase.py` + `tool-risk.json` `deny_redirect` | ✅ (탐지이지 예방이 아니다 — `node -e fs.write…`는 못 막는다) |
 | 전이 가드 11종 | 직전 단계가 만들지 않은 산출물로 다음 단계에 진입하는 것 | `harness/phase.py enter` | ✅ |
-| 골든 정답 수정 승인 | 에이전트가 자기 정답지를 쓰는 것 | permissions `ask` (`evals/golden/**`) | ✅ |
+| 골든 정답 수정 승인 | 평가받는 중에 자기 정답지를 쓰는 것 | **단계 매트릭스** — SPEC 에서만 열리고 RED·GREEN·EVAL·REVIEW 에서 막힌다. permissions 는 `allow` 다 | ✅ (2026-07-28 정정 — 방어가 **권한에서 단계로** 옮겨갔다. 매 편집마다 사람에게 묻는 것은 실전에서 지속되지 않았다) |
 | 강제 전이의 가시성 | `force`를 조용히 쓰는 것 | permissions `ask` + `forced:true` 박제 + 비율 노출 | ✅ |
 | 진입점 예산 | `CLAUDE.md` 100줄 초과 (안티패턴 01의 유일한 기계 방어) | `doc-map.json` C5 + `doc-freshness.mjs` | 🔄 스크립트 ✅ / CI 배선 미완 |
 
@@ -123,7 +123,7 @@ ADR-0005 결정5의 예산은 5초이고, 초과 시 실패가 아니라 경고�
 | 골든 정답 셸 우회 차단 | Comp | `evals/golden/**` 셸 리다이렉트 | `tool-risk.json` `deny_redirect` → `gate_phase.py` | ✅ |
 | 독립 평가 에이전트 (evaluator) | Inf | 각 RQ 구현 직후 | `tdd-workflow` Phase 3 → `evaluator_pass` 가드 | ✅ |
 | PR 리뷰 게이트 (reviewer) | Inf | 머지 전 | `review-gate` 스킬 → `reviewer_approve` 가드 | ✅ |
-| 트랙 B 하네스 회귀 평가 | Comp(auto) + Inf(judge) | 하네스 변경 시 · 주간 | `eval-b.mjs` → `evals/results/track-b/<sha>.json` → `track_b_passing` 가드 | 🔄 골든 7케이스 실행 가능 스키마 ✅ (auto 13 · judge 9) / 러너 제작 중 |
+| 트랙 B 하네스 회귀 평가 | Comp(auto) + Inf(judge) | 하네스 변경 시 · 주간 | `eval-b.mjs` → `evals/results/track-b/<sha>.json` → `track_b_passing` 가드. 시작 시 `.harness/state` 더러움을 검사해 **첫 케이스 전에** 거부한다(recurrence R4 2차 처방) | ✅ **러너 실동작** — 7케이스 중 필수 6건(GB-02 는 `blocked`, 4회 실측 근거가 골든 `note` 에 있다). 입력 해시가 바뀌면 옛 아티팩트를 가드가 거부한다 |
 
 이 계열의 상한은 `evaluator` 하나에 걸려 있다. 추론 센서를 결정론으로 위장하지 않는다.
 
@@ -151,7 +151,7 @@ flake 판정 기준은 횟수가 아니다. 같은 코드가 동시 실행 에�
 | 이름 | 실행 | 배치 | 강제 수단 | 상태 |
 |---|---|---|---|---|
 | 문서 신선도 C1~C6 | Comp | SessionStart(`--digest`) · CI(`--pr`, blocking) · 감사(`--full`, **인자 없을 때 기본값**) | `doc-freshness.mjs`. `--digest`는 **항상 exit 0** (세션 시작을 막지 않는다) · 실측 0.155초 | 🔄 스크립트 ✅ / SessionStart는 현재 mtime 자문으로 대체, CI 미배선 |
-| 정책 정합성 P1~P11 | Comp | 하네스 변경 시 | `policy-lint.mjs` (`--print`가 `harness/policy/README.md`를 **생성** — 손으로 고치지 않는다). 검사 항목 수가 아니라 **전원 PASS 여부**가 판정이다. **P11 = 반복 실패 대장** — `harness/recurrence.md`에서 2회 이상인데 처방이 열린 원인을 차단한다. 파서 음성 시험 `--self-test` 8건 동봉 | 🔄 스크립트 ✅ / CI 미배선 |
+| 정책 정합성 P1~P11 | Comp | 하네스 변경 시 | `policy-lint.mjs` (`--print`가 `harness/policy/README.md`를 **생성** — 손으로 고치지 않는다). 검사 항목 수가 아니라 **전원 PASS 여부**가 판정이다. **P11 = 반복 실패 대장** — `harness/recurrence.md`에서 2회 이상인데 처방이 열린 원인을 차단한다. 파서 음성 시험 `--self-test` **11건** — 파싱 축(형식 깨짐)과 판정 축(상태 어휘·빈 칸) 양쪽을 고정한다 | 🔄 스크립트 ✅ / CI 미배선 |
 | 단계 감사 (사후) | Comp | 하네스 변경 시 | `phase-audit.mjs` — git 이력에서 단계 순서를 **독립 재유도**해 `phase.jsonl`과 대조한다. 셸 우회(`node -e`)는 예방할 수 없고 이것이 탐지 축이다. 부트스트랩 예외는 `until_sha` **이전**에만 적용되고 조용히 빼지 않고 advisory로 계속 찍는다 | 🔄 스크립트 ✅ / CI 미배선 (`2bcaa28` 1건으로 exit 1, 예외로 덮지 않기로 결정) |
 | 전이 시 상태 신선도 | Boundary | `phase.py enter` | `session.json`이 HEAD 커밋보다 낡으면 **전이를 거부**한다. 체크포인트가 세션 스냅샷을 품고 재개 시험이 그것만 읽으므로, 낡은 채 전이하면 낡은 서사가 박제된다. `stop_state.py`가 같은 검사를 하지만 세션 **끝**이라 이미 늦다 (`recurrence.md` R6) | ✅ |
 | 훅 자기 시험 | Comp | 하네스 변경 시 · CI | `hooks-selftest.mjs [--audit] [--keep] [--verbose]` — `settings.json`의 커맨드 문자열 그대로 합성 페이로드를 먹여 allow/deny 단언 + 참조 스크립트(디스패처 1 + 핸들러 5) 실재 검사. 판정은 **단언 전원 통과 여부**이지 단언 개수가 아니다. **이 검사가 없으면 훅 부재가 무증상이다** (아래 참조) | 🔄 스크립트 ✅ / CI 미배선 |

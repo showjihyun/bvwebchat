@@ -39,7 +39,7 @@ Red→Green→Eval 파이프라인에 팀 모드(SendMessage)를 쓰지 않는�
 | 작업 | 먼저 읽을 파일 |
 |---|---|
 | **모든 개발 작업 시작·완료** | `docs/progress.md` — 진행 원장, 갱신 의무 |
-| 세션 시작·재개·체크포인트 | `checkpoint-resume` 스킬 |
+| 세션 시작·재개·체크포인트 | `checkpoint-resume` 스킬 — 전이 **직전**에 `phase.py session` 갱신 |
 | 스펙 인터뷰 | `specs/interview/question-bank.md` |
 | RQ 구현·테스트·평가 | `tdd-workflow` 스킬 (.claude/skills/) |
 | PR 머지 전 | `review-gate` 스킬 — APPROVE 없이 머지 금지 |
