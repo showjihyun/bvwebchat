@@ -579,37 +579,136 @@ function checkEnforcement(r) {
  * 이 검사가 policy-lint 에 있는 이유: metrics.mjs 는 의도적으로 항상 exit 0 이다
  * ("지표 산출은 관측이지 판정이 아니다"). 관측과 차단은 다른 도구의 일이다.
  */
+/** 규칙 3이 처방을 요구하는 지점. 등재(2회)·차단(2회)·규칙(2회)이 같아야 한다. */
+const RECURRENCE_THRESHOLD = 2;
+
+/** 셀 안의 `\|` 를 구분자로 읽지 않는다. 이 저장소의 표는 실제로 `\|\|` 를 쓴다. */
+function splitRow(line) {
+  return line.split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, '|'));
+}
+
+/**
+ * 대장 텍스트 → 판정. **순수 함수다** — 파일을 읽지 않으므로 합성 케이스로 시험할 수 있다.
+ * 반환 `problems` 가 비어 있지 않으면 P11 은 실패한다. 통과 경로는 하나뿐이다:
+ * 표를 파싱했고, 모든 행이 형식에 맞고, 임계 이상인 열린 항목이 없다.
+ */
+export function judgeRecurrence(text) {
+  const problems = [];
+  const lines = text.split('\n');
+
+  // `## 대장` 절이 있는데 행이 0이면 **파싱 실패**다. "반복이 없다"와 구별한다.
+  const hasSection = lines.some((l) => /^##\s*대장\s*$/.test(l));
+  const headerIdx = lines.findIndex((l) => /^\|\s*ID\s*\|/.test(l));
+  if (!hasSection) {
+    problems.push('`## 대장` 절이 없다 — 대장 형식이 깨졌거나 다른 파일이다');
+    return { problems, rows: [], open: [] };
+  }
+  if (headerIdx < 0) {
+    problems.push('`| ID | …` 헤더 행을 찾지 못했다 — 표 파싱 실패');
+    return { problems, rows: [], open: [] };
+  }
+  const width = splitRow(lines[headerIdx]).length;
+
+  const rows = [];
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (!/^\s*\|/.test(l)) continue;
+    if (i === headerIdx) continue;
+    if (/^\s*\|[\s:|-]+\|\s*$/.test(l)) continue; // 구분선
+    const cells = splitRow(l);
+    // 파이프로 시작하는 표 행인데 ID 형식이 아니면 **조용히 넘기지 않는다.**
+    // T3(행 접두사 손상)이 여기서 잡힌다 — 손상된 행은 필터가 아니라 실패다.
+    if (!/^R\d+$/.test(cells[1] ?? '')) {
+      problems.push(`${i + 1}행: ID 칸이 \`R<숫자>\` 가 아니다 (\`${(cells[1] ?? '').slice(0, 20)}\`) — 행이 손상됐다`);
+      continue;
+    }
+    if (cells.length !== width) {
+      problems.push(
+        `${cells[1]}: 칸이 ${cells.length}개 — 헤더는 ${width}개다. ` +
+        '셀 안의 파이프는 `\\|` 로 이스케이프하라. 칸이 밀리면 상태가 엉뚱한 칸에서 읽힌다'
+      );
+      continue;
+    }
+    rows.push(cells);
+  }
+  if (!rows.length) {
+    problems.push('`## 대장` 절은 있는데 읽을 수 있는 행이 0개다 — 표 파싱 실패이지 "반복 없음"이 아니다');
+    return { problems, rows, open: [] };
+  }
+
+  const open = [];
+  for (const c of rows) {
+    const [, id, cause, countRaw, , cure, status] = c;
+    // `|| 0` 으로 삼키지 않는다 — 횟수를 못 읽으면 임계를 못 넘어 **조용히 통과**한다.
+    const n = Number(String(countRaw).replace(/\*|\s/g, ''));
+    if (!Number.isInteger(n) || n < 1) {
+      problems.push(`${id}: 횟수 칸을 양의 정수로 읽을 수 없다 (\`${String(countRaw).slice(0, 20)}\`)`);
+      continue;
+    }
+    if (n >= RECURRENCE_THRESHOLD && /미처방|처방 실패|미정|미결|관찰 중/.test(`${cure} ${status}`)) {
+      open.push(`${id}(${n}회) ${String(cause).replace(/\*/g, '').slice(0, 60)}`);
+    }
+  }
+  return { problems, rows, open };
+}
+
 function checkRecurrence() {
   const p = join(ROOT, 'harness/recurrence.md');
   if (!existsSync(p)) {
     fail('P11', 'harness/recurrence.md 가 없다 — 반복 실패를 세는 자리가 없다',
-      '만들어라. 누적이 없으면 같은 원인의 3회째를 매번 "새 발견"으로 처리하게 된다.');
+      '만들어라. 누적이 없으면 같은 원인의 2회째를 매번 "새 발견"으로 처리하게 된다.');
     return;
   }
-  const rows = readFileSync(p, 'utf8').split('\n')
-    .filter((l) => /^\|\s*R\d+\s*\|/.test(l))
-    .map((l) => l.split('|').map((c) => c.trim()));
-  if (!rows.length) {
-    note('P11', 'recurrence.md 에 항목이 없다 — 아직 2회 이상 반복된 원인이 없다는 뜻이면 정상이다');
-    return;
-  }
-  const unfixed = [];
-  for (const c of rows) {
-    const [, id, cause, countRaw, , , status] = c;
-    const n = parseInt(String(countRaw).replace(/\D/g, ''), 10) || 0;
-    // 처방이 '미정'이거나 상태가 미처방/실패면 해소되지 않은 것으로 본다.
-    const open = /미처방|처방 실패|미정|미결|관찰 중/.test(`${c[5]} ${status}`);
-    if (n >= 3 && open) unfixed.push(`${id}(${n}회) ${cause.replace(/\*/g, '').slice(0, 60)}`);
-  }
-  if (unfixed.length) {
+  const { problems, rows, open } = judgeRecurrence(readFileSync(p, 'utf8'));
+  if (problems.length) {
     fail('P11',
-      `반복 실패 ${unfixed.length}건이 3회 이상인데 처방이 열려 있다:\n       ` + unfixed.join('\n       '),
-      'harness/recurrence.md 에서 각 항목의 처방을 확정하라 — 규칙 3에 따라 구조/게이트/센서/Guide 중 **하나만** 고르고 근거를 적는다. ' +
-      '상태가 "처방 실패"면 그 처방이 실제로 안 먹혔다는 뜻이므로 다시 골라야 한다(마지막 발생이 처방 날짜 이후로 갱신됐는지 보라). ' +
-      '횟수가 줄기를 기다리는 것은 해소가 아니다 — 3회를 넘긴 원인은 다음에도 온다.');
-  } else {
-    note('P11', `반복 대장 ${rows.length}건 — 3회 이상 미처방 0건`);
+      `반복 대장을 판정할 수 없다 — ${problems.length}건:\n       ` + problems.join('\n       '),
+      'harness/recurrence.md 의 표 형식을 고쳐라. **판정할 수 없는 가드는 없는 가드다**' +
+      '(2026-07-27 결정, no_pending_spec 패턴 사망 사건) — 파싱 실패를 통과로 처리하면 ' +
+      '대장이 비어도 초록이 뜬다. 형식 시험: node scripts/policy-lint.mjs --self-test');
+    return;
   }
+  if (open.length) {
+    fail('P11',
+      `반복 실패 ${open.length}건이 ${RECURRENCE_THRESHOLD}회 이상인데 처방이 열려 있다:\n       ` + open.join('\n       '),
+      `harness/recurrence.md 에서 각 항목의 처방을 확정하라 — 규칙 3에 따라 구조/게이트/센서/Guide 중 **하나만** 고르고 근거를 적는다. ` +
+      '상태가 "처방 실패"면 그 처방이 실제로 안 먹혔다는 뜻이므로 다시 골라야 한다(마지막 발생이 처방 날짜 이후로 갱신됐는지 보라). ' +
+      `횟수가 줄기를 기다리는 것은 해소가 아니다 — ${RECURRENCE_THRESHOLD}회를 넘긴 원인은 다음에도 온다.`);
+  } else {
+    note('P11', `반복 대장 ${rows.length}건 — ${RECURRENCE_THRESHOLD}회 이상 미처방 0건`);
+  }
+}
+
+/**
+ * P11 음성 시험 — **가드가 잡아야 하는 것을 실제로 잡는지** 합성 케이스로 고정한다.
+ * 3차 재리뷰가 T2~T5 로 이 파서를 뚫었다(셀 안 파이프·행 접두사 손상·행 전체 삭제·
+ * 횟수 한글 표기). 네 경우 모두 **exit 0** 이었고 같은 실행이 "6건 검사됨"을 찍어
+ * 읽는 사람이 검사됐다고 믿게 했다. 그 네 개가 아래 고정 케이스다.
+ */
+function selfTest() {
+  const H = '# 반복 실패 대장\n\n## 대장\n\n| ID | 원인 | 횟수 | 마지막 발생 | 처방 | 상태 |\n|---|---|---|---|---|---|\n';
+  const ok = `${H}| R1 | 어떤 원인 | **9** | 2026-07-27 | \`Guide\` — 처방함 | ✅ 처방됨 |\n`;
+  const cases = [
+    ['T0 정상',                 ok,                                                              false],
+    ['T1 상태 미처방',          ok.replace('✅ 처방됨', '미처방'),                                true],
+    ['T2 셀 안 파이프',         `${H}| R1 | 원인에 | 가 있다 | **9** | 2026-07-27 | \`Guide\` | 미처방 |\n`, true],
+    ['T3 행 접두사 손상',       ok.replace('| R1 |', '|R_1 |'),                                   true],
+    ['T4 표 행 전부 삭제',      H,                                                                true],
+    ['T5 횟수 한글',            ok.replace('**9**', '아홉').replace('✅ 처방됨', '미처방'),        true],
+    ['T6 이스케이프한 파이프',  `${H}| R1 | \\| 를 쓴 원인 | **9** | 2026-07-27 | \`Guide\` — 처방함 | ✅ 처방됨 |\n`, false],
+    ['T7 2회 미처방(임계)',     ok.replace('**9**', '2').replace('✅ 처방됨', '🔄 관찰 중'),      true],
+  ];
+  let bad = 0;
+  for (const [name, text, mustFail] of cases) {
+    const { problems, open } = judgeRecurrence(text);
+    const didFail = problems.length > 0 || open.length > 0;
+    const pass = didFail === mustFail;
+    if (!pass) bad++;
+    console.log(`  ${pass ? 'PASS' : 'FAIL'}  ${name.padEnd(22)} 기대 ${mustFail ? '차단' : '통과'} · 실측 ${didFail ? '차단' : '통과'}` +
+      (didFail ? `  (${[...problems, ...open][0]?.slice(0, 70)})` : ''));
+  }
+  console.log(bad ? `\nP11 자기시험 실패 ${bad}건 — 파서가 뚫린다.` : '\nP11 자기시험 8건 통과.');
+  process.exit(bad ? 1 : 0);
 }
 
 function checkGenerated(m, r) {
@@ -754,11 +853,13 @@ function renderReadme(m, r) {
 // ── 실행 ────────────────────────────────────────────────────────────────────
 const args = process.argv.slice(2);
 if (args.includes('--help') || args.includes('-h')) {
-  console.log('사용법: node scripts/policy-lint.mjs [--print]');
+  console.log('사용법: node scripts/policy-lint.mjs [--print|--self-test]');
   console.log('  (인자 없음)  harness/policy/*.json 검증. 실패 시 exit 1');
   console.log('  --print      harness/policy/README.md 재생성 (검증도 함께 수행)');
+  console.log('  --self-test  P11 파서 음성 시험 — 뚫려야 할 것이 실제로 뚫리는지');
   process.exit(0);
 }
+if (args.includes('--self-test')) selfTest();
 
 if (matrix) {
   checkMatrixSchema(matrix);

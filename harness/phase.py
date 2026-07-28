@@ -24,6 +24,7 @@ import re
 import subprocess
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -424,6 +425,63 @@ def cmd_why(root: Path, ctx: dict, args) -> int:
     return 0
 
 
+def stale_session(root: Path) -> str | None:
+    """전이를 막아야 하면 사유 문자열, 아니면 None. **읽기만 한다.**
+
+    왜 여기인가 (recurrence R6, 2회):
+    체크포인트는 `session.json` 의 **스냅샷을 품는다**(`record_transition` → `ck.data.session`).
+    그리고 `resume-test` 는 커밋된 체크포인트에서 그 스냅샷을 읽는다 — `session.json` 자체는
+    gitignore 대상이라 신선한 워크트리에 존재하지 않기 때문이다. 따라서 전이 순간 낡아
+    있으면 **낡은 서사가 그대로 박제되고**, 재개 시험은 영영 그것을 읽는다.
+
+    `stop_state.py` 가 같은 검사를 하지만 **세션이 끝날 때**다 — 그때는 체크포인트가 이미
+    쓰였고 커밋까지 됐다. 검사는 옳았고 **자리가 틀렸다.** 같은 검사를 박제되는 순간으로
+    옮긴다.
+
+    단일 writer 불변식은 그대로다: 이 함수는 `session.json` 을 **읽고 거부**할 뿐 쓰지 않는다.
+    쓰기 경로는 여전히 `phase.py session` 하나다.
+
+    없으면 통과시킨다 — 평가 러너가 만드는 신선한 워크트리에는 `session.json` 이 없고
+    (gitignore), 거기서 막으면 트랙 B 가 전부 죽는다. `stop_state.py` 와 같은 판단이다.
+    """
+    session_file = st.state_dir(root) / st.SESSION_FILE
+    if not session_file.exists():
+        return None
+    session = st.read_session(root)
+    updated = session.get("updated") or ""
+    head_iso = _newest_commit_iso(root)
+    if not head_iso or not updated:
+        return None
+    if _epoch(updated) >= _epoch(head_iso):
+        return None
+    return (
+        f"session.updated = {updated}\n"
+        f"HEAD 커밋      = {head_iso}   ← 이쪽이 나중이다\n"
+        f"\n"
+        f"체크포인트는 session.json 의 스냅샷을 품고, 재개 시험(GB-06)은 그 스냅샷만 읽는다\n"
+        f"— session.json 자체는 gitignore 라 워크트리에 없다. 지금 전이하면 낡은 서사가\n"
+        f"그대로 박제되고 다음 세션은 diff 를 역공학해야 한다.\n"
+        f"\n"
+        f"git 은 네가 무엇을 했는지 이미 안다. git 이 모르는 건 왜다."
+    )
+
+
+def _newest_commit_iso(root: Path) -> str:
+    try:
+        r = subprocess.run(["git", "log", "-1", "--format=%cI"], cwd=root,
+                           capture_output=True, text=True, timeout=10)
+        return r.stdout.strip() if r.returncode == 0 else ""
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def _epoch(iso: str) -> float:
+    try:
+        return datetime.fromisoformat(iso.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return 0.0
+
+
 def cmd_enter(root: Path, ctx: dict, args) -> int:
     matrix, cur, target = ctx["matrix"], ctx["phase"], args.phase.upper()
     if target not in (matrix.get("phases") or {}):
@@ -462,6 +520,18 @@ def cmd_enter(root: Path, ctx: dict, args) -> int:
         _out("이 가드들은 '직전 단계만 만들 수 있는 산출물'을 요구한다. 우회하면 다음 단계에서")
         _out("얻을 게 없어진다. 정말 필요하면 사유를 남기고 강제하라(주간 리포트에 노출된다):")
         _out(f"  python harness/phase.py force {target} --reason \"...\"")
+        return 1
+
+    stale = stale_session(root)
+    if stale is not None:
+        _out("")
+        _out(f"[거부] {cur} → {target} — session.json 이 낡았다. 단계는 그대로 {cur} 다.")
+        _out("")
+        for line in stale.splitlines():
+            _out(f"  {line}")
+        _out("")
+        _out(f"  python harness/phase.py session --goal \"…\" --did \"…\" --next \"…\"")
+        _out(f"  python harness/phase.py enter {target}")
         return 1
 
     ck = record_transition(root, ctx, target, results, forced=False, reason=None, edge_legal=True)

@@ -111,8 +111,24 @@ const BRANCH = git(['rev-parse', '--abbrev-ref', 'HEAD']).out;
  *      판정하는 근거. head_sha 동일성만 보면 아티팩트를 커밋하는 순간 HEAD 가 바뀌어
  *      **가드가 원리적으로 만족 불가능해진다** (아래 verifyArtifact 주석 참조).
  */
+/**
+ * 해시 대상 — **"에이전트의 행동이 달라지는가"** 가 포함 기준이다.
+ * 프롬프트(agents·skills·CLAUDE.md) · 권한(settings) · 정책(policy) · 정답지(golden),
+ * 그리고 그 정책을 **집행하는 코드**(hooks·phase.py).
+ *
+ * `scripts/` 대부분은 여기 없다. 센서·리포트는 에이전트가 읽지도 부르지도 않으므로
+ * 바뀌어도 에이전트 행동이 달라지지 않는다 — 넣으면 해시가 매 커밋 흔들려 재평가만
+ * 늘고 신호는 줄어든다.
+ *
+ * `harness/phase.py` 는 예외로 포함한다. 에이전트가 **직접 부르고**, 그 반환이
+ * 무엇을 쓸 수 있는지를 바꾸며, 전이 가드가 여기서 돈다 — `harness/policy/` 를
+ * 넣으면서 그 정책의 집행체를 빼면 "정책은 그대로인데 집행이 달라진" 상태가
+ * 해시에 안 잡힌다. 2026-07-28 R6 게이트(전이 시 session.json 신선도 검사)를
+ * 넣으면서 이 구멍이 드러났다: 전이 동작이 바뀌었는데 아티팩트는 유효했다.
+ */
 const HASH_GLOBS = [
   'harness/policy',
+  'harness/phase.py',
   '.claude/hooks',
   '.claude/agents',
   '.claude/skills',

@@ -17,7 +17,8 @@ description: 하네스 변경의 선행 조건. 하네스·워크플로우·게�
 python harness/phase.py enter HARNESS
 ```
 
-`HARNESS` 단계의 `write_deny`에 `src/**`·`tests/**`·`specs/**`가 있다 —
+`HARNESS` 단계는 `src/**`·`tests/**`·`specs/**` 쓰기를 막는다
+(정확한 경로 목록은 `python harness/phase.py show` — 값을 여기 옮겨 적지 않는다) —
 CLAUDE.md의 "ADR·하네스 전용 PR" 카브아웃이 산문에서 구조로 승격된 지점이다.
 하네스 PR에 기능 코드가 섞이는 일이 **물리적으로 불가능**해진다.
 

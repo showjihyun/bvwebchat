@@ -151,7 +151,9 @@ flake 판정 기준은 횟수가 아니다. 같은 코드가 동시 실행 에�
 | 이름 | 실행 | 배치 | 강제 수단 | 상태 |
 |---|---|---|---|---|
 | 문서 신선도 C1~C6 | Comp | SessionStart(`--digest`) · CI(`--pr`, blocking) · 감사(`--full`, **인자 없을 때 기본값**) | `doc-freshness.mjs`. `--digest`는 **항상 exit 0** (세션 시작을 막지 않는다) · 실측 0.155초 | 🔄 스크립트 ✅ / SessionStart는 현재 mtime 자문으로 대체, CI 미배선 |
-| 정책 정합성 P1~P8 | Comp | 하네스 변경 시 | `policy-lint.mjs` (`--print`가 `harness/policy/README.md`를 **생성** — 손으로 고치지 않는다). 검사 항목 수가 아니라 **전원 PASS 여부**가 판정이다 | 🔄 스크립트 ✅ / CI 미배선 |
+| 정책 정합성 P1~P11 | Comp | 하네스 변경 시 | `policy-lint.mjs` (`--print`가 `harness/policy/README.md`를 **생성** — 손으로 고치지 않는다). 검사 항목 수가 아니라 **전원 PASS 여부**가 판정이다. **P11 = 반복 실패 대장** — `harness/recurrence.md`에서 2회 이상인데 처방이 열린 원인을 차단한다. 파서 음성 시험 `--self-test` 8건 동봉 | 🔄 스크립트 ✅ / CI 미배선 |
+| 단계 감사 (사후) | Comp | 하네스 변경 시 | `phase-audit.mjs` — git 이력에서 단계 순서를 **독립 재유도**해 `phase.jsonl`과 대조한다. 셸 우회(`node -e`)는 예방할 수 없고 이것이 탐지 축이다. 부트스트랩 예외는 `until_sha` **이전**에만 적용되고 조용히 빼지 않고 advisory로 계속 찍는다 | 🔄 스크립트 ✅ / CI 미배선 (`2bcaa28` 1건으로 exit 1, 예외로 덮지 않기로 결정) |
+| 전이 시 상태 신선도 | Boundary | `phase.py enter` | `session.json`이 HEAD 커밋보다 낡으면 **전이를 거부**한다. 체크포인트가 세션 스냅샷을 품고 재개 시험이 그것만 읽으므로, 낡은 채 전이하면 낡은 서사가 박제된다. `stop_state.py`가 같은 검사를 하지만 세션 **끝**이라 이미 늦다 (`recurrence.md` R6) | ✅ |
 | 훅 자기 시험 | Comp | 하네스 변경 시 · CI | `hooks-selftest.mjs [--audit] [--keep] [--verbose]` — `settings.json`의 커맨드 문자열 그대로 합성 페이로드를 먹여 allow/deny 단언 + 참조 스크립트(디스패처 1 + 핸들러 5) 실재 검사. 판정은 **단언 전원 통과 여부**이지 단언 개수가 아니다. **이 검사가 없으면 훅 부재가 무증상이다** (아래 참조) | 🔄 스크립트 ✅ / CI 미배선 |
 | 지표 실측 M1~M8 | Comp | 주간 | `metrics.mjs [report --since 7d\|30d\|4w]` → `harness/reports/<ISO주차>.md`. **항상 exit 0** — 관측이지 판정이 아니므로 CI를 빨갛게 만들지 않는다 | ✅ (첫 실측 `2026-W31.md`) |
 | changelog 동행 | Comp | `HARNESS→REVIEW` 전이 | `changelog_updated` 가드 | ✅ |

@@ -208,7 +208,21 @@ function checkC2() {
     if (!deps.length) continue;
     for (const docPath of expand(d.path)) {
       const docCommit = lastCommit(docPath);
-      if (MODE === 'pr' && changed.has(docPath)) continue; // 이 PR이 문서를 동행시켰으면 책임을 다한 것이다
+      // 문서 축의 면제(`MODE === 'pr' && changed.has(docPath)` → continue)는 **제거했다.**
+      //
+      // "이 PR이 문서를 동행시켰으면 책임을 다한 것이다"라는 가정이 틀렸다. 동행은
+      // **건드렸다**는 뜻이지 **의존보다 나중이다**는 뜻이 아니다. 문서를 먼저 고치고
+      // 그 다음 의존을 고치면 문서는 여전히 낡았는데 면제된다 — 그리고 그것이 정확히
+      // 2026-07-27 B-d 가 새어나간 경로다(115커밋 브랜치에서 문서·의존이 둘 다 변경
+      // 집합에 있어 이 줄이 전부 삼켰다).
+      //
+      // 아래 `:!changed.has(depFile)` (의존 축)은 **그대로 둔다.** 게이트 범위를 넓히는
+      // 것은 그쪽이고, 넓히면 첫날부터 모든 PR 이 빨개져 게이트가 무시된다. 두 축은
+      // 독립이므로 문서 축만 지워도 분모는 저장소 전체로 넓어지지 않는다.
+      //
+      // 판정 기준은 아래 `Date.parse(dc.time) > Date.parse(docCommit.time)` 시각 비교
+      // 하나다 — 문서가 의존보다 **나중에** 커밋되면 통과한다. 고치는 법이 "문서를
+      // 건드려라"가 아니라 "의존을 고친 뒤에 문서를 고쳐라"가 된다.
       if (!docCommit) continue; // 미커밋 문서는 낡을 수가 없다
 
       let worst = null;

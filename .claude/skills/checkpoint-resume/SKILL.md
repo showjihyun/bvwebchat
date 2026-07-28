@@ -47,6 +47,25 @@ matcher의 도구가 전부 막힌 상태이므로 그것부터 고친다.
 4. **여기까지 읽은 파일이 4개를 넘으면 상태 계약이 얇다는 신호다.**
    통과 기준은 읽은 파일 ≤7이고, 그 예산은 저장소 탐색이 아니라 상태 파일에 쓴다.
 
+### 전이 전에 `session.json`을 갱신한다 — 게이트가 강제한다
+
+**`phase.py enter`는 `session.json`이 HEAD 커밋보다 낡으면 전이를 거부한다.**
+사유: 체크포인트는 `session.json`의 **스냅샷을 품고**, 재개 시험(GB-06)은 커밋된
+체크포인트에서 그 스냅샷만 읽는다 — `session.json` 자체는 gitignore라 신선한
+워크트리에 존재하지 않는다. 따라서 **전이 순간에 낡아 있으면 낡은 서사가 그대로
+박제되고**, 재개는 영영 그것을 읽는다.
+
+`stop_state.py`도 같은 검사를 하지만 **세션이 끝날 때**다 — 그때는 체크포인트가
+이미 쓰였고 커밋까지 됐다. 검사는 옳았고 **자리가 틀렸다**(`harness/recurrence.md` R6, 2회).
+
+```
+python harness/phase.py session --goal "…" --did "…" --next "…"
+python harness/phase.py enter <PHASE>
+git commit -- .harness/state
+```
+
+세 줄의 순서가 중요하다. 마지막 줄을 빠뜨려 3회 반복했다(R4).
+
 ## 쓰기 — 세션 선언
 
 `PLAN→RED` 전이의 `session_declared` 가드가 `task.rq`·`goal`·`acceptance` 셋의

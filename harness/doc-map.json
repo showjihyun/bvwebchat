@@ -66,10 +66,10 @@
       "path": "docs/adr/0005-test-strategy.md",
       "tier": 1,
       "purpose": "테스트 전략 — Red 판정 기준(결정3)의 정본. phase-matrix의 red_evidence 가드가 이 문서를 집행한다.",
+      "_doc_depends": "phase-matrix.json 을 depends_on 에서 뺐다(2026-07-28). 판별 규칙: **의존은 '이 파일이 바뀌면 저 문서의 문장이 거짓이 될 수 있는가'다.** 이 ADR 은 매트릭스를 **포인터로만** 참조한다('이 결정의 집행 지점은 …의 RED→GREEN 전이') — 값을 재서술하지 않으므로 값이 바뀌어도 거짓이 되지 않는다. 경로가 사라지거나 이름이 바뀌는 경우는 C4(링크·경로 무결성)가 잡는다. 반대로 .claude/agents/*.md 는 매트릭스 값을 재서술하므로 의존을 유지한다. 부수 사유: HARNESS 단계는 docs/adr/** 를 쓸 수 없어, 하네스 변경이 ADR 을 낡게 만들면 같은 PR 에서 고칠 방법이 구조적으로 없다 — 포인터 참조에 의존을 걸면 그 교착이 정기적으로 발생한다.",
       "depends_on": [
         "scripts/check.mjs",
-        "vitest.config.ts",
-        "harness/policy/phase-matrix.json"
+        "vitest.config.ts"
       ],
       "review_every_days": 180
     },

@@ -84,7 +84,8 @@ model: "sonnet")`. 프롬프트에 포함:
 - 산출 경로: `_workspace/{RQ-ID}/02_coder_green.md`
 
 테스트 파일 수정 금지를 프롬프트에 다시 적지 않아도 된다 — GREEN 단계의
-`write_deny`에 `tests/**`가 있어 **물리적으로 불가능**하다. 다만 coder가 테스트가
+단계가 `tests/**` 쓰기를 막아 **물리적으로 불가능**하다
+(정확한 경로는 `python harness/phase.py show`). 다만 coder가 테스트가
 틀렸다고 판단하면 보고하도록 돼 있고, 그 경로는 살아 있어야 한다.
 
 완료 조건: 전체 스위트 Green 출력이 산출물에 존재. 테스트-스펙 모순 보고가

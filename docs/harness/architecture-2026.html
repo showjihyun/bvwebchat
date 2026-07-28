@@ -1797,9 +1797,15 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
         <p class="micro-note" style="color:#6a7167;border-top-color:rgba(11,13,11,.18)">
           C2가 <b>PR 범위에서만</b> blocking인 이유: 저장소 전체 낡음을 게이트로 걸면 첫날부터 모든 PR이 빨개지고
           게이트는 그날로 무시된다. "이 PR이 건드린 의존만 책임진다"가 게이트를 살려둔다.
-          <b>이 절충의 대가는 실측됐다</b> — 브랜치가 길어질수록 C2의 분모가 커져 사실상 비어 가고,
-          실제로 B-d(§10 W9)가 그 구멍으로 새어나갔다. <b>게이트를 살려두려고 좁힌 범위가 게이트를 비웠다.</b>
-          여기에는 아직 답이 없으며, 좁힌 선택을 유지하되 <b>대가를 아는 상태로</b> 유지한다.
+          <b>이 절충의 대가는 실측됐다</b> — 실제로 B-d(§10 W9)가 그 구멍으로 새어나갔다.
+          <b>다만 진단이 틀렸었다</b>(2026-07-28 3차 재리뷰 B-f). C2는 <b>두 축</b>으로 좁혔고 두 축은
+          독립이다: <b>의존 축</b>("변경 집합에 있는 의존만 본다")과 <b>문서 축</b>("이 PR이 문서를
+          동행시켰으면 면제한다"). 게이트 범위를 좁혀 살려두는 것은 <b>의존 축</b>이고, B-d가 새어나간
+          구멍은 <b>문서 축</b>이었다. 문서 축의 가정이 틀렸다 — <b>동행은 "건드렸다"는 뜻이지
+          "의존보다 나중이다"는 뜻이 아니다.</b> 문서를 먼저 고치고 의존을 나중에 고치면 문서는 여전히
+          낡았는데 면제된다. 그 한 줄을 지웠고, 판정은 이제 커밋 시각 비교 하나다. 의존 축은 그대로라
+          <b>분모는 넓어지지 않았다</b>. 지우자마자 C2는 이 브랜치에서 15건을 냈고 그 첫 번째가
+          이 문서였다.
           실행 위치는 3곳이고 <b>역할이 서로 다르다</b>: SessionStart 훅(<code>--digest</code>, ≤5줄) ·
           CI(<code>--pr</code>, blocking) · <code>harness-audit</code> 스킬(<code>--full</code>, 처방 포함).
           필드 리포트가 말한 "주기적 정리 에이전트"의 자리를 에이전트 대신 <b>스킬</b>이 차지한다.
@@ -2093,65 +2099,55 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
           <table class="grid-table w-wide">
             <thead>
               <tr>
-                <th style="width:12%">Phase</th>
-                <th style="width:30%"><code>write_allow</code></th>
-                <th style="width:24%">명시적 <code>write_deny</code></th>
-                <th style="width:34%">이 행이 구조로 승격시키는 산문 규칙</th>
+                <th style="width:14%">Phase</th>
+                <th style="width:34%">이 단계에서 가능한 것</th>
+                <th style="width:52%">이 행이 구조로 승격시키는 산문 규칙</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td><span class="tag">IDLE<small>fail-closed 기본값</small></span></td>
-                <td><code>docs/progress.md</code> <code>_workspace/**</code></td>
-                <td>그 외 전부</td>
-                <td>CLAUDE.md "원장 우선" — 원장에 행을 적는 것 외에 IDLE에서 할 수 있는 생산적 행동이 없다.</td>
+                <td>의도를 원장에 적는 것, 그리고 작업 노트</td>
+                <td>CLAUDE.md "원장 우선" — 작업을 <b>시작하기 전</b>에 원장에 행을 적으라는 규칙의 시점이 곧 IDLE이다. 그 외의 생산적 행동은 단계를 골라야 열린다.</td>
               </tr>
               <tr>
                 <td><span class="tag">SPEC</span></td>
-                <td><code>specs/**</code> <code>docs/adr/**</code> <code>docs/design/DESIGN.md</code> <code>docs/progress.md</code></td>
-                <td><code>src/**</code> <code>tests/**</code></td>
-                <td>"스펙 변경은 코드와 같은 PR" — 스펙을 고치는 단계에서 코드가 함께 움직일 수 없으니 PR을 분리할 방법이 없다.</td>
+                <td>요구사항 · ADR · 디자인 · <b>골든 케이스</b> · 원장</td>
+                <td>"스펙 변경은 코드와 같은 PR" — 스펙을 고치는 단계에서 코드가 함께 움직일 수 없으니 PR을 분리할 방법이 없다. 골든이 여기 있는 이유는 <b>골든 쓰기</b> 절에 있다.</td>
               </tr>
               <tr>
                 <td><span class="tag">PLAN</span></td>
-                <td><code>_workspace/{rq}/**</code> <code>docs/progress.md</code></td>
-                <td><code>src/**</code> <code>tests/**</code> <code>specs/**</code></td>
+                <td>계획 문서와 원장</td>
                 <td>"3스텝 이상 작업은 plan mode 승인 먼저" — 계획 단계에서 구현을 시작할 수 없다.</td>
               </tr>
               <tr>
                 <td><span class="tag">RED</span></td>
-                <td><code>tests/**</code> <code>_workspace/**</code> <code>docs/progress.md</code></td>
-                <td><b><code>src/**</code></b> <code>specs/**</code> <code>evals/golden/**</code></td>
+                <td>테스트 · 작업 노트 · 원장 — <b><code>src/**</code>가 막힌다</b></td>
                 <td>TDD Red — 테스트가 먼저 실패하는 것 외의 경로가 없다. M3(테스트 선행률)이 구조상 100%가 기본값이 된다.</td>
               </tr>
               <tr>
                 <td><span class="tag">GREEN<small>REFACTOR 병합</small></span></td>
-                <td><code>src/**</code> <code>_workspace/**</code> <code>docs/progress.md</code></td>
-                <td><b><code>tests/**</code></b> <code>specs/**</code> <code>evals/golden/**</code></td>
-                <td><code>coder.md:17</code>의 "테스트 파일은 절대 수정하지 않는다"(D3). GB-05(기대값 수정)가 <b>구조적으로 불가능</b>해진다.</td>
+                <td>구현 · 작업 노트 · 원장 — <b><code>tests/**</code>가 막힌다</b></td>
+                <td><code>coder.md</code>의 "테스트 파일은 절대 수정하지 않는다"(D3). GB-05(기대값 수정)가 <b>구조적으로 불가능</b>해진다.</td>
               </tr>
               <tr>
                 <td><span class="tag">EVAL</span></td>
-                <td><code>_workspace/{rq}/03_*.md</code></td>
-                <td>그 외 전부</td>
+                <td>작업 노트(평가 보고서)만 — 코드·테스트·스펙·정책이 전부 막힌다</td>
                 <td>"평가자는 고치지 않는다" — evaluator가 자기가 채점하는 코드를 만질 수 없다.</td>
               </tr>
               <tr>
                 <td><span class="tag">REVIEW</span></td>
-                <td><code>_workspace/review/**</code></td>
-                <td>그 외 전부</td>
+                <td>작업 노트(리뷰 보고서)만 — 코드·테스트·스펙·정책이 전부 막힌다</td>
                 <td>review-gate 스킬의 "APPROVE 없이 머지 금지" — 리뷰어가 지적사항을 직접 고쳐 넘어갈 수 없다.</td>
               </tr>
               <tr>
                 <td><span class="tag">HARNESS</span></td>
-                <td><code>.claude/**</code> <code>harness/**</code> <code>scripts/**</code> <code>.github/**</code> <code>docs/harness/**</code></td>
-                <td><b><code>src/**</code> <code>tests/**</code> <code>specs/**</code></b></td>
+                <td>하네스 일체 — 정책 · 훅 · 스크립트 · CI · 설계 문서 · 평가 결과. <b><code>src/**</code> <code>tests/**</code> <code>specs/**</code>가 막힌다</b></td>
                 <td>CLAUDE.md의 "ADR·하네스·디자인 전용 PR" 카브아웃. 하네스 PR에 기능 코드가 섞이는 일이 <b>물리적으로 불가능</b>해진다.</td>
               </tr>
               <tr>
                 <td><span class="tag">RELEASE</span></td>
-                <td><code>docs/progress.md</code> <code>docs/harness/changelog.md</code> <code>_workspace/release/**</code></td>
-                <td><code>src/**</code> <code>tests/**</code> <code>specs/**</code></td>
+                <td>원장과 changelog</td>
                 <td>"릴리스 중 코드 수정 금지" — 배포 직전 hotfix는 RED로 되돌아가야만 가능하다.</td>
               </tr>
             </tbody>
@@ -2159,17 +2155,27 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
         </div>
 
         <p class="micro-note">
-          <code>IDLE</code>·<code>PLAN</code>·<code>RELEASE</code> 세 행은 승인된 계획이 이 설계서로 위임한 부분이며
-          여기서 확정한다. 세 행 모두 <code>policy-lint</code>의 불변식을 지킨다: <b>빈 allow-set 없음</b>
-          (모든 단계에서 최소한 하나의 생산적 행동이 가능해야 게이트가 교착되지 않는다),
-          <b>전 단계 도달 가능</b>, <b>전이 그래프 연결</b>.
+          <b>이 표에 경로 값을 적지 않는다.</b> 정본은 정책 JSON이고, 사람이 읽는 정확한 표는
+          <code>policy-lint --print</code>가 <b>생성</b>한다(P9가 그 생성물과 정책의 일치를 blocking으로 강제한다).
+          지금 내 단계에서 무엇을 쓸 수 있는지는 <code>python harness/phase.py show</code>가 답한다.
+          세 명령 모두 값을 <b>정책에서 직접 읽으므로</b> 이 문서와 어긋날 수 없다.
+          <br><br>
+          <b>왜 값을 뺐는가.</b> 2026-07-28 3차 재리뷰가 이 표의 <b>9행 중 7행</b>이 정책과 다르다는 것을
+          실측했다. 그중 네 행(<code>PLAN</code>·<code>EVAL</code>·<code>REVIEW</code>·<code>RELEASE</code>)은
+          <b>실재하지 않는 격리를 현재형으로 단언</b>했다 — 실제보다 좁게 적어 "리뷰어는 리뷰 폴더밖에
+          못 쓴다"처럼 <b>과장된 안전</b>을 주장했다. 값을 두 곳에 적는 한 이 드리프트는 반드시 다시 온다
+          (<code>harness/recurrence.md</code> R1, 11회). 그래서 <b>드리프트가 발생할 자리 자체를 없앴다</b> —
+          이 표는 이제 설계 의도를 말하고 값은 말하지 않는다. 새 센서를 붙이는 대신 표면을 지운 것이고,
+          이것이 <b>구조 &gt; 게이트 &gt; 센서 &gt; Guide</b>에서 맨 왼쪽 칸에 해당한다.
           <br><br>
           <b>IDLE 행은 우연이 아니다.</b> <code>policy-lint</code>의 "빈 allow-set 없음"이 IDLE에 무언가를
-          허용하도록 강제하고, CLAUDE.md의 "원장 우선"이 그 무언가를 <code>docs/progress.md</code>로 지목한다.
-          서로 다른 두 규칙이 같은 칸을 가리켰고, 그 결과 <b>IDLE에서 가능한 유일한 생산적 행동이
-          "의도를 원장에 적는 것"</b>이 됐다. 규칙이 서로를 보강하는 이런 수렴은 설계가 맞아 들어갔다는
-          약한 증거이지 강한 증거는 아니다 — 다만 둘 중 하나를 나중에 고칠 때 <b>다른 하나가 함께 흔들린다</b>는
-          사실은 기록해 둘 값어치가 있다.
+          허용하도록 강제하고, CLAUDE.md의 "원장 우선"이 그 무언가를 원장으로 지목한다.
+          서로 다른 두 규칙이 같은 칸을 가리켰다. <b>다만 이 수렴은 처음에 문서에만 있었고 정책에는
+          없었다</b> — 같은 재리뷰가 그것을 잡았다. 이때는 설계 의도가 옳고 정책이 틀린 경우라
+          정책을 고쳤다(그 칸이 없으면 헌법이 요구하는 <b>첫 행동</b>이 게이트에 막힌다).
+          규칙이 서로를 보강하는 수렴은 설계가 맞아 들어갔다는 약한 증거이지만,
+          <b>그 수렴이 실제로 집행되고 있는지는 별개의 질문이고 따로 확인해야 한다</b>는 것이
+          이 사건의 교훈이다.
         </p>
 
         <div class="sub-head reveal">
@@ -2317,7 +2323,7 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
               <tr><td>스펙 동결 게이트 (🟡 존재 시 구현 차단)</td><td>—</td><td><span class="no">삭제</span> — <code>PLAN→RED</code> 가드 <code>no_pending_spec</code>으로 흡수 (D4)</td></tr>
               <tr><td>파일 수정 후 빠른 검사 (실측 1.4초)</td><td><b>S2</b></td><td>유지 — 구현체만 <code>check.mjs</code>로 교체, <code>.tsx</code> 구멍 해소 (D5·D6)</td></tr>
               <tr><td>lint / typecheck · 단위·통합 테스트(트랙 A)</td><td><b>S2</b></td><td>유지</td></tr>
-              <tr><td>골든 정답 수정 승인 게이트</td><td><b>S3</b></td><td>유지 (R2 <code>permissions.ask</code>) + <code>golden-coverage.mjs</code> 신설로 <b>커버리지</b> 축 추가</td></tr>
+              <tr><td>골든 정답 수정 승인 게이트</td><td><b>S3</b></td><td><b>권한 → 단계로 이동</b>. 골든 쓰기는 이제 <code>permissions.allow</code>이고, "평가받는 것이 자기 정답을 고치지 못한다"는 방어는 <b>단계 매트릭스</b>가 진다 — SPEC에서만 열리고 RED·GREEN·EVAL·REVIEW에서 막힌다. 매 편집마다 사람에게 묻는 것은 실전에서 지속되지 않았다. + <code>golden-coverage.mjs</code>로 <b>커버리지</b> 축 추가</td></tr>
               <tr><td>배포 후 스모크 (🟡 RQ-17 확정 후)</td><td><b>S4</b></td><td>🟡 해제 — RQ-05/17이 종결됐고 <code>deploy.yml</code>·<code>smoke.sh</code>가 실동작한다 (D7이 방치한 행)</td></tr>
               <tr><td>독립 평가 에이전트 (evaluator)</td><td><b>S3</b> (Inf)</td><td>유지 — <b>파이프라인의 상한이 걸려 있는 지점</b> (§10 W1)</td></tr>
               <tr><td>트랙 B rubric 체크 — "✅ 절차만"</td><td>—</td><td><span class="no">행 삭제</span> — <b>"절차만 ✅"는 ✅가 아니다.</b> <code>eval-b.mjs</code>의 auto rubric으로 대체 (§09 anti-06)</td></tr>
@@ -2752,7 +2758,7 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
                 <td><span class="tag">T.07<small>학습 신호로서의 관측성</small></span></td>
                 <td>실패 트레이스 → 분류 → 하네스 변경 → 회귀 평가 → 점진 배포. <b>"동일 파일을 몇 번 고쳤는지"</b>까지 기록</td>
                 <td><code>trajectory.jsonl</code> v2의 <code>file_edit_counts</code>가 T.07이 명시한 바로 그 필드다. 신설 <code>phase.jsonl</code>·<code>tools.jsonl</code>, M1~M8(§07), 주간 학습 루프는 <code>retro-metrics</code> 스킬이 돈다</td>
-                <td>루프의 마지막 고리 — <b>회고에서 골든 케이스를 승격하는 판단은 사람이 한다</b>. 정답(then/rubric)은 반드시 사람이 쓴다는 <code>evals/README.md</code>의 규칙을 유지하며, <code>evals/golden/**</code>는 R2(<code>permissions.ask</code>)로 남는다.</td>
+                <td>루프의 마지막 고리 — <b>회고에서 골든 케이스를 승격하는 판단은 사람이 한다</b>. 정답(then/rubric)은 반드시 사람이 쓴다는 <code>evals/README.md</code>의 규칙을 유지한다. 그 규칙을 <b>집행하는 자리는 권한이 아니라 단계</b>다 — 골든 쓰기는 <code>permissions.allow</code>이고(매 편집마다 묻는 것은 실전에서 지속되지 않았다), 대신 단계 매트릭스가 SPEC에서만 열어 준다. <b>평가받는 중(RED·GREEN·EVAL·REVIEW)에는 구조적으로 닫혀 있다.</b></td>
               </tr>
             </tbody>
           </table>
@@ -3115,10 +3121,20 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
               <b>그리고 이것을 잡으라고 만든 검사가 못 잡았다.</b> C2(결합 낡음)가 겨냥한 실패가 정확히 이것인데,
               C2는 <b>PR 범위에서만</b> blocking이다 — 그 설계는 §02가 의도적으로 선택한 것이다
               ("저장소 전체 낡음을 게이트로 걸면 첫날부터 모든 PR이 빨개지고 게이트는 그날로 무시된다").
-              <b>그 선택의 대가가 여기서 처음 청구됐다</b>: 브랜치가 길어질수록 "이 PR이 건드린 의존"이라는
-              분모가 커져 C2는 사실상 비어 가고, B-d는 정확히 그 구멍으로 새어나갔다.
-              게이트를 살려두려고 좁힌 범위가, 살려둔 게이트를 <b>빈 게이트</b>로 만든 것이다.
-              <b>이 절충에는 아직 답이 없다</b> — 전체 범위로 넓히면 게이트가 죽고, 좁히면 이 실패가 남는다.
+              <b>그 선택의 대가가 여기서 처음 청구됐다</b>고 적었다 — 그리고 <b>그 진단이 틀렸다</b>
+              (2026-07-28 3차 재리뷰 B-f). C2의 <code>--pr</code> 축소는 <b>두 축</b>이고 독립이다.
+              게이트 범위를 좁히는 것은 <b>의존 축</b>이지만, B-d가 새어나간 구멍은 <b>문서 축</b>
+              ("이 PR이 문서를 동행시켰으면 면제")이었다. <b>동행은 "건드렸다"는 뜻이지 "의존보다
+              나중이다"는 뜻이 아니다</b> — 문서를 먼저, 의존을 나중에 고치면 낡은 채로 면제된다.
+              그 한 줄만 지우면 의존 축은 그대로이므로 <b>게이트가 죽지 않고 구멍만 닫힌다</b>.
+              지웠고, 즉시 15건이 나왔으며 그 첫 번째가 이 문서였다.
+              <br><br>
+              <b>여기서 배운 것은 C2에 관한 것이 아니다.</b> "절충이라 답이 없다"고 적는 순간
+              <b>다시 볼 이유가 지워진다</b>. 처방을 안 적으면 "이미 고쳤다"고 믿은 채 반복하고,
+              <b>틀린 처방을 적으면 "답이 없다"고 믿은 채 반복한다</b> — 후자가 더 나쁘다.
+              그래서 <code>harness/recurrence.md</code>의 사용 규칙에 <b>한 칸 내려가기 전에 위 칸의
+              처방을 코드 수준까지 써 보라</b>가 들어갔다. 여기서는 위 칸이 가능했고, 처방이 이미
+              2차 리뷰에 적혀 있었고, <b>한 줄이었다</b>.
             </p>
             <p>
               오늘 이 브랜치가 낸 같은 형태의 아홉 번째다. §00이 센 4건, W7, D9, B4의 두 곳, 그리고 이것 —

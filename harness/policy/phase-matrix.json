@@ -19,8 +19,10 @@
   "phases": {
     "IDLE": {
       "purpose": "무작업. 상태 파일 부재·손상 시의 fail-closed 기본값",
+      "_doc_progress": "docs/progress.md 가 IDLE 에 있는 이유: CLAUDE.md 최상위 규칙 1(원장 우선)이 '작업 시작 전 docs/progress.md 에 요구사항·참조 파일을 확인·기록(🔄)하고' 를 요구하는데, 그 시점은 아직 어떤 작업 단계도 아니므로 IDLE 이다. 이 칸이 없으면 헌법이 요구하는 첫 행동이 게이트에 막힌다. 2026-07-28 3차 재리뷰 B-e 가 잡았다 — 설계서는 이 칸이 있다고 단언했고 매트릭스에는 없었다. 설계 의도가 옳고 매트릭스가 틀렸던 경우라 매트릭스를 고쳤다.",
       "write_allow": [
-        "_workspace/**"
+        "_workspace/**",
+        "docs/progress.md"
       ],
       "write_deny": [],
       "exit_hint": "작업을 시작하려면: python harness/phase.py enter PLAN  (또는 SPEC / HARNESS)"

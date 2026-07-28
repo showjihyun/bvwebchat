@@ -33,6 +33,16 @@ description: PR 머지 전 독립 리뷰 게이트. "리뷰해줘", "머지 전 
 - PR 설명·커밋 메시지에서 관련 RQ-ID/ADR 번호 추출
 - 관련 스펙 문장(requirements.md)과 ADR 파일 경로 목록화
 
+> **전이 전에 `session.json`을 갱신하라.** `phase.py enter`는 상태가 HEAD 커밋보다
+> 낡으면 거부한다 — 체크포인트가 세션 스냅샷을 품고 재개 시험은 그것만 읽으므로,
+> 낡은 채 전이하면 낡은 서사가 박제된다(`harness/recurrence.md` R6).
+> 순서: `phase.py session` → `phase.py enter` → `git commit -- .harness/state`.
+>
+> **REQUEST_CHANGES 처리 시 주의**: 매트릭스의 `exit_hint`는 `GREEN`을 가리키는데
+> 그것은 **RQ 구현 리뷰**를 전제한 것이다. 하네스 PR의 지적 사항은 `.claude/**`·
+> `harness/**`·`scripts/**`에 있고 `GREEN`은 `src/**`만 열어 준다 — `IDLE`을 경유해
+> `HARNESS`로 가야 한다. (2026-07-28 3차 재리뷰에서 실제로 걸렸다. 후속 이슈.)
+
 ## Phase 2: 독립 리뷰 — reviewer (별도 세션, opus)
 
 `Agent(subagent_type: "reviewer", model: "opus")` 호출. 프롬프트에 포함:
