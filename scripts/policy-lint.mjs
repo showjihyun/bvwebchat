@@ -566,6 +566,52 @@ function checkEnforcement(r) {
  * 기계적으로 판정 가능하고(렌더 결과와 파일 비교) 고치는 법이 명령 하나이므로 blocking이다.
  * --print 모드에서는 스스로 재생성하므로 이 검사를 돌리지 않는다.
  */
+// ── P11 반복 실패 대장 ─────────────────────────────────────────────────────
+/**
+ * 운영 규칙 3은 "같은 실수 2회 반복 시 센서 하나 또는 Guide 한 줄"을 요구하는데
+ * **누적을 세는 자리가 없었다.** 그래서 2026-07-27 하루에 같은 원인으로 3~9회를
+ * 반복하면서 매번 새로 발견했다 — 규칙은 알고 있었고 세는 곳이 없었다.
+ *
+ * harness/recurrence.md 가 그 자리이고 이 검사가 그것을 문다:
+ * **3회 이상인데 처방이 없으면 차단.** 처방을 적는 것이 해소 조건이지
+ * 횟수가 줄기를 기다리는 것이 아니다.
+ *
+ * 이 검사가 policy-lint 에 있는 이유: metrics.mjs 는 의도적으로 항상 exit 0 이다
+ * ("지표 산출은 관측이지 판정이 아니다"). 관측과 차단은 다른 도구의 일이다.
+ */
+function checkRecurrence() {
+  const p = join(ROOT, 'harness/recurrence.md');
+  if (!existsSync(p)) {
+    fail('P11', 'harness/recurrence.md 가 없다 — 반복 실패를 세는 자리가 없다',
+      '만들어라. 누적이 없으면 같은 원인의 3회째를 매번 "새 발견"으로 처리하게 된다.');
+    return;
+  }
+  const rows = readFileSync(p, 'utf8').split('\n')
+    .filter((l) => /^\|\s*R\d+\s*\|/.test(l))
+    .map((l) => l.split('|').map((c) => c.trim()));
+  if (!rows.length) {
+    note('P11', 'recurrence.md 에 항목이 없다 — 아직 2회 이상 반복된 원인이 없다는 뜻이면 정상이다');
+    return;
+  }
+  const unfixed = [];
+  for (const c of rows) {
+    const [, id, cause, countRaw, , , status] = c;
+    const n = parseInt(String(countRaw).replace(/\D/g, ''), 10) || 0;
+    // 처방이 '미정'이거나 상태가 미처방/실패면 해소되지 않은 것으로 본다.
+    const open = /미처방|처방 실패|미정|미결|관찰 중/.test(`${c[5]} ${status}`);
+    if (n >= 3 && open) unfixed.push(`${id}(${n}회) ${cause.replace(/\*/g, '').slice(0, 60)}`);
+  }
+  if (unfixed.length) {
+    fail('P11',
+      `반복 실패 ${unfixed.length}건이 3회 이상인데 처방이 열려 있다:\n       ` + unfixed.join('\n       '),
+      'harness/recurrence.md 에서 각 항목의 처방을 확정하라 — 규칙 3에 따라 구조/게이트/센서/Guide 중 **하나만** 고르고 근거를 적는다. ' +
+      '상태가 "처방 실패"면 그 처방이 실제로 안 먹혔다는 뜻이므로 다시 골라야 한다(마지막 발생이 처방 날짜 이후로 갱신됐는지 보라). ' +
+      '횟수가 줄기를 기다리는 것은 해소가 아니다 — 3회를 넘긴 원인은 다음에도 온다.');
+  } else {
+    note('P11', `반복 대장 ${rows.length}건 — 3회 이상 미처방 0건`);
+  }
+}
+
 function checkGenerated(m, r) {
   const rendered = renderReadme(m, r);
   if (!existsSync(README)) {
@@ -721,6 +767,7 @@ if (matrix) {
   checkGuards(matrix);
   checkShadowing(matrix);
 }
+checkRecurrence();
 if (matrix) checkPatterns(matrix);
 if (risk) checkRisk(risk);
 if (matrix && risk && !args.includes('--print')) checkGenerated(matrix, risk);

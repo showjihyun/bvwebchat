@@ -107,6 +107,13 @@
       "review_every_days": 90
     },
     {
+      "path": "harness/recurrence.md",
+      "tier": 2,
+      "purpose": "반복 실패 대장 — 같은 원인이 2회째면 등재하고, 3회 이상 미처방이면 policy-lint P11 이 차단한다. 운영 규칙 3은 '2회 반복 시 센서 또는 Guide'를 요구했는데 누적을 세는 자리가 없어 하루에 같은 원인으로 3~9회를 반복했다.",
+      "depends_on": ["scripts/policy-lint.mjs", ".claude/skills/harness-audit/SKILL.md"],
+      "review_every_days": 30
+    },
+    {
       "path": "harness/metrics-baseline.md",
       "tier": 2,
       "purpose": "지표 M1~M8 정의. 실측값은 harness/reports/가 갖는다 — 이 문서에 값을 적지 않는다(공란 드리프트 방지).",
