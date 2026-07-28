@@ -193,10 +193,20 @@ node scripts/eval-b.mjs --verify-artifact   # 아티팩트가 현재 HEAD에 대
 5. `HARNESS→REVIEW` 전이의 `track_b_passing` 가드가 아티팩트를 요구한다
 
 **2번을 빠뜨리면 러너가 시작하지 않는다.** 평가는 격리 워크트리에서 돌고 워크트리는
-**커밋된 것만** 본다 — 상태가 미커밋이면 GB-06(재개 시험)이 `checkpoint_uncommitted`로
-반드시 실패한다. 그래서 `eval-b`는 첫 케이스가 뜨기 전에 `.harness/state` 더러움을
-검사하고 `exit 3`(준비 불가)로 거부한다. 실패는 어차피 확정돼 있고 차이는 **1초 뒤에
-아느냐 $7 뒤에 아느냐**뿐이다 — 2026-07-28에 실제로 후자를 겪었다(`recurrence.md` R4).
+**커밋된 것만** 본다. `eval-b`는 첫 케이스가 뜨기 전에 `.harness/state`와
+**하네스 입력(`HASH_GLOBS`) 전부**의 미커밋을 검사하고 `exit 3`(준비 불가)로 거부한다.
+음성 시험은 `node scripts/eval-b.mjs --self-test` (8건).
+
+막는 이유가 둘이고 뒤가 더 무겁다:
+
+- **`.harness/state` 미커밋** → GB-06(재개 시험)이 `checkpoint_uncommitted`로 실패한다.
+  실패는 어차피 확정돼 있고 차이는 **1초 뒤에 아느냐 $7 뒤에 아느냐**뿐이다 —
+  2026-07-28에 실제로 후자를 겪었다(`recurrence.md` R4, 4번째 발생).
+- **하네스 입력 미커밋** → 입력 해시는 `readFileSync`로 **워킹트리**를 읽는데 케이스는
+  `git worktree add --detach … HEAD`로 만든 사본에서 돈다. 미커밋 상태로 돌리면
+  **평가는 그 변경을 보지 못한 채 아티팩트에 그 해시를 박고**, 나중에 커밋하면
+  `--verify-artifact`가 해시 일치로 통과한다. **한 번도 평가되지 않은 변경이
+  `track_b_passing`을 초록으로 지나간다** — 게이트의 초록이 거짓이 되는 경로다.
 
 **부분 재실행**: `--case GB-06 --force`는 그 한 건만 다시 돌리고 **나머지 기록은
 보존·병합**한다(입력 해시가 같을 때만). `--force`는 "선택한 것을 다시 돌려라"는 뜻이지
