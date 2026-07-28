@@ -43,6 +43,11 @@ Agent 도구 호출 시 `model` 파라미터를 명시한다 (에이전트 front
 | 3 | `enter EVAL` | 전체 검증 초록 · 골든 커버리지 | `_workspace/**` |
 | 4 | `enter REVIEW` | evaluator PASS 보고서 | `_workspace/**` |
 
+**모든 전이 앞에 `phase.py session` 갱신이 온다** — `enter` 는 상태가 HEAD 보다 낡으면
+거부한다(`recurrence.md` R6). `enter GREEN` 은 `tests/**` 커밋을 요구하므로 **커밋이
+전이보다 먼저 오고**, 그래서 이 파이프라인이 가장 자주 걸린다:
+`git commit -- tests/…` → `phase.py session` → `enter GREEN` → `git commit -- .harness/state`.
+
 거부 메시지에는 고치는 법이 들어 있다. 읽고 조건을 만든 뒤 다시 전이한다.
 `force`는 사람 승인(`permissions.ask`)이 필요하고 `forced:true`로 박제된다 —
 파이프라인 안에서 쓰는 것은 사실상 파이프라인을 껐다는 뜻이다.

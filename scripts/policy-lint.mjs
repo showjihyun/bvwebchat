@@ -582,6 +582,16 @@ function checkEnforcement(r) {
 /** 규칙 3이 처방을 요구하는 지점. 등재(2회)·차단(2회)·규칙(2회)이 같아야 한다. */
 const RECURRENCE_THRESHOLD = 2;
 
+/**
+ * 상태 칸의 **닫힌 어휘**. 이 둘 중 어느 쪽에도 안 맞으면 통과가 아니라 판정 불가다.
+ * 어휘를 늘리려면 `harness/recurrence.md` 의 `쓰는 법`도 같은 커밋에서 고쳐라 —
+ * 두 곳이 어긋나면 대장을 쓰는 사람이 게이트가 무엇을 받는지 알 수 없다.
+ */
+const RECURRENCE_OPEN_WORDS = ['미처방', '처방 실패', '미정', '미결', '관찰 중'];
+const RECURRENCE_CLOSED_WORDS = ['✅', '처방됨', '완료'];
+const RECURRENCE_OPEN = new RegExp(RECURRENCE_OPEN_WORDS.join('|'));
+const RECURRENCE_CLOSED = new RegExp(`(${RECURRENCE_CLOSED_WORDS.join('|')})`);
+
 /** 셀 안의 `\|` 를 구분자로 읽지 않는다. 이 저장소의 표는 실제로 `\|\|` 를 쓴다. */
 function splitRow(line) {
   return line.split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, '|'));
@@ -645,8 +655,22 @@ export function judgeRecurrence(text) {
       problems.push(`${id}: 횟수 칸을 양의 정수로 읽을 수 없다 (\`${String(countRaw).slice(0, 20)}\`)`);
       continue;
     }
-    if (n >= RECURRENCE_THRESHOLD && /미처방|처방 실패|미정|미결|관찰 중/.test(`${cure} ${status}`)) {
-      open.push(`${id}(${n}회) ${String(cause).replace(/\*/g, '').slice(0, 60)}`);
+    // 판정 축은 **허용 목록**이다. 거부 목록이면 목록 밖의 값이 전부 "처방됨"으로
+    // 읽힌다 — `보류`·`TBD` 는 억지 입력이 아니라 연기할 때 가장 자연스러운 말이고,
+    // **빈 칸은 적대적 입력조차 아니다**(행을 반쯤 채우다 만 가장 흔한 형상).
+    // 4차 재리뷰가 A4·A5·A6 으로 셋 다 뚫었고 셋 다 exit 0 이었다.
+    // "판정할 수 없는 가드는 없는 가드다"(2026-07-27 결정) — 인식되지 않는 상태는
+    // 통과가 아니라 **판정 불가**다.
+    const cell = `${cure} ${status}`.trim();
+    if (!cell) {
+      problems.push(`${id}: 처방·상태 칸이 비어 있다 — 판정할 수 없다`);
+    } else if (RECURRENCE_OPEN.test(cell)) {
+      if (n >= RECURRENCE_THRESHOLD) open.push(`${id}(${n}회) ${String(cause).replace(/\*/g, '').slice(0, 60)}`);
+    } else if (!RECURRENCE_CLOSED.test(String(status).trim())) {
+      problems.push(
+        `${id}: 상태 "${String(status).trim().slice(0, 24)}" 를 판정할 수 없다 — ` +
+        `닫힌 어휘(${RECURRENCE_CLOSED_WORDS.join(' · ')})나 열린 어휘(${RECURRENCE_OPEN_WORDS.join(' · ')})를 쓰라`
+      );
     }
   }
   return { problems, rows, open };
@@ -697,6 +721,11 @@ function selfTest() {
     ['T5 횟수 한글',            ok.replace('**9**', '아홉').replace('✅ 처방됨', '미처방'),        true],
     ['T6 이스케이프한 파이프',  `${H}| R1 | \\| 를 쓴 원인 | **9** | 2026-07-27 | \`Guide\` — 처방함 | ✅ 처방됨 |\n`, false],
     ['T7 2회 미처방(임계)',     ok.replace('**9**', '2').replace('✅ 처방됨', '🔄 관찰 중'),      true],
+    // A4·A5·A6 — 4차 재리뷰가 뚫은 **판정 축**. 파싱은 성공하는데 상태 어휘가
+    // 거부 목록 밖이라 조용히 통과했다. A6(빈 칸)이 가장 흔한 형상이다.
+    ['A4 상태 "보류"',          ok.replace('`Guide` — 처방함', '보류').replace('✅ 처방됨', '⏸ 보류'), true],
+    ['A5 상태 "TBD"',           ok.replace('`Guide` — 처방함', 'TBD').replace('✅ 처방됨', 'TBD'),      true],
+    ['A6 처방·상태 빈 칸',      ok.replace('`Guide` — 처방함', ' ').replace('✅ 처방됨', ' '),          true],
   ];
   let bad = 0;
   for (const [name, text, mustFail] of cases) {
@@ -707,7 +736,7 @@ function selfTest() {
     console.log(`  ${pass ? 'PASS' : 'FAIL'}  ${name.padEnd(22)} 기대 ${mustFail ? '차단' : '통과'} · 실측 ${didFail ? '차단' : '통과'}` +
       (didFail ? `  (${[...problems, ...open][0]?.slice(0, 70)})` : ''));
   }
-  console.log(bad ? `\nP11 자기시험 실패 ${bad}건 — 파서가 뚫린다.` : '\nP11 자기시험 8건 통과.');
+  console.log(bad ? `\nP11 자기시험 실패 ${bad}건 — 파서가 뚫린다.` : '\nP11 자기시험 11건 통과.');
   process.exit(bad ? 1 : 0);
 }
 

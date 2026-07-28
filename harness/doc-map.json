@@ -178,7 +178,8 @@
       "path": ".claude/skills/checkpoint-resume/SKILL.md",
       "tier": 2,
       "purpose": "상태 계약의 읽기·쓰기 — 체크포인트 저장과 세션 재개.",
-      "depends_on": ["harness/phase.py", ".harness/state/**"],
+      "_doc_depends": ".harness/state/** 를 뺐다(2026-07-28, 4차 재리뷰 B-h). 판별 규칙 적용: **체크포인트·전이 로그 인스턴스는 데이터이지 계약이 아니다.** 계약은 _state.py 의 스키마와 phase.py 의 명령 표면이 지고, 이 문서는 그 계약을 적지 인스턴스를 적지 않는다 — 체크포인트가 하나 늘어난다고 이 문서의 어떤 문장도 거짓이 되지 않는다. 그리고 인스턴스에 걸면 **만족 불가능**했다: 체크포인트는 추적 대상이고 하네스 PR 의 마지막 행동은 언제나 REVIEW 진입 체크포인트의 커밋이므로, 이 문서는 모든 하네스 PR 의 tip 에서 반드시 낡는다. 만족시키는 유일한 길이 '체크포인트를 커밋한 뒤 SKILL.md 를 한 번 더 건드리기'인데 그것은 이 저장소가 금지한 무변경 터치다.",
+      "depends_on": ["harness/phase.py", "harness/_state.py"],
       "review_every_days": 60
     },
     {
@@ -197,7 +198,8 @@
       "path": ".claude/skills/retro-metrics/SKILL.md",
       "tier": 2,
       "purpose": "주간 학습 루프 — 지표 갱신·실패 분류·골든 승격 후보 제시.",
-      "depends_on": ["scripts/metrics.mjs", ".harness/logs/**"],
+      "_doc_depends": ".harness/logs/** 를 뺐다(2026-07-28) — B-h 와 같은 형태다. 트레이스 로그 인스턴스는 데이터이고, 이 문서가 적는 것은 어느 원천에서 어느 지표가 나오는가라는 계약이다. 로그 한 줄이 늘어난다고 문장이 거짓이 되지 않는다. 계약을 지는 것은 metrics.mjs 이고 recurrence.md 는 P11 을 통해 이 문서에 새로 들어왔으므로 함께 건다.",
+      "depends_on": ["scripts/metrics.mjs", "harness/recurrence.md"],
       "review_every_days": 60
     },
     {
