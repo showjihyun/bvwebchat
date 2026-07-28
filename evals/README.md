@@ -187,9 +187,21 @@ node scripts/eval-b.mjs --verify-artifact   # 아티팩트가 현재 HEAD에 대
 ```
 
 1. `python harness/phase.py enter HARNESS` (또는 `harness-audit` 스킬이 대신 한다)
-2. `node scripts/eval-b.mjs` — auto rubric이 로그에서 판정된다
-3. 결과를 커밋한다: `evals/results/track-b/<sha>.json`
-4. `HARNESS→REVIEW` 전이의 `track_b_passing` 가드가 아티팩트를 요구한다
+2. **`git commit -- .harness/state`** — 전이가 만든 체크포인트를 싣는다
+3. `node scripts/eval-b.mjs` — auto rubric이 로그에서 판정된다
+4. 결과를 커밋한다: `evals/results/track-b/<sha>.json`
+5. `HARNESS→REVIEW` 전이의 `track_b_passing` 가드가 아티팩트를 요구한다
+
+**2번을 빠뜨리면 러너가 시작하지 않는다.** 평가는 격리 워크트리에서 돌고 워크트리는
+**커밋된 것만** 본다 — 상태가 미커밋이면 GB-06(재개 시험)이 `checkpoint_uncommitted`로
+반드시 실패한다. 그래서 `eval-b`는 첫 케이스가 뜨기 전에 `.harness/state` 더러움을
+검사하고 `exit 3`(준비 불가)로 거부한다. 실패는 어차피 확정돼 있고 차이는 **1초 뒤에
+아느냐 $7 뒤에 아느냐**뿐이다 — 2026-07-28에 실제로 후자를 겪었다(`recurrence.md` R4).
+
+**부분 재실행**: `--case GB-06 --force`는 그 한 건만 다시 돌리고 **나머지 기록은
+보존·병합**한다(입력 해시가 같을 때만). `--force`는 "선택한 것을 다시 돌려라"는 뜻이지
+"이력을 버려라"가 아니다. 해시가 다르면 이전 결과는 **다른 하네스**의 것이므로
+병합하지 않는다 — 그것이 `track_b_passing`이 지키는 불변식이다.
 
 **CI에서 `claude`를 돌리지 않는다.** 1인 프로젝트에서 CI에 API 키를 넣는 건
 과하다. 로컬이 실행·커밋하고 CI는 head sha 일치만 본다. 정직하고 분수에 맞다.
