@@ -1,89 +1,297 @@
 {
   "schema": 1,
   "_doc": "단계→도구 상태 머신. 이 파일이 Plane 2의 유일한 진실 공급원이다. harness/policy/README.md는 scripts/policy-lint.mjs --print 가 생성한다 — 손으로 고치지 않는다.",
-
   "enforce": {
     "default": "block",
-    "warn_only": ["SPEC", "PLAN", "RELEASE", "IDLE"],
+    "warn_only": [
+      "SPEC",
+      "PLAN",
+      "RELEASE",
+      "IDLE"
+    ],
+    "bootstrap_exception": {
+      "until_sha": "d2f841c",
+      "decided_in": ".harness/state/decisions.jsonl (2026-07-27, HARNESS→GREEN 커밋 13건)",
+      "why": "하네스가 자기 자신을 만든 구간은 그 하네스로 판정할 수 없다 — 게이트가 존재하기 전의 커밋을 게이트 위반으로 세는 것은 무의미하다. 이 범위는 서버 모듈 분해(A1~B8)의 마지막 커밋 d2f841c 까지이며, 그 이후 커밋에는 적용되지 않는다. 사용자가 '하네스 + 앱 소스 동시 재구성'을 지시했으므로 작업 자체는 정당했고 틀린 것은 단계 배치다. 조용히 빼지 않는다 — 감사는 이 커밋들을 advisory 로 계속 찍는다."
+    },
     "_doc": "warn_only 단계는 차단 대신 stderr 경고만 낸다. 게이트의 첫 주가 가장 위험하므로(force 습관화) RED/GREEN/EVAL/REVIEW부터 켜고 나머지는 유예한다. force 비율이 5%를 넘으면 에이전트가 아니라 이 매트릭스가 틀렸다는 신호다."
   },
-
   "phases": {
     "IDLE": {
       "purpose": "무작업. 상태 파일 부재·손상 시의 fail-closed 기본값",
-      "write_allow": ["_workspace/**"],
+      "write_allow": [
+        "_workspace/**"
+      ],
       "write_deny": [],
       "exit_hint": "작업을 시작하려면: python harness/phase.py enter PLAN  (또는 SPEC / HARNESS)"
     },
     "SPEC": {
       "purpose": "요구사항·ADR·디자인 작성. 코드는 만들지 않는다",
-      "write_allow": ["specs/**", "docs/adr/**", "docs/design/DESIGN.md", "docs/progress.md", "_workspace/**"],
-      "write_deny": ["src/**", "tests/**"],
-      "exit_hint": "스펙이 확정되면(🟡 0건) → python harness/phase.py enter PLAN"
+      "write_allow": [
+        "specs/**",
+        "docs/adr/**",
+        "docs/design/DESIGN.md",
+        "docs/progress.md",
+        "evals/golden/**",
+        "_workspace/**"
+      ],
+      "write_deny": [
+        "src/**",
+        "tests/**"
+      ],
+      "exit_hint": "스펙이 확정되면(🟡 0건) → python harness/phase.py enter PLAN",
+      "_golden_note": "evals/golden/** 이 SPEC 에 있는 이유: 골든 정답은 인수 기준이고 인수 기준은 스펙이다. 2026-07-27 까지 이 경로는 **어느 단계의 write_allow 에도 없어** 구조적으로 편집 불가였다 — 그동안 편집이 가능했던 것은 HARNESS 가 warn_only 라 게이트가 경고만 하고 통과시켰기 때문이고, HARNESS 를 block 으로 바꾸자 그 사실이 드러났다. 권한 계층(permissions)에서는 allow 인데 단계 계층에서는 전 단계 deny 인 모순이었다. **GREEN·RED·EVAL·REVIEW 의 write_deny 에 evals/golden/** 이 그대로 있는 것이 이 배치의 핵심이다** — 구현·평가·리뷰 중에는 정답을 못 고치고, 정답을 고치려면 SPEC 으로 나와야 한다. 평가받는 것이 자기 정답을 고치지 못하게 하는 방어가 권한에서 단계로 옮겨간 것이다."
     },
     "PLAN": {
       "purpose": "탐색·계획. 원장 기입",
-      "write_allow": ["_workspace/**", "docs/progress.md"],
-      "write_deny": ["src/**", "tests/**", "specs/**", "docs/adr/**"],
+      "write_allow": [
+        "_workspace/**",
+        "docs/progress.md"
+      ],
+      "write_deny": [
+        "src/**",
+        "tests/**",
+        "specs/**",
+        "docs/adr/**"
+      ],
       "exit_hint": "계획이 서면 → python harness/phase.py enter RED  (가드: 스펙 🟡 0건, 브랜치가 RQ와 일치, 워킹트리 clean)"
     },
     "RED": {
       "purpose": "실패하는 테스트만 만든다. 구현은 다음 단계다",
-      "write_allow": ["tests/**", "_workspace/**", "docs/progress.md"],
-      "write_deny": ["src/**", "specs/**", "evals/golden/**"],
+      "write_allow": [
+        "tests/**",
+        "_workspace/**",
+        "docs/progress.md"
+      ],
+      "write_deny": [
+        "src/**",
+        "specs/**",
+        "evals/golden/**"
+      ],
       "exit_hint": "테스트를 커밋한 뒤 → python harness/phase.py enter GREEN  (가드: tests/** 커밋 ≥1, 정당한 Red 증거)"
     },
     "GREEN": {
       "purpose": "테스트를 통과시키는 최소 구현 + 리팩토링. 테스트는 건드리지 않는다",
-      "write_allow": ["src/**", "_workspace/**", "docs/progress.md"],
-      "write_deny": ["tests/**", "specs/**", "evals/golden/**"],
+      "write_allow": [
+        "src/**",
+        "_workspace/**",
+        "docs/progress.md"
+      ],
+      "write_deny": [
+        "tests/**",
+        "specs/**",
+        "evals/golden/**"
+      ],
       "exit_hint": "전체 검증이 초록이면 → python harness/phase.py enter EVAL  (가드: check 전체 초록, 골든 커버리지)"
     },
     "EVAL": {
       "purpose": "독립 평가 보고서 작성. 코드를 고치지 않는다",
-      "write_allow": ["_workspace/**"],
-      "write_deny": ["src/**", "tests/**", "specs/**", "docs/adr/**", "evals/golden/**", ".claude/**", "harness/**", "scripts/**"],
+      "write_allow": [
+        "_workspace/**"
+      ],
+      "write_deny": [
+        "src/**",
+        "tests/**",
+        "specs/**",
+        "docs/adr/**",
+        "evals/golden/**",
+        ".claude/**",
+        "harness/**",
+        "scripts/**"
+      ],
       "exit_hint": "PASS면 → python harness/phase.py enter REVIEW / FAIL이면 → enter GREEN"
     },
     "REVIEW": {
       "purpose": "독립 리뷰 보고서 작성. 코드를 고치지 않는다",
-      "write_allow": ["_workspace/**"],
-      "write_deny": ["src/**", "tests/**", "specs/**", "docs/adr/**", "evals/golden/**", ".claude/**", "harness/**", "scripts/**"],
+      "write_allow": [
+        "_workspace/**"
+      ],
+      "write_deny": [
+        "src/**",
+        "tests/**",
+        "specs/**",
+        "docs/adr/**",
+        "evals/golden/**",
+        ".claude/**",
+        "harness/**",
+        "scripts/**"
+      ],
       "exit_hint": "APPROVE면 → python harness/phase.py enter RELEASE / REQUEST_CHANGES면 → enter GREEN"
     },
     "HARNESS": {
       "purpose": "하네스 변경 전용. CLAUDE.md의 '하네스·ADR 전용 PR' 카브아웃을 구조로 승격한 단계 — 기능 코드가 섞이는 것이 물리적으로 불가능하다",
-      "write_allow": [".claude/**", "harness/**", "scripts/**", ".github/**", "docs/harness/**", "evals/*.md", "evals/results/**", "_workspace/**", "docs/progress.md", ".gitignore", "CLAUDE.md"],
-      "write_deny": ["src/**", "tests/**", "specs/**"],
+      "write_allow": [
+        ".claude/**",
+        "harness/**",
+        "scripts/**",
+        ".github/**",
+        "docs/harness/**",
+        "evals/*.md",
+        "evals/results/**",
+        "_workspace/**",
+        "docs/progress.md",
+        ".gitignore",
+        "CLAUDE.md"
+      ],
+      "write_deny": [
+        "src/**",
+        "tests/**",
+        "specs/**"
+      ],
       "exit_hint": "하네스 변경 후 → python harness/phase.py enter REVIEW  (가드: 트랙 B 회귀 평가 아티팩트, changelog 동행)"
     },
     "RELEASE": {
       "purpose": "머지·배포. 원장과 changelog를 닫는다",
-      "write_allow": ["docs/progress.md", "docs/harness/changelog.md", "_workspace/**"],
-      "write_deny": ["src/**", "tests/**", "specs/**"],
+      "write_allow": [
+        "docs/progress.md",
+        "docs/harness/changelog.md",
+        "_workspace/**"
+      ],
+      "write_deny": [
+        "src/**",
+        "tests/**",
+        "specs/**"
+      ],
       "exit_hint": "완료되면 → python harness/phase.py enter IDLE"
     }
   },
-
   "transitions": [
-    { "from": "IDLE",    "to": ["SPEC", "PLAN", "HARNESS"], "guards": [] },
-    { "from": "SPEC",    "to": ["PLAN"],    "guards": ["no_pending_spec"] },
-    { "from": "SPEC",    "to": ["IDLE"],    "guards": [] },
-    { "from": "PLAN",    "to": ["RED"],     "guards": ["no_pending_spec", "session_declared", "tree_clean"] },
-    { "from": "PLAN",    "to": ["SPEC", "IDLE"], "guards": [] },
-    { "from": "RED",     "to": ["GREEN"],   "guards": ["tests_committed", "red_evidence"] },
-    { "from": "GREEN",   "to": ["EVAL"],    "guards": ["check_full_green", "golden_coverage"] },
-    { "from": "GREEN",   "to": ["RED"],     "guards": [] },
-    { "from": "EVAL",    "to": ["REVIEW"],  "guards": ["evaluator_pass"] },
-    { "from": "EVAL",    "to": ["GREEN"],   "guards": [] },
-    { "from": "REVIEW",  "to": ["RELEASE"], "guards": ["reviewer_approve"] },
-    { "from": "REVIEW",  "to": ["GREEN"],   "guards": [] },
-    { "from": "HARNESS", "to": ["REVIEW"],  "guards": ["track_b_passing", "changelog_updated"] },
-    { "from": "HARNESS", "to": ["IDLE"],    "guards": [] },
-    { "from": "RELEASE", "to": ["IDLE"],    "guards": [] },
-    { "from": "*",       "to": ["IDLE"],    "guards": [], "note": "중단 경로 — 사유를 phase.jsonl에 남긴다" }
+    {
+      "from": "IDLE",
+      "to": [
+        "SPEC",
+        "PLAN",
+        "HARNESS"
+      ],
+      "guards": []
+    },
+    {
+      "from": "SPEC",
+      "to": [
+        "PLAN"
+      ],
+      "guards": [
+        "no_pending_spec"
+      ]
+    },
+    {
+      "from": "SPEC",
+      "to": [
+        "IDLE"
+      ],
+      "guards": []
+    },
+    {
+      "from": "PLAN",
+      "to": [
+        "RED"
+      ],
+      "guards": [
+        "no_pending_spec",
+        "session_declared",
+        "tree_clean"
+      ]
+    },
+    {
+      "from": "PLAN",
+      "to": [
+        "SPEC",
+        "IDLE"
+      ],
+      "guards": []
+    },
+    {
+      "from": "RED",
+      "to": [
+        "GREEN"
+      ],
+      "guards": [
+        "tests_committed",
+        "red_evidence"
+      ]
+    },
+    {
+      "from": "GREEN",
+      "to": [
+        "EVAL"
+      ],
+      "guards": [
+        "check_full_green",
+        "golden_coverage"
+      ]
+    },
+    {
+      "from": "GREEN",
+      "to": [
+        "RED"
+      ],
+      "guards": []
+    },
+    {
+      "from": "EVAL",
+      "to": [
+        "REVIEW"
+      ],
+      "guards": [
+        "evaluator_pass"
+      ]
+    },
+    {
+      "from": "EVAL",
+      "to": [
+        "GREEN"
+      ],
+      "guards": []
+    },
+    {
+      "from": "REVIEW",
+      "to": [
+        "RELEASE"
+      ],
+      "guards": [
+        "reviewer_approve"
+      ]
+    },
+    {
+      "from": "REVIEW",
+      "to": [
+        "GREEN"
+      ],
+      "guards": []
+    },
+    {
+      "from": "HARNESS",
+      "to": [
+        "REVIEW"
+      ],
+      "guards": [
+        "track_b_passing",
+        "changelog_updated"
+      ]
+    },
+    {
+      "from": "HARNESS",
+      "to": [
+        "IDLE"
+      ],
+      "guards": []
+    },
+    {
+      "from": "RELEASE",
+      "to": [
+        "IDLE"
+      ],
+      "guards": []
+    },
+    {
+      "from": "*",
+      "to": [
+        "IDLE"
+      ],
+      "guards": [],
+      "note": "중단 경로 — 사유를 phase.jsonl에 남긴다"
+    }
   ],
-
   "guards": {
     "no_pending_spec": {
       "kind": "grep_count",
@@ -95,7 +303,11 @@
     "session_declared": {
       "kind": "state_field",
       "file": ".harness/state/session.json",
-      "require": ["task.rq", "goal", "acceptance"],
+      "require": [
+        "task.rq",
+        "goal",
+        "acceptance"
+      ],
       "fail_hint": "session.json에 task.rq / goal / acceptance가 없다. checkpoint-resume 스킬로 세션을 선언하라. goal은 '무엇'이 아니라 '왜'를 적는다 — 무엇을 했는지는 git이 이미 안다."
     },
     "tree_clean": {
@@ -110,19 +322,33 @@
     },
     "red_evidence": {
       "kind": "exec",
-      "cmd": ["node", "scripts/check.mjs", "--red", "--rq", "${rq}"],
+      "cmd": [
+        "node",
+        "scripts/check.mjs",
+        "--red",
+        "--rq",
+        "${rq}"
+      ],
       "expect_exit": 0,
       "fail_hint": "정당한 Red가 아니다 (ADR-0005 결정3). 통과 조건: (a) 이름에 ${rq}를 포함한 테스트가 1건 이상 FAIL, (b) tsc 오류가 TS2307/TS2305(미구현 src 모듈 임포트)에만 국한. 테스트 파일 자체의 타입 오류는 '깨진 테스트'이므로 네가 고쳐야 한다 — 이 구분이 RQ-01에서 disconnect() 목 버그를 놓친 원인이었다."
     },
     "check_full_green": {
       "kind": "exec",
-      "cmd": ["node", "scripts/check.mjs"],
+      "cmd": [
+        "node",
+        "scripts/check.mjs"
+      ],
       "expect_exit": 0,
       "fail_hint": "전체 검증(lint + tsc + vitest)이 초록이 아니다. 완료 주장에는 실행 출력이 증거로 필요하다(CLAUDE.md). 실패를 먼저 고쳐라 — 테스트를 약화시켜 우회하지 않는다."
     },
     "golden_coverage": {
       "kind": "exec",
-      "cmd": ["node", "scripts/golden-coverage.mjs", "--rq", "${rq}"],
+      "cmd": [
+        "node",
+        "scripts/golden-coverage.mjs",
+        "--rq",
+        "${rq}"
+      ],
       "expect_exit": 0,
       "fail_hint": "${rq}에 매핑된 GA-* 골든 중 테스트로 구현되지 않은 케이스가 있다(목록은 위 출력). 테스트가 전부 통과해도 골든 미커버는 완료가 아니다 — '사양 대조 없는 테스트 통과는 완료가 아니다'의 기계적 집행 지점이다."
     },
@@ -143,7 +369,11 @@
     },
     "track_b_passing": {
       "kind": "exec",
-      "cmd": ["node", "scripts/eval-b.mjs", "--verify-artifact"],
+      "cmd": [
+        "node",
+        "scripts/eval-b.mjs",
+        "--verify-artifact"
+      ],
       "expect_exit": 0,
       "fail_hint": "하네스를 바꿨는데 트랙 B 회귀 평가 결과가 없거나 실패했다. harness-audit 스킬을 실행해 evals/results/track-b/<sha>.json을 생성하라. 평가셋 없는 하네스 튜닝은 안티패턴 06이다."
     },

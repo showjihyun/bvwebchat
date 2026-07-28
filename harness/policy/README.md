@@ -25,7 +25,7 @@
 | 단계 | 목적 | write_allow | write_deny |
 |---|---|---|---|
 | `IDLE` | 무작업. 상태 파일 부재·손상 시의 fail-closed 기본값 | `_workspace/**` | — |
-| `SPEC` | 요구사항·ADR·디자인 작성. 코드는 만들지 않는다 | `specs/**` `docs/adr/**` `docs/design/DESIGN.md` `docs/progress.md` `_workspace/**` | `src/**` `tests/**` |
+| `SPEC` | 요구사항·ADR·디자인 작성. 코드는 만들지 않는다 | `specs/**` `docs/adr/**` `docs/design/DESIGN.md` `docs/progress.md` `evals/golden/**` `_workspace/**` | `src/**` `tests/**` |
 | `PLAN` | 탐색·계획. 원장 기입 | `_workspace/**` `docs/progress.md` | `src/**` `tests/**` `specs/**` `docs/adr/**` |
 | `RED` | 실패하는 테스트만 만든다. 구현은 다음 단계다 | `tests/**` `_workspace/**` `docs/progress.md` | `src/**` `specs/**` `evals/golden/**` |
 | `GREEN` | 테스트를 통과시키는 최소 구현 + 리팩토링. 테스트는 건드리지 않는다 | `src/**` `_workspace/**` `docs/progress.md` | `tests/**` `specs/**` `evals/golden/**` |
