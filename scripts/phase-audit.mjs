@@ -240,6 +240,23 @@ if (recorded === null) {
   }
 
   const shaIndex = new Map(commits.map((c, i) => [c.sha, i]));
+
+  // 부트스트랩 예외 구간의 sha 집합. until_sha 를 **포함해** 그 이전 전부다.
+  // until_sha 가 이력에 없으면(리베이스 등) 예외를 적용하지 않는다 — 확인할 수
+  // 없는 예외를 적용하면 그 순간 이 감사가 무의미해진다.
+  const bootstrapShas = new Set();
+  {
+    const until = matrix?.enforce?.bootstrap_exception?.until_sha;
+    const full = until && commits.find((c) => c.sha.startsWith(until))?.sha;
+    if (full && shaIndex.has(full)) {
+      const cut = shaIndex.get(full);
+      // loadCommits 는 `git log --reverse` 라 **과거→최신** 순이다. 따라서
+      // until_sha 를 포함해 그 이전은 인덱스 0..cut 이다. 방향을 반대로 잡으면
+      // 예외가 과거가 아니라 미래를 덮어 **앞으로의 위반을 전부 면제**한다 —
+      // 2026-07-27 에 실제로 그렇게 짰다가 감사가 잡았다.
+      for (let i = 0; i <= cut; i++) bootstrapShas.add(commits[i].sha);
+    }
+  }
   const sorted = [...recorded].sort((a, b) => Date.parse(a.ts) - Date.parse(b.ts));
 
   for (let i = 0; i < sorted.length; i++) {
@@ -266,6 +283,18 @@ if (recorded === null) {
         return false;
       });
       if (forbidden.length) {
+        // 부트스트랩 예외 — 하네스가 자기 자신을 만든 구간은 그 하네스로 판정할 수
+        // 없다. 게이트가 존재하기 전의 커밋을 게이트 위반으로 세는 것은 무의미하다.
+        // **조용히 빼지 않는다**: 사유·결정 기록 위치와 함께 advisory 로 계속 찍는다.
+        // 조용한 제외는 이 저장소가 golden-coverage 분모에서 이미 겪은 병이다.
+        const boot = matrix?.enforce?.bootstrap_exception;
+        if (boot?.until_sha && bootstrapShas.has(c.sha)) {
+          anomaly(
+            `${cur.to} 단계에 ${forbidden.join('/')} 커밋 (부트스트랩 예외) — ${c.sha.slice(0, 7)} "${c.subject.slice(0, 48)}"`,
+            `${boot.why} 결정 기록: ${boot.decided_in}. 이 예외는 ${boot.until_sha.slice(0, 7)} 까지이며 그 이후 커밋에는 적용되지 않는다.`
+          );
+          continue;
+        }
         // 이 단계가 warn_only면 게이트는 **경고만 하고 통과시킨 것**이다. "우회당했다"와
         // "설계대로 유예했다"는 전혀 다른 사건이므로 메시지가 그것을 섞으면 안 된다.
         const lenient = (matrix?.enforce?.warn_only || []).includes(cur.to);
