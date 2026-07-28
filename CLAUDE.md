@@ -86,5 +86,8 @@ Red→Green→Eval 파이프라인에 팀 모드(SendMessage)를 쓰지 않는�
 - 검증 일괄: `node scripts/check.mjs` (`scripts/check.sh`는 이 파일을 부르는 shim)
 - 빠른 검사: `--fast` · Red 정당성 판정: `--red --rq RQ-XX` · flake: `--repeat N`
 - 커밋: `feat|fix|chore|test|docs(scope): 설명` · 브랜치: `feat/<RQ-ID>-<설명>`
+- 전이 뒤에는 **반드시** `git commit -- .harness/state`. 빠뜨리면 `eval-b`가
+  시작 자체를 거부한다(4회 반복 뒤 게이트로 올라왔다 — `harness/recurrence.md` R4).
+  아래 pathspec 규율과 **반대로 당기므로** 둘을 함께 기억한다.
 - 한 워킹트리를 여러 에이전트가 공유할 땐 `git commit -- <경로>`만 쓴다.
   경로 없는 `git commit`은 남이 스테이징해 둔 것까지 싣는다(2026-07-27 3회 발생).
