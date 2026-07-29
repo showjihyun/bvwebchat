@@ -172,6 +172,9 @@ Write/Edit이 죽었다. 정책 거부가 아니라 훅 파손이었고, 둘은 
    `changelog_updated` 가드가 이 파일의 변경을 요구한다.
 2. 트랙 B 결과를 커밋 (`evals/results/track-b/<sha>.json`) —
    `track_b_passing` 가드가 아티팩트를 요구한다.
+   **부분 실행을 썼으면 `carried_from` 이 어느 케이스에 붙었는지 보고서에 적는다.**
+   입력 해시가 같으면 결과는 유효하지만 **어느 실행의 결과인지는 다르고**, 그 구별을
+   리뷰어에게 넘기는 것이 아티팩트의 일이다.
 3. `python harness/phase.py enter REVIEW` → `review-gate` 스킬.
 
 ## 에러 핸들링
