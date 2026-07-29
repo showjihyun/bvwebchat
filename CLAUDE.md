@@ -47,7 +47,7 @@ Red→Green→Eval 파이프라인에 팀 모드(SendMessage)를 쓰지 않는�
 | 같은 원인으로 2회 실패 | `harness/recurrence.md` — 등재+처방 의무. 미처방이면 `policy-lint` P11이 차단 |
 | 주간 회고·지표 | `retro-metrics` 스킬 — 시험이 떨어뜨리면 **직전에 바꾼 것**과 **그 센서가 내 머신에서만 참인지**를 먼저 의심한다 |
 | UI 작업 | `docs/design/DESIGN.md` (진실 공급원) |
-| 골든 케이스·평가 | `evals/README.md` |
+| 골든 케이스·평가 | `evals/README.md` — 부분 실행은 `carried_from` 으로 구별된다 |
 | 하네스 점검·이력 | `harness/sensor-catalog.md`, `docs/harness/changelog.md` |
 
 ## 최상위 규칙
