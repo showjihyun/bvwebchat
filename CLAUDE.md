@@ -43,7 +43,7 @@ Red→Green→Eval 파이프라인에 팀 모드(SendMessage)를 쓰지 않는�
 | 스펙 인터뷰 | `specs/interview/question-bank.md` |
 | RQ 구현·테스트·평가 | `tdd-workflow` 스킬 (.claude/skills/) |
 | PR 머지 전 | `review-gate` 스킬 — APPROVE 없이 머지 금지 |
-| 하네스 변경 착수 전 | `harness-audit` 스킬 — 변경은 한 번에 1건, 순서는 전이→커밋→평가 |
+| 하네스 변경 착수 전 | `harness-audit` 스킬 — 변경은 한 번에 1건, 순서는 전이→커밋→평가. `--full` 만 돌리면 C2 를 못 본다 |
 | 같은 원인으로 2회 실패 | `harness/recurrence.md` — 등재+처방 의무. 미처방이면 `policy-lint` P11이 차단 |
 | 주간 회고·지표 | `retro-metrics` 스킬 — 시험이 떨어뜨리면 **내가 직전에 바꾼 것을 먼저 의심한다** |
 | UI 작업 | `docs/design/DESIGN.md` (진실 공급원) |
