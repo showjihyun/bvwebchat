@@ -1337,7 +1337,16 @@ say('');
 //
 // 해시가 다르면 이전 결과는 **다른 하네스**의 것이므로 병합하지 않는다 —
 // 그것이 `track_b_passing` 이 지키는 불변식이다.
-const prevReusable = prevArt && prevArt.inputs_hash === INPUTS_HASH ? prevArt.cases || {} : {};
+//
+// **물려받은 케이스에는 표식을 남긴다.** 표식이 없으면 아티팩트는 "6건이 이 sha 에서
+// 돌았다"로 읽히는데 실제로는 한 건만 돌았을 수 있다 — 부분 실행이 조용히 전수 실행처럼
+// 보이는 것이 체리픽의 실질적 위험이다. `carried_from` 은 그 케이스가 **어느 아티팩트에서
+// 왔는지**를 적는다(입력 해시가 같으므로 결과는 유효하나, 어느 실행의 결과인지는 다르다).
+const prevArtSha = prevArt && prevArt.inputs_hash === INPUTS_HASH ? prevArt.head_sha : null;
+const prevReusable = {};
+for (const [id, c] of Object.entries((prevArtSha && prevArt.cases) || {})) {
+  prevReusable[id] = { ...c, carried_from: c.carried_from || prevArtSha };
+}
 const merged = { ...prevReusable, ...results };
 const artifact = {
   schema: 1,
