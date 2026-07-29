@@ -202,6 +202,8 @@ function checkC1() {
 
 // ── C2 결합 낡음 ────────────────────────────────────────────────────────────
 const uncommittedDeps = [];
+/** C4 가 생성물이라 판정에서 뺀 참조. **조용한 제외는 범위를 숨긴다.** */
+const excluded = [];
 function checkC2() {
   for (const d of map.docs || []) {
     const deps = d.depends_on || DEFAULTS.depends_on || [];
@@ -350,7 +352,14 @@ function checkC4() {
       for (const m of text.matchAll(/`([^`\n]+)`/g)) consider(m[1], 'backtick');
 
       // 생성물(gitignore 대상)은 판정에서 뺀다 — 있고 없고가 환경에 달렸다.
+      // **뺀 것은 반드시 찍는다.** 조용한 제외는 이 저장소가 golden-coverage 분모에서
+      // 이미 겪은 병이고, eval-b 가 `blocked` 를 뺄 때마다 이름과 사유를 찍는 이유도
+      // 같다. `_workspace/**` 도 gitignore 이므로 리뷰 보고서 경로가 사라져도 C4 는
+      // 침묵한다 — 그 사실이 출력에 보여야 읽는 사람이 범위를 안다.
       const ignored = ignoredPaths(dead.map((x) => x.ref.replace(/^\.\//, '')));
+      if (ignored.size) {
+        excluded.push(`${docPath}: ${[...ignored].join(' · ')}`);
+      }
       for (const x of dead.filter((x) => !ignored.has(x.ref.replace(/^\.\//, '')))) {
         add('C4', docPath, [
           `${docPath} → 죽은 ${x.kind === 'link' ? '링크' : '경로 참조'}: ${x.ref}`,
@@ -455,6 +464,16 @@ console.log(
   `레지스트리 ${(map.docs || []).length}항목 → 실파일 ${new Set((map.docs || []).flatMap((d) => expand(d.path))).size}개 · governed_globs 일치 ${governed.length}개`
 );
 console.log('');
+
+// **C4 가 무엇을 판정에서 뺐는지 반드시 찍는다.** 조용한 제외는 검사 범위를 숨긴다 —
+// `_workspace/**` 도 gitignore 이므로 리뷰 보고서 경로가 사라져도 C4 는 침묵한다.
+// 이 저장소는 같은 답을 이미 갖고 있다: `eval-b` 가 `blocked` 를 뺄 때마다 이름과
+// 사유를 찍고, `golden-coverage` 의 분모 사건이 조용한 제외의 대가를 실증했다.
+if (excluded.length) {
+  console.log(`  C4 판정 제외 (gitignore 대상 = 생성물) — ${excluded.length}개 문서:`);
+  for (const e of excluded) console.log(`    ${e}`);
+  console.log('');
+}
 
 for (const [id, def] of Object.entries(CHECKS)) {
   const list = by(id);
