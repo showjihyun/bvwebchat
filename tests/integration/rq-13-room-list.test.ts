@@ -405,15 +405,27 @@ describe('RQ-13 / GA-22: 동일 이름으로 room 생성을 시도하면 별도 
       // then (상호 수신): 이름이 같다는 것만으로는 "진짜 같은 room에
       // 합류했는가"를 증명하지 못하므로, 실제 메시지 상호 송수신으로 직접
       // 확인한다(신설 계약 6번).
+      // `io.to(room).emit`은 **발신자에게도** 보낸다(RQ-02/04의 방출 지점).
+      // 따라서 user1도 자기 메시지를 되받고, 그 배달을 먼저 소진하지 않으면
+      // 아래 `user1ReceivesFromUser2`의 `once`가 **1번 메시지를 잡는다.**
+      // 두 소켓의 상대적 지연에 달린 경합이라 부하가 높을 때만 드러난다
+      // (2026-07-29 CI에서 실측: 받은 값이 `{nickname:'user1', body:'hi user2'}`).
+      // 리스너를 emit **전에** 걸어 두는 것이 유일한 확실한 순서다.
       const user2ReceivesFromUser1 = waitForEvent<ChatMessage>(user2, 'message');
+      const user1ReceivesOwnEcho = waitForEvent<ChatMessage>(user1, 'message');
       user1.emit('message', { room: 'room-A', body: 'hi user2' });
       const expectedMsgToUser2: ChatMessage = { room: 'room-A', nickname: 'user1', body: 'hi user2' };
       await expect(user2ReceivesFromUser1).resolves.toEqual(expectedMsgToUser2);
+      // 계약을 단언으로 승격한다 — 발신자도 같은 payload를 받는다.
+      await expect(user1ReceivesOwnEcho).resolves.toEqual(expectedMsgToUser2);
 
+      // 여기서 user1의 1번 배달은 이미 끝났으므로 다음 `once`는 2번만 잡는다.
       const user1ReceivesFromUser2 = waitForEvent<ChatMessage>(user1, 'message');
+      const user2ReceivesOwnEcho = waitForEvent<ChatMessage>(user2, 'message');
       user2.emit('message', { room: 'room-A', body: 'hi user1' });
       const expectedMsgToUser1: ChatMessage = { room: 'room-A', nickname: 'user2', body: 'hi user1' };
       await expect(user1ReceivesFromUser2).resolves.toEqual(expectedMsgToUser1);
+      await expect(user2ReceivesOwnEcho).resolves.toEqual(expectedMsgToUser1);
 
       // then (목록은 [global, room-A]로 유지): user2의 join은 이미 존재하는
       // room-A의 멤버 수만 늘릴 뿐 "사용자 생성 room 집합" 자체를 바꾸지
