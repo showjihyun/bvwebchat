@@ -278,6 +278,32 @@ function checkC3() {
 
 // ── C4 링크·경로 무결성 ─────────────────────────────────────────────────────
 const PATH_EXT = /\.(md|json|jsonl|ts|tsx|mjs|cjs|js|py|sh|ya?ml|html|css|txt|toml)$/;
+
+/**
+ * **gitignore 된 경로는 죽은 참조가 아니라 생성물이다.**
+ *
+ * 이 구분이 없으면 C4 는 **환경 의존 센서**가 된다 — `dist/server/main.js` 는
+ * `npm run build` 를 돌린 머신에는 있고 신선한 체크아웃에는 없다. 그래서 이 검사는
+ * 개발 머신에서 초록이고 CI 에서 빨갛다. 문서(`docs/adr/0006-deployment.md`)는 그
+ * 경로를 **정당하게** 인용한다 — 배포 산출물의 이름이 그것이기 때문이다.
+ *
+ * 2026-07-29 에 `doc-freshness --pr` 을 `ci.yml` 에 처음 배선하면서 드러났다.
+ * **그 전까지 이 검사는 빌드 산출물이 있는 머신에서만 돌았고, 아무도 몰랐다.**
+ * "센서가 환경에 따라 다른 답을 내면 그 센서는 판정에 쓸 수 없다"가 여기의 교훈이다.
+ *
+ * 판정은 `git check-ignore --stdin` 한 번으로 일괄한다(경로마다 서브프로세스를 띄우면
+ * 문서 수에 비례해 느려진다). git 을 못 부르면 **아무것도 무시하지 않는다** —
+ * 판정 불가일 때 통과시키는 쪽이 아니라 원래대로 두는 쪽이다.
+ */
+function ignoredPaths(candidates) {
+  if (!candidates.length) return new Set();
+  const r = spawnSync('git', ['check-ignore', '--stdin'],
+    { cwd: ROOT, input: candidates.join('\n'), encoding: 'utf8' });
+  // exit 0 = 하나 이상 무시됨, 1 = 무시된 것 없음, 그 외 = 오류
+  if (r.status !== 0 && r.status !== 1) return new Set();
+  return new Set((r.stdout || '').split('\n').map((s) => s.trim().replace(/\\/g, '/')).filter(Boolean));
+}
+
 function checkC4() {
   const fileSet = new Set(files);
   for (const d of map.docs || []) {
@@ -323,7 +349,9 @@ function checkC4() {
       for (const m of text.matchAll(/\[[^\]\n]*\]\(([^)\s]+)\)/g)) consider(m[1], 'link');
       for (const m of text.matchAll(/`([^`\n]+)`/g)) consider(m[1], 'backtick');
 
-      for (const x of dead) {
+      // 생성물(gitignore 대상)은 판정에서 뺀다 — 있고 없고가 환경에 달렸다.
+      const ignored = ignoredPaths(dead.map((x) => x.ref.replace(/^\.\//, '')));
+      for (const x of dead.filter((x) => !ignored.has(x.ref.replace(/^\.\//, '')))) {
         add('C4', docPath, [
           `${docPath} → 죽은 ${x.kind === 'link' ? '링크' : '경로 참조'}: ${x.ref}`,
           `  고치는 법: 파일이 이동했으면 참조를 고치고, 사라졌으면 문장째 지워라. 예시 경로라면 펜스 코드 블록에 넣어라 — 이 검사는 펜스 안을 보지 않는다.`,
