@@ -90,3 +90,11 @@
       재처방했다. 대장 파일 자신도 R1 로 재발해(차단 주체를 metrics 로 오기)
       C4 가 잡았다 — 센서가 자기 문서를 잡은 첫 사례.
       상세: `docs/harness/changelog.md`
+- [x] 2026-07-29 — **하네스 L3 재구성 완료** (8차 재리뷰 APPROVE, `REVIEW→RELEASE`)
+      3평면(Feedforward / Execution Boundary / Feedback) · 9단계 상태 머신 ·
+      전이 가드 11종 · 센서 S1~S4 · 상태 계약(체크포인트·결정 로그) ·
+      트랙 B 회귀 평가(필수 6건 전원 통과) · 반복 실패 대장 R1~R8.
+      **머지 직후 첫 작업 5건이 리뷰 보고서에 순서까지 못박혀 있다** —
+      `--verify-artifact` 의 체크포인트 대조 · `resume-test.mjs` 채점기 넷 ·
+      `.env`/`secrets` 읽기 경로 재확인 · `phase-audit` CI 배선 · R7 규칙 정리.
+      상세: `docs/harness/changelog.md`
