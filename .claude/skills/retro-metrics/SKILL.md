@@ -106,9 +106,10 @@ M8이 특정 경로에 몰려 있으면 그것은 **매트릭스가 틀렸다는
 - 트랙 A(제품 행동) 후보 → `evals/golden/track-a-product.jsonl`
 - 트랙 B(하네스 행동) 후보 → `evals/golden/track-b-harness.jsonl`
 
-**정답(then/rubric)은 반드시 사람이 쓴다.** `evals/golden/**`는
-`permissions.ask` 게이트 뒤에 있고, 그것이 이 규칙의 강제 수단이다.
-이 스킬은 **후보와 초안**을 내놓을 뿐 정답을 확정하지 않는다.
+**정답(then/rubric)은 반드시 사람이 쓴다.** 강제 수단은 `permissions` 가 아니라
+**단계 매트릭스**다 — `evals/golden/**` 쓰기는 `SPEC` 에서만 열리고 평가받는 중
+(`RED`·`GREEN`·`EVAL`·`REVIEW`)에는 막힌다. 이 스킬은 **후보와 초안**을 내놓을 뿐
+정답을 확정하지 않는다.
 
 승격 기준: 그 실패가 (a) 이미 한 번 실제로 일어났고 (b) 결정론적으로 판정
 가능하면 auto rubric으로, (c) 판정에 추론이 필요하면 judge rubric으로.
@@ -135,10 +136,11 @@ M8이 특정 경로에 몰려 있으면 그것은 **매트릭스가 틀렸다는
 | 5분을 초과함 | 지표를 줄인다. 줄인 지표와 이유를 `metrics-baseline.md`에 남긴다 — M4가 그렇게 삭제됐다 |
 | 이번 주 변경이 0건 | 리포트를 건너뛰지 말고 "변경 없음"으로 한 줄 남긴다. 공백과 무변경은 다르다 |
 
-> **배선 상태 (2026-07-27 확인)**: `scripts/metrics.mjs`·`scripts/phase-audit.mjs`
-> 둘 다 실재하고, 첫 실측 리포트가 `harness/reports/2026-W31.md`에 있다.
-> Phase 5의 골든 승격은 트랙 B 러너(`scripts/` 아래, 아직 부재)가 생긴 뒤에야
-> 채점으로 이어진다 — 그전까지 후보는 후보로만 남는다.
+> **배선 상태 (2026-07-29 확인)**: `scripts/metrics.mjs`·`scripts/phase-audit.mjs`·
+> `scripts/eval-b.mjs` 셋 다 실재한다. 첫 실측 리포트는 `harness/reports/2026-W31.md`.
+> 트랙 B 러너가 실동작하므로 Phase 5의 승격 후보는 **바로 채점으로 이어진다** —
+> 다만 골든 편집은 `SPEC` 단계에서만 가능하므로 이 스킬 안에서 확정할 수 없다.
+> `phase-audit` 은 여전히 CI 미배선이다(`2bcaa28` 한 건으로 `exit 1`).
 
 ### 세 번째 질문 — **"내가 최근에 바꾼 것이 원인은 아닌가"**
 
