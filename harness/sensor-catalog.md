@@ -150,7 +150,7 @@ flake 판정 기준은 횟수가 아니다. 같은 코드가 동시 실행 에�
 
 | 이름 | 실행 | 배치 | 강제 수단 | 상태 |
 |---|---|---|---|---|
-| 문서 신선도 C1~C6 | Comp | SessionStart(`--digest`) · CI(`--pr`, blocking) · 감사(`--full`, **인자 없을 때 기본값**) | `doc-freshness.mjs`. `--digest`는 **항상 exit 0** (세션 시작을 막지 않는다) · 실측 0.155초 | 🔄 스크립트 ✅ / SessionStart는 현재 mtime 자문으로 대체, CI 미배선 |
+| 문서 신선도 C1~C6 | Comp | SessionStart(`--digest`) · **CI(`--pr`, blocking)** · 감사(`--full`, **인자 없을 때 기본값**) | `doc-freshness.mjs`. `--digest`는 **항상 exit 0**(세션 시작을 막지 않는다). **C4는 gitignore 대상을 판정에서 뺀다** — 생성물(`dist/server/main.js`)은 빌드한 머신에만 있어, 그 전까지 이 검사는 **환경에 따라 다른 답을 냈다**(`recurrence.md` R9) | ✅ **CI 배선 완료 (2026-07-29)** — 그전까지 사람이 손으로 부를 때만 돌았고, 같은 원인으로 두 회차 연속 빨갰다(R8). 배선 한 시간 만에 C4 자신의 환경 의존을 드러냈다 |
 | 정책 정합성 P1~P11 | Comp | 하네스 변경 시 | `policy-lint.mjs` (`--print`가 `harness/policy/README.md`를 **생성** — 손으로 고치지 않는다). 검사 항목 수가 아니라 **전원 PASS 여부**가 판정이다. **P11 = 반복 실패 대장** — `harness/recurrence.md`에서 2회 이상인데 처방이 열린 원인을 차단한다. 파서 음성 시험 `--self-test` **18건** — 파싱 축(형식 깨짐)과 판정 축(상태 어휘·빈 칸) 양쪽을 고정한다 | 🔄 스크립트 ✅ / CI 미배선 |
 | 단계 감사 (사후) | Comp | 하네스 변경 시 | `phase-audit.mjs` — git 이력에서 단계 순서를 **독립 재유도**해 `phase.jsonl`과 대조한다. 셸 우회(`node -e`)는 예방할 수 없고 이것이 탐지 축이다. 부트스트랩 예외는 `until_sha` **이전**에만 적용되고 조용히 빼지 않고 advisory로 계속 찍는다 | 🔄 스크립트 ✅ / CI 미배선 (`2bcaa28` 1건으로 exit 1, 예외로 덮지 않기로 결정) |
 | 전이 시 상태 신선도 | Boundary | `phase.py enter` | `session.json`이 HEAD 커밋보다 낡으면 **전이를 거부**한다. 체크포인트가 세션 스냅샷을 품고 재개 시험이 그것만 읽으므로, 낡은 채 전이하면 낡은 서사가 박제된다. `stop_state.py`가 같은 검사를 하지만 세션 **끝**이라 이미 늦다 (`recurrence.md` R6). 음성 시험 `python harness/phase.py self-test` 8건. **부재 시 통과** — 상태를 아직 선언하지 않은 세션을 가두지 않기 위해서이고, 대가는 파일 삭제로 우회 가능하다는 것이다(예방이 아니라 탐지) | ✅ |
