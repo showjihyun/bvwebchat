@@ -123,7 +123,7 @@ ADR-0005 결정5의 예산은 5초이고, 초과 시 실패가 아니라 경고�
 | 골든 정답 셸 우회 차단 | Comp | `evals/golden/**` 셸 리다이렉트 | `tool-risk.json` `deny_redirect` → `gate_phase.py` | ✅ |
 | 독립 평가 에이전트 (evaluator) | Inf | 각 RQ 구현 직후 | `tdd-workflow` Phase 3 → `evaluator_pass` 가드 | ✅ |
 | PR 리뷰 게이트 (reviewer) | Inf | 머지 전 | `review-gate` 스킬 → `reviewer_approve` 가드 | ✅ |
-| 트랙 B 하네스 회귀 평가 | Comp(auto) + Inf(judge) | 하네스 변경 시 · 주간 | `eval-b.mjs` → `evals/results/track-b/<sha>.json` → `track_b_passing` 가드. 시작 시 `.harness/state` 더러움을 검사해 **첫 케이스 전에** 거부한다(recurrence R4 2차 처방) | ✅ **러너 실동작** — 7케이스 중 필수 6건(GB-02 는 `blocked`, 4회 실측 근거가 골든 `note` 에 있다). 입력 해시가 바뀌면 옛 아티팩트를 가드가 거부한다 |
+| 트랙 B 하네스 회귀 평가 | Comp(auto) + Inf(judge) | 하네스 변경 시 · 주간 | `eval-b.mjs` → `evals/results/track-b/<sha>.json` → `track_b_passing` 가드. 시작 시 `.harness/state` **와 `HASH_GLOBS` 전부**의 미커밋을 검사해 **첫 케이스 전에** 거부한다(recurrence R4 2차 처방 + 5차 재리뷰 B-k). 음성 시험 `--self-test` 8건 | ✅ **러너 실동작** — 7케이스 중 필수 6건(GB-02 는 `blocked`, 4회 실측 근거가 골든 `note` 에 있다). 입력 해시가 바뀌면 옛 아티팩트를 가드가 거부한다 |
 
 이 계열의 상한은 `evaluator` 하나에 걸려 있다. 추론 센서를 결정론으로 위장하지 않는다.
 
@@ -151,7 +151,7 @@ flake 판정 기준은 횟수가 아니다. 같은 코드가 동시 실행 에�
 | 이름 | 실행 | 배치 | 강제 수단 | 상태 |
 |---|---|---|---|---|
 | 문서 신선도 C1~C6 | Comp | SessionStart(`--digest`) · CI(`--pr`, blocking) · 감사(`--full`, **인자 없을 때 기본값**) | `doc-freshness.mjs`. `--digest`는 **항상 exit 0** (세션 시작을 막지 않는다) · 실측 0.155초 | 🔄 스크립트 ✅ / SessionStart는 현재 mtime 자문으로 대체, CI 미배선 |
-| 정책 정합성 P1~P11 | Comp | 하네스 변경 시 | `policy-lint.mjs` (`--print`가 `harness/policy/README.md`를 **생성** — 손으로 고치지 않는다). 검사 항목 수가 아니라 **전원 PASS 여부**가 판정이다. **P11 = 반복 실패 대장** — `harness/recurrence.md`에서 2회 이상인데 처방이 열린 원인을 차단한다. 파서 음성 시험 `--self-test` **11건** — 파싱 축(형식 깨짐)과 판정 축(상태 어휘·빈 칸) 양쪽을 고정한다 | 🔄 스크립트 ✅ / CI 미배선 |
+| 정책 정합성 P1~P11 | Comp | 하네스 변경 시 | `policy-lint.mjs` (`--print`가 `harness/policy/README.md`를 **생성** — 손으로 고치지 않는다). 검사 항목 수가 아니라 **전원 PASS 여부**가 판정이다. **P11 = 반복 실패 대장** — `harness/recurrence.md`에서 2회 이상인데 처방이 열린 원인을 차단한다. 파서 음성 시험 `--self-test` **18건** — 파싱 축(형식 깨짐)과 판정 축(상태 어휘·빈 칸) 양쪽을 고정한다 | 🔄 스크립트 ✅ / CI 미배선 |
 | 단계 감사 (사후) | Comp | 하네스 변경 시 | `phase-audit.mjs` — git 이력에서 단계 순서를 **독립 재유도**해 `phase.jsonl`과 대조한다. 셸 우회(`node -e`)는 예방할 수 없고 이것이 탐지 축이다. 부트스트랩 예외는 `until_sha` **이전**에만 적용되고 조용히 빼지 않고 advisory로 계속 찍는다 | 🔄 스크립트 ✅ / CI 미배선 (`2bcaa28` 1건으로 exit 1, 예외로 덮지 않기로 결정) |
 | 전이 시 상태 신선도 | Boundary | `phase.py enter` | `session.json`이 HEAD 커밋보다 낡으면 **전이를 거부**한다. 체크포인트가 세션 스냅샷을 품고 재개 시험이 그것만 읽으므로, 낡은 채 전이하면 낡은 서사가 박제된다. `stop_state.py`가 같은 검사를 하지만 세션 **끝**이라 이미 늦다 (`recurrence.md` R6). 음성 시험 `python harness/phase.py self-test` 8건. **부재 시 통과** — 상태를 아직 선언하지 않은 세션을 가두지 않기 위해서이고, 대가는 파일 삭제로 우회 가능하다는 것이다(예방이 아니라 탐지) | ✅ |
 | 평가 준비 상태 | Boundary | `eval-b.mjs` 시작 | `.harness/state` + **`HASH_GLOBS` 전부**가 커밋돼 있어야 첫 케이스가 뜬다. 미커밋이면 ① GB-06이 `checkpoint_uncommitted`로 실패하고 ② **하네스 입력은 평가되지 않은 채 그 해시가 아티팩트에 박혀** `--verify-artifact`가 나중에 거짓 초록을 낸다. 음성 시험 `node scripts/eval-b.mjs --self-test` 8건 | ✅ (R4 2차 처방 + 5차 재리뷰 B-k) |
