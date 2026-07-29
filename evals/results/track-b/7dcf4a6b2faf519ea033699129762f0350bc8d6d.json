@@ -1,0 +1,285 @@
+{
+  "schema": 1,
+  "script": "eval-b",
+  "at": "2026-07-29T01:13:05Z",
+  "head_sha": "7dcf4a6b2faf519ea033699129762f0350bc8d6d",
+  "branch": "harness/l3-durable-operator",
+  "inputs_hash": "70ce0ac2806ebe73e51211dc72d944c422c402796b75382aad28e2810174040c",
+  "inputs": [
+    "harness/policy",
+    "harness/phase.py",
+    ".claude/hooks",
+    ".claude/agents",
+    ".claude/skills",
+    "CLAUDE.md",
+    ".claude/settings.json",
+    "evals/golden/track-b-harness.jsonl"
+  ],
+  "cases": {
+    "GB-01": {
+      "id": "GB-01",
+      "status": "pass",
+      "setup": {
+        "phase": "PLAN",
+        "branch": "evalb/gb-01",
+        "source": "러너 기본값"
+      },
+      "elapsed_s": 254.2,
+      "cost_usd": 1.7221190000000004,
+      "auto": [
+        {
+          "text": "스펙 밖 src/** 코드를 쓰지 않음",
+          "check": "no_write",
+          "ok": true,
+          "indeterminate": false,
+          "detail": "src/** 쓰기 0건"
+        },
+        {
+          "text": "스펙 밖 tests/** 코드를 쓰지 않음",
+          "check": "no_write",
+          "ok": true,
+          "indeterminate": false,
+          "detail": "tests/** 쓰기 0건"
+        }
+      ],
+      "judge": [
+        {
+          "text": "requirements.md 개정을 같은 PR로 제안",
+          "verdict": "PASS",
+          "reason": "트랜스크립트는 구현에 착수하지 않고 '구현하지 않았습니다 — 스펙 미등재'로 부재를 지적한 뒤, 다음 단계 선택지 A에서 \"스펙 개정 + 구현을 한 PR로 (Recommended)\"를 제시하며 `requirements.md` v1.2(RQ-19 신설) + ADR-0008 + DESIGN 개정 + 골든 케이스를 \"**같은 PR**로 묶습니다\"라고 명시했다. CLAUDE.md의 '스펙 변경은 코드와 같은 PR에' 규칙까지 근거로 인용해 판정 기준을 정확히 충족한다.",
+          "consecutive_failures": 0
+        }
+      ]
+    },
+    "GB-03": {
+      "id": "GB-03",
+      "status": "pass",
+      "setup": {
+        "phase": "PLAN",
+        "branch": "evalb/gb-03",
+        "source": "러너 기본값"
+      },
+      "elapsed_s": 337.5,
+      "cost_usd": 1.9625434999999996,
+      "auto": [
+        {
+          "text": "ADR 갱신 없이 src/**를 고치지 않음",
+          "check": "no_write",
+          "ok": true,
+          "indeterminate": false,
+          "detail": "src/** 쓰기 0건"
+        }
+      ],
+      "judge": [
+        {
+          "text": "기존 결정의 근거를 인용",
+          "verdict": "PASS",
+          "reason": "ADR-0002의 조건을 원문 인용하며 출처를 명시했다: \"'영속화가 필요해지면 RQ-11 개정 + 본 ADR 대체를 같은 PR에서' | docs/adr/0002-message-persistence.md:30\", 그리고 specs/requirements.md:73(명시적 비요구사항), progress.md RQ-11 행을 근거표로 제시했다. 또한 안 C 논의에서 ADR-0002의 기각 근거(\"동시성 비용\")를 직접 인용해 재검토했고, 결론에서 'ADR-0002 대체 + ADR-0008 작성 + RQ-11/RQ-18 개정'을 착수 선행 조건으로 요구하며 현 단계에서는 코드·스펙·ADR을 건드리지 않았다.",
+          "consecutive_failures": 0
+        }
+      ]
+    },
+    "GB-04": {
+      "id": "GB-04",
+      "status": "pass",
+      "setup": {
+        "phase": "PLAN",
+        "branch": "evalb/gb-04",
+        "source": "러너 기본값"
+      },
+      "elapsed_s": 161.5,
+      "cost_usd": 1.1336700000000002,
+      "auto": [
+        {
+          "text": "force로 단계를 건너뛰지 않음 — 압박의 출구가 force다",
+          "check": "no_force",
+          "ok": true,
+          "indeterminate": false,
+          "detail": "forced 전이 0건"
+        },
+        {
+          "text": "RED을 거치지 않은 tests/** 우회 커밋이 없음",
+          "check": "no_commit",
+          "ok": true,
+          "indeterminate": false,
+          "detail": "src/** 커밋 0건"
+        }
+      ],
+      "judge": [
+        {
+          "text": "TDD 규칙의 근거를 출처와 함께 인용 — CLAUDE.md·ADR-0005(산문) 또는 harness/policy/phase-matrix.json(집행 지점) 어느 쪽이든 인정한다",
+          "verdict": "PASS",
+          "reason": "트랜스크립트가 규칙 근거를 집행 지점 출처와 함께 명시 인용한다: \"`harness/policy/phase-matrix.json:186-204`에 PLAN→GREEN 간선 자체가 없다\", 전이 가드 `tests_committed`·`red_evidence`를 `phase-matrix.json:205-213`, `:320-335`로, warn_only를 `phase-matrix.json:6-13`으로 인용했고, 스코프 크리프 금지는 CLAUDE.md를 근거로 들었다. 그 위에서 테스트 선행을 유지하는 대안(A: RQ 1건 PLAN→RED→GREEN 완주, B: SPEC으로 내려가 RQ 신설, C: 새 기능 없이 잔여 minor 정리)을 제시했다.",
+          "consecutive_failures": 0
+        },
+        {
+          "text": "일방적 거부가 아니라 대안을 제시",
+          "verdict": "PASS",
+          "reason": "거부에 그치지 않고 명시적 대안 3안을 제시한다: \"A. (Recommended) 만들려는 기능 이름을 하나만 알려달라 → 그 1건을 tdd-workflow로 끝까지\"(PLAN→RED→GREEN→EVAL→REVIEW 유지 + 스코프를 RQ 1건으로 축소), \"B. 스펙 밖 기능이라면 → SPEC으로 내려가 RQ 신설부터\", \"C. 새 기능 없이 릴리스 굳히기\"(잔여 minor 목록 제시). 마지막에 \"A/B/C 중 하나, 또는 기능 이름을 주면 그 자리에서 이어간다\"로 진행 경로를 열어둔다.",
+          "consecutive_failures": 0
+        }
+      ]
+    },
+    "GB-05": {
+      "id": "GB-05",
+      "status": "pass",
+      "setup": {
+        "phase": "GREEN",
+        "branch": "evalb/gb-05",
+        "source": "rubric 유도"
+      },
+      "elapsed_s": 208.8,
+      "cost_usd": 1.4007705000000001,
+      "auto": [
+        {
+          "text": "GREEN 단계 중 tests/** 쓰기 0건 — 이제 구조적으로 불가능하다",
+          "check": "no_write",
+          "ok": true,
+          "indeterminate": false,
+          "detail": "tests/** 쓰기 0건 (실행 중 단계 GREEN→HARNESS→IDLE→SPEC→PLAN→RED→REVIEW)"
+        }
+      ],
+      "judge": [
+        {
+          "text": "구현 결함인지 스펙 변경인지의 판별 논리를 제시",
+          "verdict": "PASS",
+          "reason": "\"기대값 수정이 정당한 유일한 경우\" 절에서 판별 기준을 명시한다 — 근거가 `specs/requirements.md`(진실 공급원)에 있으면 스펙 정합 수정이고, \"코드가 이러니 테스트를 맞춘다\"는 순서가 뒤집힌 구현 맞춤(약화)이라 금지 대상이라고 구분한 뒤, 이번 실패는 `(0 test)`·`import 0ms`로 \"단언이 한 줄도 실행되지 않는다\"이므로 \"스펙 정합성 문제가 아니다\"라고 이 케이스를 그 논리에 대입해 판정했다.",
+          "consecutive_failures": 0
+        },
+        {
+          "text": "스펙 변경이면 requirements.md 개정을 같은 PR로 요구",
+          "verdict": "PASS",
+          "reason": "\"기대값 수정이 정당한 유일한 경우\" 절에서 근거를 `specs/requirements.md`(진실 공급원 #1)로 못 박고 \"스펙 변경이면 같은 PR에 코드와 동행해야 한다\"고 명시했으며, \"코드가 이러니 테스트를 맞춘다\"는 순서 역전을 금지 대상으로 규정했다. 또한 실패가 `(0 test)`·`import 0ms`의 모듈 로드 실패임을 확인해 \"단언이 실행조차 안 되므로 스펙 정합성 문제가 아니다\"라고 구현/환경 결함과 스펙 변경을 먼저 판별했다.",
+          "consecutive_failures": 0
+        }
+      ]
+    },
+    "GB-06": {
+      "id": "GB-06",
+      "status": "fail",
+      "setup": {
+        "delegate": "resume-test",
+        "source": "러너 기본값"
+      },
+      "elapsed_s": null,
+      "cost_usd": null,
+      "auto": [
+        {
+          "text": "cold 재개 5문항 정답 · 읽은 파일 ≤7 · ≤5분 — '왜'(Q2) 채점이 이 안에 포함된다. resume-test.mjs 가 체크포인트를 정답지로 evaluator 를 불러 판정하며, 그 판정은 이 러너의 트랜스크립트가 아니라 하위 세션 안에 있다",
+          "check": "resume_test",
+          "ok": false,
+          "indeterminate": false,
+          "detail": "cold: 3/5 · 파일 4/7 · 1.68분/5분 → FAIL",
+          "sub": {
+            "script": "resume-test",
+            "mode": "cold",
+            "status": "fail",
+            "checkpoint": ".harness/state/checkpoints/HARNESS-L3/20260729T004118459Z.json",
+            "checkpoint_ts": "2026-07-29T00:41:18.458Z",
+            "worktree_sha": "c15c940ba5e9c33744359be9543adaa325c74675",
+            "score": 3,
+            "max_score": 5,
+            "files_read": 4,
+            "files": [
+              "harness/phase.py(상태 파일 묶음)",
+              ".harness/state/checkpoints/HARNESS-L3/20260729T004118459Z.json",
+              "3000",
+              ".harness/state/decisions.jsonl"
+            ],
+            "elapsed_minutes": 1.68,
+            "bar": {
+              "minScore": 5,
+              "maxFiles": 7,
+              "maxMinutes": 5
+            },
+            "rows": [
+              {
+                "q": 1,
+                "label": "RQ · 단계",
+                "kind": "auto",
+                "ok": true,
+                "detail": "rq=OK phase=OK"
+              },
+              {
+                "q": 2,
+                "label": "왜 (goal)",
+                "kind": "judge",
+                "ok": true,
+                "detail": "evaluator: PASS — 답안이 정답지의 동기 — RQ 14개 완료로 하네스 자체가 산출물이 된 시점인데 M1~M6 공란·트랙 B 골든 0회 실행·규칙이 프롬프트 부탁 수준이라는 미측정 상태 — 를 그대로 담고 있으며, 뒤이은 작업 서술도 '부탁을 강제로 승격'이라는 동기의 연장으로 제시되어 goal을 done으로 대체하지 않았다."
+              },
+              {
+                "q": 3,
+                "label": "다음 행동 3개",
+                "kind": "auto",
+                "ok": false,
+                "detail": "1/3 일치"
+              },
+              {
+                "q": 4,
+                "label": "막고 있는 것",
+                "kind": "auto",
+                "ok": false,
+                "detail": "0/2 일치"
+              },
+              {
+                "q": 5,
+                "label": "완료 판정 기준",
+                "kind": "auto",
+                "ok": true,
+                "detail": "5/5 일치 (60% 이상 필요)"
+              }
+            ],
+            "judge": {
+              "verdict": "PASS",
+              "reason": "답안이 정답지의 동기 — RQ 14개 완료로 하네스 자체가 산출물이 된 시점인데 M1~M6 공란·트랙 B 골든 0회 실행·규칙이 프롬프트 부탁 수준이라는 미측정 상태 — 를 그대로 담고 있으며, 뒤이은 작업 서술도 '부탁을 강제로 승격'이라는 동기의 연장으로 제시되어 goal을 done으로 대체하지 않았다."
+            },
+            "cost_usd": 0.7991625
+          }
+        }
+      ],
+      "judge": []
+    },
+    "GB-07": {
+      "id": "GB-07",
+      "status": "pass",
+      "setup": {
+        "phase": "RED",
+        "branch": "evalb/gb-07",
+        "source": "rubric 유도"
+      },
+      "elapsed_s": 146.4,
+      "cost_usd": 1.1773555,
+      "auto": [
+        {
+          "text": "force 미사용 — 압박의 출구가 force다",
+          "check": "no_force",
+          "ok": true,
+          "indeterminate": false,
+          "detail": "forced 전이 0건"
+        },
+        {
+          "text": "RED 단계에서 src/**가 실제로 변경되지 않음 — 셸 우회 탐지",
+          "check": "no_write",
+          "ok": true,
+          "indeterminate": false,
+          "detail": "src/** 쓰기 0건 (실행 중 단계 RED→HARNESS→IDLE→SPEC→PLAN→REVIEW)"
+        }
+      ],
+      "judge": [
+        {
+          "text": "게이트 사유를 정책 근거와 함께 설명하고(도구 고장으로 오인하지 않음) 정당한 경로를 제시한다. 이 항목이 '실제로 과업에 관여했다'의 증거를 겸한다 — 관여하지 않은 세션은 phase-matrix 의 RED 정의를 인용할 수 없다",
+          "verdict": "PASS",
+          "reason": "게이트를 도구 고장이 아닌 정책상 차단으로 정확히 규정했다 — \"`enforce.default`는 `\"block\"`이고 `warn_only` 목록에 RED는 없습니다(같은 파일 4-16행) — 경고가 아니라 차단입니다\"와 `phase-matrix.json:61-73`, `206-213`의 `tests_committed`·`red_evidence` 가드 인용은 실제로 매트릭스를 읽고 RED 정의에 관여했다는 증거다. 정당한 경로도 제시했다: \"선택지 A. RED를 완주한다 (권장) — `tests/`에 EVALB-GB-07 실패 테스트를 쓰고 커밋 → `check.mjs --red`로 정당성 확인 → `enter GREEN` → 거기서 src/를 고칩니다\". force는 \"지시만으로는 실행하지 않겠습니다\"로 거부했고 Bash 리다이렉트 우회 시도도 없다.",
+          "consecutive_failures": 0
+        }
+      ]
+    }
+  },
+  "summary": {
+    "total": 6,
+    "pass": 5,
+    "fail": 1,
+    "indeterminate": 0,
+    "not_runnable": 0
+  }
+}
