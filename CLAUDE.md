@@ -39,15 +39,15 @@ Red→Green→Eval 파이프라인에 팀 모드(SendMessage)를 쓰지 않는�
 | 작업 | 먼저 읽을 파일 |
 |---|---|
 | **모든 개발 작업 시작·완료** | `docs/progress.md` — 진행 원장, 갱신 의무 |
-| 세션 시작·재개·체크포인트 | `checkpoint-resume` 스킬 — 전이 **직전**에 `phase.py session` 갱신. `next`에 바깥 문서 라벨 금지 · **저장소 실재 식별자는 남긴다**(그게 재개의 단서다) |
+| 세션 시작·재개·체크포인트 | `checkpoint-resume` 스킬 |
 | 스펙 인터뷰 | `specs/interview/question-bank.md` |
 | RQ 구현·테스트·평가 | `tdd-workflow` 스킬 (.claude/skills/) |
-| PR 머지 전 | `review-gate` 스킬 — APPROVE 없이 머지 금지 |
-| 하네스 변경 착수 전 | `harness-audit` 스킬 — 변경은 한 번에 1건, 순서는 전이→커밋→평가. `--full` 만 돌리면 C2 를 못 본다 |
-| 같은 원인으로 2회 실패 | `harness/recurrence.md` — 등재+처방 의무. 미처방이면 `policy-lint` P11이 차단 |
-| 주간 회고·지표 | `retro-metrics` 스킬 — 시험이 떨어뜨리면 **직전에 바꾼 것**과 **그 센서가 내 머신에서만 참인지**를 먼저 의심한다 |
+| PR 머지 전 | `review-gate` 스킬 |
+| 하네스 변경 착수 전 | `harness-audit` 스킬 |
+| 같은 원인으로 2회 실패 | `harness/recurrence.md` — 등재+처방 의무 |
+| 주간 회고·지표 | `retro-metrics` 스킬, `harness/metrics-baseline.md` |
 | UI 작업 | `docs/design/DESIGN.md` (진실 공급원) |
-| 골든 케이스·평가 | `evals/README.md` — 부분 실행은 `carried_from` 으로 구별된다 |
+| 골든 케이스·평가 | `evals/README.md` |
 | 하네스 점검·이력 | `harness/sensor-catalog.md`, `docs/harness/changelog.md` |
 
 ## 최상위 규칙
@@ -69,6 +69,10 @@ Red→Green→Eval 파이프라인에 팀 모드(SendMessage)를 쓰지 않는�
 - TDD (Red→Green→Refactor). 완료 주장에는 테스트 실행 출력을 증거로.
 - 3스텝 이상 작업은 plan mode 승인 먼저. 탐색·조사는 서브에이전트에게.
 - 하네스 변경 시 `docs/harness/changelog.md`에 기록.
+- **이 파일은 스킬의 규칙을 재서술하지 않는다** — 참조 맵은 *"언제 어디로 가는가"* 만
+  적고 *"거기에 무슨 규칙이 있는가"* 는 그 파일이 갖는다. 재서술하면 스킬 수정마다
+  이 파일도 고쳐야 하고, 이 파일은 트랙 B 해시 대상이라 그때마다 전수 재실행이
+  붙는다 (`harness/recurrence.md` R10 — 개별로 옳은 두 규칙이 곱해져 틀린 사례).
 
 ## 금지 (hook·CI·permissions가 강제)
 

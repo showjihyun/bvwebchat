@@ -40,10 +40,10 @@
       "tier": 0,
       "purpose": "진입 지도 — 진실 공급원 우선순위와 작업 유형별 참조 경로. 백과사전이 아니라 목차다.",
       "max_lines": 100,
+      "_doc_depends": ".claude/skills/*/SKILL.md 를 뺐다(2026-07-29, recurrence R10). 판별 규칙: 재서술하면 의존, 포인터로만 참조하면 비의존. 이 파일의 참조 맵은 이제 '언제 어디로 가는가' 만 적고 스킬 내부 규칙을 재서술하지 않으므로 스킬 내용이 바뀌어도 이 파일의 문장이 거짓이 되지 않는다. 스킬이 추가·삭제되면 참조 맵에 행을 넣고 빼야 하지만 그것은 C1(레지스트리 완결성)이 잡는다. 왜 중요한가: 이 파일은 HASH_GLOBS 라 갱신할 때마다 트랙 B 전수 재실행(~$8)이 붙었고, 재서술 의존과 곱해져 스킬 한 줄 고치는 비용이 그것이 됐다. 개별로 옳은 두 규칙이 곱해져 틀린 사례다.",
       "depends_on": [
         "specs/requirements.md",
         "docs/adr/*.md",
-        ".claude/skills/*/SKILL.md",
         "harness/policy/phase-matrix.json"
       ],
       "review_every_days": 30
