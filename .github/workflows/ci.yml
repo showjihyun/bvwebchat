@@ -50,8 +50,24 @@ jobs:
       # 하네스 자체 검사 — 서브프로세스·API 키·네트워크 불필요, 초 단위.
       # 이 둘이 CI에 없으면 hook.py 의 fail-OPEN 정당화("사후에 잡힌다")가
       # 성립하지 않는다. 잡아줄 유일한 센서를 아무도 부르지 않기 때문이다.
-      - name: 정책 린트 (P1~P8 — 매칭 불가능한 패턴 포함)
+      - name: 정책 린트 (P1~P11 — 매칭 불가 패턴 · enforced_by 대조 · 반복 대장 미처방)
         run: node scripts/policy-lint.mjs
+
+      - name: 게이트 음성 시험 (차단해야 할 것을 실제로 차단하는가)
+        run: |
+          node scripts/policy-lint.mjs --self-test
+          node scripts/eval-b.mjs --self-test
+          python harness/phase.py self-test
 
       - name: 훅 자기검사 (게이트가 실제로 allow/deny 를 내는지)
         run: node scripts/hooks-selftest.mjs
+
+      # recurrence R8 — 2026-07-29 배선. 이 검사는 그 전까지 **사람이 손으로 부를
+      # 때만** 돌았고, 그래서 같은 원인(값을 바꾸고 재서술하는 문서를 안 씀)으로
+      # 6차·7차 재리뷰에서 연속으로 빨개졌다. harness-audit 은 `--full` 을 부르는데
+      # 그 모드에서 C2 는 advisory 라 **선행 점검 스킬이 이것을 구조적으로 못 본다.**
+      #
+      # `--pr` 인 이유: 저장소 전체 낡음을 걸면 첫날부터 모든 PR 이 빨개지고 게이트는
+      # 그날로 무시된다. "이 PR 이 건드린 의존만 책임진다"가 게이트를 살려둔다.
+      - name: 문서 신선도 (C1·C2·C4·C5 — 이 PR 이 만든 낡음만)
+        run: node scripts/doc-freshness.mjs --pr --base origin/${{ github.base_ref || 'main' }}

@@ -61,7 +61,6 @@
       "Bash(cp:*)",
       "Bash(mv:*)",
       "Edit(./evals/golden/**)",
-      "Write(./evals/golden/**)",
       "Bash"
     ],
     "ask": [
@@ -85,11 +84,8 @@
       "Read(./.env)",
       "Read(./.env.*)",
       "Read(./secrets/**)",
-      "Write(./.env*)",
       "Edit(./.env*)",
-      "Write(./.harness/state/**)",
       "Edit(./.harness/state/**)",
-      "MultiEdit(./.harness/state/**)",
       "Bash(curl:*)",
       "Bash(wget:*)",
       "Bash(rm -rf:*)",
@@ -106,7 +102,10 @@
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "python .claude/hooks/hook.py session_start" }
+          {
+            "type": "command",
+            "command": "python .claude/hooks/hook.py session_start"
+          }
         ]
       }
     ],
@@ -114,7 +113,10 @@
       {
         "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash",
         "hooks": [
-          { "type": "command", "command": "python .claude/hooks/hook.py gate_phase" }
+          {
+            "type": "command",
+            "command": "python .claude/hooks/hook.py gate_phase"
+          }
         ]
       }
     ],
@@ -122,22 +124,34 @@
       {
         "matcher": "Write|Edit|MultiEdit|Bash",
         "hooks": [
-          { "type": "command", "command": "python .claude/hooks/hook.py post_observe" }
+          {
+            "type": "command",
+            "command": "python .claude/hooks/hook.py post_observe"
+          }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "python .claude/hooks/hook.py log_trajectory" },
-          { "type": "command", "command": "python .claude/hooks/hook.py stop_state" }
+          {
+            "type": "command",
+            "command": "python .claude/hooks/hook.py log_trajectory"
+          },
+          {
+            "type": "command",
+            "command": "python .claude/hooks/hook.py stop_state"
+          }
         ]
       }
     ],
     "SubagentStop": [
       {
         "hooks": [
-          { "type": "command", "command": "python .claude/hooks/hook.py log_trajectory" }
+          {
+            "type": "command",
+            "command": "python .claude/hooks/hook.py log_trajectory"
+          }
         ]
       }
     ]
