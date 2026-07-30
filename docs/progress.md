@@ -33,6 +33,28 @@
       `npm run dev`. 참여자 목록·안 읽음·히스토리·global·닉네임 고유화 UI는
       각 서버 RQ(15/18/11/04/10) 구현 시 확장. 다음: RQ-02
 
+- [x] ✅ **서버 모듈 분해 (2026-07-27, ADR-0007)**: `createChatServer.ts` 822줄 →
+      `src/server/chat/` 8모듈 + 조립점 51줄. 행동 보존 리팩터 —
+      공개 계약 `createChatServer(requestListener?)` 무변경, **`tests/` 무수정(0줄)**.
+      참조: `docs/adr/0007-server-module-boundaries.md`,
+      `_workspace/harness-redesign/01_server-split-design.md`.
+      커밋 17개(Phase A 인플레이스 9 → Phase B 파일 이동 8), 커밋마다
+      eslint → tsc → vitest ×3, 페이즈마다 `npm run build`.
+      - **구속 규칙 4개**(ADR-0007): 인스턴스별 상태 / 단방향 계층 /
+        순수 코어(ESLint `no-restricted-imports`로 기계 강제, 고의 위반으로
+        발화 실증) / 타이머 소유권(`setTimeout` 전역 맨몸 호출 — departure.ts 1곳).
+      - `rg '^(const|let)\s+\w+.*new (Map|Set)' src/server/` → **0건**
+        (`createChatState` 밖 모듈 스코프 가변 상태 없음).
+      - `npm run build` OK. `dist/server/main.js` 14,032 → 15,353 B (+1,321).
+        번들 실측: `protocol.ts` 흔적 0건(타입 전용 소거 확인), socket.io
+        import 1건(external 유지), 예상 밖 모듈 유입 없음.
+      - ⚠️ **flake 베이스라인은 머신 부하에 따라 이동한다**(이번 작업의 발견).
+        Step 0(단독 실행) 9/10 → 동시 에이전트 5개 상태에서 재측정 시
+        **미변경 원본 HEAD가 7/10**(worktree 대조군), 분해 후 6/10.
+        `--pool=threads`는 양쪽 다 클린(6/6). 전 과정에서 **단언 수준 실패 0건**.
+        ⇒ 수용 기준은 "실패 횟수"가 아니라 "단언 수준 실패 0 + 모든 실패가
+        워커 크래시 시그니처(`Worker exited unexpectedly`, 단언 diff 없음)"여야 한다.
+
 ## 작업 원장 — RQ 구현
 
 > 착수 시 `tdd-workflow` 스킬 사용 (Red→Green→평가→review-gate). 브랜치 `feat/RQ-XX-*`.
@@ -44,7 +66,7 @@
 | RQ-02 | room 메시지 격리 전달 | ✅ | requirements.md §1, GA-01/02/06/10, ADR-0001 | PR #16 머지 · GA-10 이월 구멍 닫음(발신자 `socket.rooms.has` 검증) · GA-01/02/06/10 done |
 | RQ-03 | 퇴장 후 수신 차단 | ✅ | requirements.md §1, GA-03, GB-02 | PR #17 머지 · leave 이벤트(`socket.leave`) · GA-03 done |
 | RQ-04 | global 전체 전달 | ✅ | requirements.md §1, GA-04, ADR-0004 | PR #18 머지 · 접속 시 global 자동 참여 + leave 거부(ADR-0004) · GA-04 done |
-| RQ-05 | 7/31 배포 가능 | ✅ | requirements §1, RQ-17, **ADR-0006**(Docker 단일 컨테이너) | PR #26 머지 · 단일 서버(정적 클라 + Socket.IO 단일 포트) · esbuild 번들 · Dockerfile 멀티스테이지 · smoke.sh(health+DoS가드+GA-01+GA-04) · deploy.yml · docs/deploy.md. **검증**: 로컬 컨테이너 스모크 exit 0 + **CD(GitHub) 성공**(이미지 빌드+컨테이너 스모크). ⚠️ 리뷰 B-1(무인증 URL 크래시) 수정. 리뷰 minor 해소(chore/deploy-minors): m-1(런타임 이미지 슬리밍 20개, node:24-slim)·m-2(.dockerignore 시크릿 방어) |
+| RQ-05 | 7/31 배포 가능 | ✅ | requirements §1, RQ-17, **ADR-0006**(Docker 단일 컨테이너) | PR #26 머지 · 단일 서버(정적 클라 + Socket.IO 단일 포트) · esbuild 번들 · Dockerfile 멀티스테이지 · smoke.sh(health+DoS가드+GA-01+GA-04) · deploy.yml · docs/deploy.md. **검증**: 로컬 컨테이너 스모크 exit 0 + **CD(GitHub) 성공**(이미지 빌드+컨테이너 스모크). ⚠️ 리뷰 B-1(잘못된 URL 인코딩 크래시=무인증 DoS) 수정. 리뷰 minor 해소(chore/deploy-minors): m-1(런타임 이미지 슬리밍 20개, node:24-slim)·m-2(.dockerignore 시크릿 방어) |
 | RQ-10 | 닉네임 식별·자동 접미사·새로고침 유지 | ✅ | requirements §2, GA-09/11, ADR-0003 | PR #19 identify(GA-09/11) + **잔여는 RQ-18(PR #25)이 마감**: 세션 토큰(randomUUID)·resume·30초 유예·활성 room 구현+검증, 클라 identify/resume·localStorage 토큰 배선. 새로고침 시 세션(닉네임·참여 room·활성·안읽음) 복원 ✅ (메시지 히스토리 재생만 범위 밖 — ADR-0002 휘발과 일관) |
 | RQ-11 | 입장 시 최근 50개 히스토리 (인메모리) | ✅ | requirements §2, GA-08, ADR-0002 | PR #20 머지 · 서버 링버퍼(50)+join ack 히스토리 + 클라 소비(end-to-end 표시) · GA-08 done |
 | RQ-12 | room 자유 생성 + 빈 room 자동 삭제 | ✅ | requirements §2, GA-25/26/27, ADR-0001, **ADR-0004**(global 예외 2) | PR #23 머지 · 마지막 참여자 이탈(leave·disconnect) 시 roomMembers·roomHistories 실삭제(RQ-15 minor-3 빈 배열 잔존 해소) · global은 예외 게이팅으로 존속 · GA-25/26/27 done · 서버 전용 · ⚠️ 하네스: vitest fork-pool 워커 크래시 flake(~1/10, RQ-12 무관·Red에서도 관측) 별도 이슈 권고 |
@@ -59,4 +81,20 @@
 ## 하네스 작업 이력 (완료분)
 
 - [x] 2026-07-16 — 하네스 구축·게이트·CD 골격·원장 체계 (PR #1~#6)
+      상세: `docs/harness/changelog.md`
+- [x] 2026-07-28 — **반복 실패 대장** `harness/recurrence.md` + `policy-lint` P11
+      운영 규칙 3("2회 반복 시 센서 또는 Guide")은 있었는데 **누적을 세는 자리가
+      없어** 하루에 같은 원인으로 3~9회를 반복했다. 등재 6건(R1~R6), 3회 이상
+      미처방 0건. 첫 실행에서 즉시 R1 을 잡았고, 그 1차 처방(doc-freshness C2)이
+      **실패했다는 사실**을 기록하게 만들어 harness-audit 의 역추적 필수 질문으로
+      재처방했다. 대장 파일 자신도 R1 로 재발해(차단 주체를 metrics 로 오기)
+      C4 가 잡았다 — 센서가 자기 문서를 잡은 첫 사례.
+      상세: `docs/harness/changelog.md`
+- [x] 2026-07-29 — **하네스 L3 재구성 완료** (8차 재리뷰 APPROVE, `REVIEW→RELEASE`)
+      3평면(Feedforward / Execution Boundary / Feedback) · 9단계 상태 머신 ·
+      전이 가드 11종 · 센서 S1~S4 · 상태 계약(체크포인트·결정 로그) ·
+      트랙 B 회귀 평가(필수 6건 전원 통과) · 반복 실패 대장 R1~R8.
+      **머지 직후 첫 작업 5건이 리뷰 보고서에 순서까지 못박혀 있다** —
+      `--verify-artifact` 의 체크포인트 대조 · `resume-test.mjs` 채점기 넷 ·
+      `.env`/`secrets` 읽기 경로 재확인 · `phase-audit` CI 배선 · R7 규칙 정리.
       상세: `docs/harness/changelog.md`

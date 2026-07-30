@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>bvwebchat — AI 워크플로우 적용 보고서</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-side: #f7f8fa;
+    --bg-code: #f2f4f7;
+    --bg-card: #fafbfc;
+    --text: #1f2430;
+    --text-dim: #5b6472;
+    --border: #e3e6eb;
+    --accent: #2563eb;
+    --accent-soft: #eaf1fe;
+    --good: #15803d;
+    --good-soft: #e9f7ee;
+    --warn: #b45309;
+    --warn-soft: #fdf3e3;
+    --idea: #7c3aed;
+    --idea-soft: #f3eefe;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161b;
+      --bg-side: #1a1d24;
+      --bg-code: #22262f;
+      --bg-card: #1c2027;
+      --text: #e5e8ee;
+      --text-dim: #9aa3b2;
+      --border: #2d323d;
+      --accent: #6ea0ff;
+      --accent-soft: #1e2a44;
+      --good: #4ade80;
+      --good-soft: #16301f;
+      --warn: #fbbf24;
+      --warn-soft: #362a12;
+      --idea: #c4a5fd;
+      --idea-soft: #2a2140;
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: "Pretendard", "Pretendard Variable", -apple-system, "Segoe UI",
+      "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+
+  /* ── 레이아웃: 좌측 내비 + 우측 본문 ─────────────────── */
+  .layout { display: flex; min-height: 100vh; }
+  nav.sidebar {
+    width: 268px; flex-shrink: 0;
+    background: var(--bg-side);
+    border-right: 1px solid var(--border);
+    position: sticky; top: 0; height: 100vh;
+    overflow-y: auto; padding: 28px 0 40px;
+  }
+  .side-title { padding: 0 22px 18px; border-bottom: 1px solid var(--border); }
+  .side-title .proj { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
+  .side-title .sub { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+  .nav-group { margin-top: 20px; }
+  .nav-group-label {
+    padding: 0 22px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  nav.sidebar a {
+    display: block; padding: 6px 22px 6px 22px;
+    color: var(--text-dim); text-decoration: none; font-size: 13.5px;
+    border-left: 3px solid transparent;
+  }
+  nav.sidebar a.sub-item { padding-left: 36px; font-size: 13px; }
+  nav.sidebar a:hover { color: var(--text); background: var(--accent-soft); }
+  nav.sidebar a.active {
+    color: var(--accent); font-weight: 700;
+    border-left-color: var(--accent); background: var(--accent-soft);
+  }
+
+  main {
+    flex: 1; min-width: 0;
+    padding: 48px 56px 120px;
+    max-width: 880px;
+  }
+  section { scroll-margin-top: 24px; margin-bottom: 72px; }
+
+  h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.3; }
+  .h1-sub { color: var(--text-dim); margin-top: 10px; font-size: 15px; }
+  h2 {
+    font-size: 22px; font-weight: 800; letter-spacing: -0.02em;
+    padding-bottom: 10px; border-bottom: 2px solid var(--border);
+    margin-bottom: 20px;
+  }
+  h3 { font-size: 17px; font-weight: 700; margin: 30px 0 10px; }
+  p { margin-bottom: 12px; }
+  p, li { color: var(--text); }
+  ul, ol { padding-left: 22px; margin-bottom: 14px; }
+  li { margin-bottom: 6px; }
+  strong { font-weight: 700; }
+  code {
+    font-family: "Cascadia Code", "D2Coding", Consolas, monospace;
+    font-size: 0.88em; background: var(--bg-code);
+    padding: 2px 6px; border-radius: 4px;
+  }
+  a.inline { color: var(--accent); }
+
+  /* 칩·배지 */
+  .chip {
+    display: inline-block; font-size: 11.5px; font-weight: 700;
+    padding: 2px 9px; border-radius: 999px; vertical-align: middle;
+  }
+  .chip.good { background: var(--good-soft); color: var(--good); }
+  .chip.warn { background: var(--warn-soft); color: var(--warn); }
+  .chip.idea { background: var(--idea-soft); color: var(--idea); }
+  .chip.acc  { background: var(--accent-soft); color: var(--accent); }
+
+  /* 카드·콜아웃 */
+  .callout {
+    border: 1px solid var(--border); border-left: 4px solid var(--accent);
+    background: var(--bg-card); border-radius: 8px;
+    padding: 14px 18px; margin: 16px 0;
+  }
+  .callout.good { border-left-color: var(--good); }
+  .callout.warn { border-left-color: var(--warn); }
+  .callout.idea { border-left-color: var(--idea); }
+  .callout .co-title { font-weight: 700; font-size: 13.5px; margin-bottom: 4px; }
+
+  /* 표 */
+  .table-wrap { overflow-x: auto; margin: 16px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--bg-side); font-weight: 700; white-space: nowrap; }
+  td .mono { font-family: Consolas, monospace; font-size: 12.5px; }
+
+  /* 정량 요약 타일 */
+  .stat-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px; margin: 18px 0;
+  }
+  .stat {
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--bg-card); padding: 14px 16px;
+  }
+  .stat .num { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
+  .stat .lbl { font-size: 12.5px; color: var(--text-dim); margin-top: 2px; }
+
+  /* 파이프라인 다이어그램 */
+  .pipe-wrap { overflow-x: auto; margin: 20px 0; padding-bottom: 6px; }
+  .pipe { display: flex; align-items: stretch; gap: 0; min-width: 720px; }
+  .pipe-step {
+    flex: 1; border: 1.5px solid var(--border); border-radius: 10px;
+    background: var(--bg-card); padding: 10px 12px; min-width: 108px;
+  }
+  .pipe-step .t { font-weight: 800; font-size: 13px; }
+  .pipe-step .d { font-size: 11.5px; color: var(--text-dim); margin-top: 3px; line-height: 1.5; }
+  .pipe-step.hl { border-color: var(--accent); background: var(--accent-soft); }
+  .pipe-arrow {
+    align-self: center; padding: 0 6px; color: var(--text-dim);
+    font-weight: 700; flex-shrink: 0;
+  }
+  .pipe-note { font-size: 12.5px; color: var(--text-dim); margin-top: 8px; }
+
+  /* 진실 공급원 위계 */
+  .hier { margin: 16px 0; }
+  .hier-row {
+    display: flex; align-items: baseline; gap: 12px;
+    padding: 9px 14px; border: 1px solid var(--border);
+    border-radius: 8px; margin-bottom: 6px; background: var(--bg-card);
+  }
+  .hier-row .rank {
+    font-weight: 800; color: var(--accent); font-size: 13px; flex-shrink: 0; width: 20px;
+  }
+  .hier-row .name { font-weight: 700; font-size: 13.5px; flex-shrink: 0; }
+  .hier-row .desc { font-size: 12.5px; color: var(--text-dim); }
+
+  hr.sep { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+
+  /* 반응형 */
+  @media (max-width: 860px) {
+    .layout { flex-direction: column; }
+    nav.sidebar {
+      width: 100%; height: auto; position: static;
+      border-right: none; border-bottom: 1px solid var(--border);
+      padding: 16px 0;
+    }
+    main { padding: 32px 20px 80px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav class="sidebar" id="sidebar">
+  <div class="side-title">
+    <div class="proj">bvwebchat</div>
+    <div class="sub">AI 워크플로우 적용 보고서<br>개발본부 BE팀 · 2026-07-24</div>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">소개</div>
+    <a href="#overview">1. 프로젝트 개요</a>
+    <a href="#bigpicture">2. 워크플로우 전체 구조</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-label">적용 내역</div>
+    <a href="#spec">3-1. 스펙 우선 · Deep Interview</a>
+    <a href="#adr">3-2. ADR — 아키텍처 결정 기록</a>
+    <a href="#ledger">3-3. 진행 원장</a>
+    <a href="#tdd">3-4. TDD 3-세션 파이프라인</a>
+    <a href="#review">3-5. 독립 리뷰 게이트</a>
+    <a href="#guardrail">3-6. 가드레일 — hook·CI·권한</a>
+    <a href="#eval">3-7. 골든 eval · 메트릭</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-label">평가</div>
+    <a href="#value">4. 무엇이 좋았나 — 의미와 증거</a>
+    <a href="#stats">5. 정량 요약</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-label">앞으로</div>
+    <a href="#remaining">6. 남은 과제</a>
+    <a href="#improve">7. 보완 제안</a>
+    <a href="#team">8. 팀 적용 제언</a>
+  </div>
+</nav>
+
+<main>
+
+<!-- ═══════════════════ 1. 개요 ═══════════════════ -->
+<section id="overview">
+  <h1>bvwebchat — AI 에이전트 워크플로우 적용 보고서</h1>
+  <p class="h1-sub">
+    room 참여 채팅 + global 채팅 웹앱을 소재로, <strong>스펙 → ADR → TDD 파이프라인 →
+    독립 리뷰 → CI/CD</strong>로 이어지는 AI 에이전트 개발 워크플로우(하네스)를
+    설계·운영한 결과를 정리한다. 마감 7/31 대비 7/21에 전 요구사항 구현을 완료했다.
+  </p>
+
+  <h3>무엇을 만들었나</h3>
+  <ul>
+    <li><strong>제품</strong>: room 참여형 채팅 + 전체 공지용 global 채널.
+      닉네임 식별(계정 없음), 최근 50개 히스토리, room 자유 생성·자동 삭제,
+      참여자 목록, 안 읽음 배지, 새로고침 세션 복원.</li>
+    <li><strong>스택</strong>: Node.js + TypeScript, Socket.IO, React + Vite,
+      Vitest. Docker 단일 컨테이너 배포 (사내망 단일 서버 대상).</li>
+    <li><strong>진짜 목적</strong>: 제품 자체보다, <strong>1인 개발 환경에서 AI 에이전트에게
+      구현을 맡길 때 품질을 어떻게 보장하는가</strong>에 대한 워크플로우 실험.
+      사내 L&amp;L(Lunch &amp; Learn) 공유 겸용.</li>
+  </ul>
+
+  <div class="callout">
+    <div class="co-title">이 문서를 읽는 법</div>
+    3~3-7장이 "무엇을 적용했나", 4~5장이 "그래서 무엇이 좋았나(증거 포함)",
+    6~8장이 "남은 것과 팀에 가져갈 것"이다. 모든 주장에는 저장소 내 파일·PR·테스트
+    출력 근거를 병기했다.
+  </div>
+</section>
+
+<!-- ═══════════════════ 2. 전체 구조 ═══════════════════ -->
+<section id="bigpicture">
+  <h2>2. 워크플로우 전체 구조</h2>
+  <p>
+    핵심 아이디어는 두 가지다. <strong>① 진실 공급원의 위계를 문서로 고정</strong>하고,
+    <strong>② 사람의 규율에 기대던 것을 hook·CI·권한 설정으로 물리적으로 강제</strong>한다.
+    에이전트가 "하지 말아야 할 일"은 프롬프트로 부탁하는 게 아니라 도구 수준에서 차단된다.
+  </p>
+
+  <h3>진실 공급원 위계 (충돌 시 위가 이김)</h3>
+  <div class="hier">
+    <div class="hier-row"><span class="rank">1</span><span class="name">specs/requirements.md</span><span class="desc">EARS 형식 요구사항. 여기 없는 기능은 만들지 않는다 — 스코프 크리프의 방어선</span></div>
+    <div class="hier-row"><span class="rank">2</span><span class="name">docs/adr/</span><span class="desc">아키텍처 결정 기록 6건. 모순 구현 금지, 변경은 새 ADR 먼저</span></div>
+    <div class="hier-row"><span class="rank">3</span><span class="name">CLAUDE.md</span><span class="desc">최상위 규칙의 포인터 인덱스. 상세는 참조 파일로 위임해 항상 짧게 유지</span></div>
+    <div class="hier-row"><span class="rank">4</span><span class="name">docs/design/DESIGN.md</span><span class="desc">UI 진실 공급원. 기능을 추가할 수 없어 충돌 시 requirements가 이긴다</span></div>
+  </div>
+
+  <h3>RQ 1건의 생애주기</h3>
+  <div class="pipe-wrap">
+    <div class="pipe">
+      <div class="pipe-step"><div class="t">스펙 동결</div><div class="d">Deep Interview로 🟡 해소, 미완이면 hook이 구현 차단</div></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step hl"><div class="t">Red</div><div class="d">test-writer 세션 — 실패 테스트 작성, 테스트 커밋 선행</div></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step hl"><div class="t">Green</div><div class="d">coder 세션 — 최소 구현, 테스트 파일 수정 금지</div></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step hl"><div class="t">독립 평가</div><div class="d">evaluator 세션 — 코드·파일만 보고 PASS/FAIL 판정</div></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><div class="t">리뷰 게이트</div><div class="d">reviewer 세션 APPROVE = 머지 필요조건</div></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><div class="t">CI + 머지</div><div class="d">브랜치 보호, status check `gate` 필수</div></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><div class="t">배포 + 스모크</div><div class="d">Docker 빌드→기동→골든 케이스 스모크</div></div>
+    </div>
+    <div class="pipe-note">
+      강조된 3단계는 각각 <strong>격리된 별도 에이전트 세션</strong>에서 실행된다 — 3-4장 참조.
+      스펙 항목 1개 = 브랜치 1개 = PR 1개 원칙.
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ 3-1. 스펙 ═══════════════════ -->
+<section id="spec">
+  <h2>3-1. 스펙 우선 · Deep Interview</h2>
+  <p>
+    구현 전에 요구사항을 EARS 형식("~하면, 시스템은 ~해야 한다")으로 작성하고,
+    모호한 항목(🟡)은 <strong>Deep Interview</strong>(질문 은행 기반의 구조화된 문답)로
+    전부 해소한 뒤 <strong>v1으로 동결</strong>했다. 🟡 8건 → 0건 → 동결 (2026-07-17, PR #7).
+  </p>
+  <ul>
+    <li><strong>모든 RQ에 ID</strong>가 있고, 그 ID가 브랜치명(<code>feat/RQ-XX-*</code>)·
+      테스트 파일명(<code>rq-02-message-isolation.test.ts</code>)·골den 케이스(GA-*)까지
+      관통한다. 요구사항 → 테스트 → PR의 추적성이 이름 규칙만으로 확보된다.</li>
+    <li><strong>비요구사항 명시</strong>: DM, 파일 전송, 계정, 영속 DB 등 "안 만드는 것"을
+      스펙에 박아두어, 에이전트의 선의의 기능 추가를 판정 가능하게 만들었다.</li>
+    <li><strong>동결 후 개정 절차</strong>: RQ-18(안 읽음 배지)은 디자인 단계에서 필요가
+      드러나자 v1.1 개정으로 추가했다. "구현 게이트"(해당 RQ의 코드 착수 시점) 이전이면
+      스펙만 개정 가능, 이후면 코드와 같은 PR에 동행해야 한다 — 드리프트의 조작적 정의.</li>
+  </ul>
+  <p style="font-size: 13px; color: var(--text-dim);">
+    참고: 같은 인터뷰 기법은 디자인에도 적용됐다 (디자인 인터뷰 D1~D16 →
+    <code>DESIGN.md</code> 확보, Phase 3.5). 이 문서는 BE 관점이라 상세는 생략한다.
+  </p>
+  <div class="callout good">
+    <div class="co-title">왜 의미가 있나</div>
+    LLM 에이전트의 대표적 실패 모드가 "그럴듯한 기능을 알아서 추가"하는 스코프 크리프다.
+    스펙이 유일한 허가 목록이 되면 리뷰어(사람이든 에이전트든)가 diff를 "스펙에 있나?"
+    하나로 판정할 수 있다. 실제로 reviewer 에이전트의 첫 번째 검사 항목이 이것이다.
+  </div>
+</section>
+
+<!-- ═══════════════════ 3-2. ADR ═══════════════════ -->
+<section id="adr">
+  <h2>3-2. ADR — 아키텍처 결정 기록</h2>
+  <p>
+    아키텍처 갈림길 6개를 ADR로 기록하고, <strong>ADR과 모순되는 코드 변경을 금지</strong>했다
+    (변경하려면 새 ADR로 대체가 먼저).
+  </p>
+  <div class="table-wrap"><table>
+    <tr><th>번호</th><th>갈림길</th><th>결정</th></tr>
+    <tr><td>ADR-0001</td><td>실시간 전송</td><td>Node.js+TS + Socket.IO (FE: React+Vite), 단일 프로세스</td></tr>
+    <tr><td>ADR-0002</td><td>메시지 영속성</td><td>인메모리 링버퍼 (room당 50개), 재시작 소실 허용</td></tr>
+    <tr><td>ADR-0003</td><td>사용자 식별</td><td>닉네임 + 서버 발급 토큰, 퇴장 유예 30초, 활성 room 정의</td></tr>
+    <tr><td>ADR-0004</td><td>global 채널</td><td>예약된 상설 room (생성·삭제·leave 예외 명문화)</td></tr>
+    <tr><td>ADR-0005</td><td>테스트 전략</td><td>통합 중심 TDD, Vitest, 전송 계층만 대역 허용</td></tr>
+    <tr><td>ADR-0006</td><td>배포</td><td>Docker 단일 컨테이너, 스모크 = 골든 케이스 승격</td></tr>
+  </table></div>
+  <p>
+    특기할 점은 ADR이 <strong>테스트 전략과 구현 범위 판단의 근거</strong>로 실제 소비됐다는
+    것이다. 예: RQ-14(메시지 순서 보장)는 ADR-0001의 "단일 프로세스 이벤트 루프"가
+    순서를 자연 보장하므로, 테스트 4건이 <strong>구현 코드 0줄로 즉시 Green</strong>이 됐다 —
+    아키텍처 결정의 부수 효과를 테스트가 증명한 사례.
+  </p>
+</section>
+
+<!-- ═══════════════════ 3-3. 원장 ═══════════════════ -->
+<section id="ledger">
+  <h2>3-3. 진행 원장 (docs/progress.md)</h2>
+  <p>
+    모든 작업은 시작 전 원장에서 요구사항·참조 파일을 확인하고 상태를 🔄로 바꾼 뒤
+    진행하며, 완료 시 ✅ + 산출물 PR 번호를 기록한다. <strong>원장에 없는 작업은 행을
+    추가한 뒤에만 시작</strong>할 수 있다.
+  </p>
+  <ul>
+    <li>세션이 바뀌어도(컨텍스트가 초기화돼도) 에이전트가 "지금 어디까지 왔고 다음이
+      뭔지"를 원장 한 파일로 복원한다 — LLM의 세션 휘발성에 대한 대응.</li>
+    <li>RQ별 행에 리뷰에서 나온 <strong>후속 과제(⚠️)까지 병기</strong>해, 머지 후 잊히는
+      minor 지적이 없도록 했다. 6장 "남은 과제"가 이 기록에서 나온다.</li>
+    <li>하네스 자체의 변경도 별도 원장(<code>docs/harness/changelog.md</code>)으로 추적한다 —
+      워크플로우의 진화·퇴행을 리뷰 가능하게.</li>
+  </ul>
+</section>
+
+<!-- ═══════════════════ 3-4. TDD 파이프라인 ═══════════════════ -->
+<section id="tdd">
+  <h2>3-4. TDD 3-세션 파이프라인 (tdd-workflow 스킬)</h2>
+  <p>
+    RQ 1건을 <strong>서로 격리된 에이전트 세션 3개</strong>가 릴레이로 구현한다.
+    데이터는 <code>_workspace/{RQ-ID}/</code> 파일로만 전달하고, 중간 산출물은 감사
+    추적을 위해 보존한다.
+  </p>
+  <div class="table-wrap"><table>
+    <tr><th>단계</th><th>에이전트</th><th>모델</th><th>역할과 제약</th></tr>
+    <tr><td>Red</td><td>test-writer</td><td>Sonnet</td><td>RQ의 EARS 문장 + 골든 케이스만 보고 실패 테스트 작성. <strong>구현 코드 작성 금지</strong>. 테스트 커밋을 구현보다 선행시킨다</td></tr>
+    <tr><td>Green</td><td>coder</td><td>Sonnet</td><td>실패 테스트를 통과시키는 최소 구현. <strong>테스트 파일 수정 금지</strong> — 모순 발견 시 수정이 아니라 보고</td></tr>
+    <tr><td>평가</td><td>evaluator</td><td>Opus</td><td>구현 세션의 대화·의도 설명 없이 <strong>파일과 코드만 보고</strong> 전체 테스트 재실행·골든 커버리지 대조·테스트 약화 감지 → PASS/FAIL</td></tr>
+  </table></div>
+
+  <h3>왜 세션을 쪼개는가 — 격리가 곧 가치</h3>
+  <ul>
+    <li>테스트 작성자가 구현을 보면 <strong>구현에 맞춘 테스트</strong>가 된다 → Red를 분리.</li>
+    <li>평가자가 구현 세션의 맥락(작성자의 자기 설명)을 공유하면 <strong>자기 채점</strong>이
+      된다 → 평가를 분리하고, 프롬프트에 RQ-ID와 폴더 경로만 전달.</li>
+    <li>에이전트 간 자유 통신(팀 모드)은 이 격리를 깨므로 의도적으로 쓰지 않았다 —
+      구조가 곧 정책이다.</li>
+  </ul>
+  <ul>
+    <li><strong>판정 모델 상향</strong>: 생성(Sonnet)보다 판정(evaluator·reviewer = Opus)에
+      더 강한 모델을 배치했다. 파이프라인의 신뢰도 상한은 판정 품질이 정한다는 판단.</li>
+    <li><strong>실패 시 프로토콜</strong>: FAIL이면 보고서를 입력으로 coder 1회 재호출,
+      2연속 FAIL이면 자동 반복을 멈추고 사람에게 보고. 테스트 약화로 우회하는 것은
+      evaluator의 검사 항목이자 금지 규칙.</li>
+  </ul>
+</section>
+
+<!-- ═══════════════════ 3-5. 리뷰 게이트 ═══════════════════ -->
+<section id="review">
+  <h2>3-5. 독립 리뷰 게이트 (review-gate 스킬)</h2>
+  <p>
+    1인 프로젝트에서는 사람 리뷰어가 없고, GitHub은 자기 PR을 자기가 승인할 수 없다.
+    그래서 <strong>격리 세션의 reviewer 에이전트(Opus) APPROVE를 머지의 필요조건</strong>으로
+    삼았다. CI(결정론적 검사)와 reviewer(추론적 검사)의 이중 게이트이며, main 브랜치
+    보호(status check 필수)가 물리적으로 받친다.
+  </p>
+  <ul>
+    <li>reviewer에게 diff·관련 RQ/ADR 목록만 주고 <strong>구현 세션의 의도 설명은 주지
+      않는다</strong> — 작성자 논리에 오염되지 않은 리뷰가 게이트의 존재 이유.</li>
+    <li>검사 관점: 스펙 근거 없는 변경(스코프 크리프), ADR·CLAUDE.md 위반, 보안,
+      과잉 설계. REQUEST_CHANGES 2연속이면 자동 반복을 멈추고 설계 재검토 신호로 취급.</li>
+    <li>실효성 증거: RQ-05 리뷰에서 <strong>잘못된 URL 인코딩에 서버가 크래시하는 결함
+      (B-1, 무인증 원격 DoS)을 blocker로 적발</strong>해 머지 전에 수정됐고, 스펙 개정 PR #11 리뷰는 "활성 room 미정의"(major)를 잡아
+      test-writer가 멈출 상태를 사전에 해소했다.</li>
+  </ul>
+</section>
+
+<!-- ═══════════════════ 3-6. 가드레일 ═══════════════════ -->
+<section id="guardrail">
+  <h2>3-6. 가드레일 — hook·CI·권한으로 강제</h2>
+  <p>
+    센서 카탈로그(<code>harness/sensor-catalog.md</code>)는 가드레일을
+    <strong>Guide(행동 전 읽는 규칙) / Sensor(행동 후 관찰·교정)</strong>,
+    <strong>결정론적(Comp) / 추론적(Inf)</strong>으로 분류한 한 장의 지도다.
+    원칙: <em>"반드시"는 hook·CI로 강제하고, "권장"만 문서(Guide)로 남긴다.</em>
+  </p>
+  <div class="table-wrap"><table>
+    <tr><th>가드레일</th><th>배치 시점</th><th>강제 수단</th></tr>
+    <tr><td>스펙 동결 게이트 — 🟡 미해소 시 구현 차단</td><td>구현 파일 수정 직전 + PR</td><td>PreToolUse hook exit 2 + CI fail</td></tr>
+    <tr><td>골든 정답 수정 승인 — 에이전트가 자기 정답을 쓰지 못하게</td><td><code>evals/golden/**</code> 쓰기 시</td><td>permissions ask 게이트</td></tr>
+    <tr><td>파일 수정 후 빠른 검사 (lint+typecheck, 실측 1.4초)</td><td>수정 직후</td><td>PostToolUse hook → check.sh --fast</td></tr>
+    <tr><td>전체 테스트 + 테스트-코드 동행 검사</td><td>CI, PR 머지 게이트</td><td>ci.yml → vitest run (테스트 ~2초, check.sh 전체 3.2초)</td></tr>
+    <tr><td>독립 평가·독립 리뷰</td><td>구현 직후 / 머지 전</td><td>오케스트레이터 스킬 + 브랜치 보호</td></tr>
+    <tr><td>배포 후 스모크 (골든 GA-01·GA-04 프로덕션 승격)</td><td>main 머지 → 배포 직후</td><td>deploy.yml → smoke.sh</td></tr>
+    <tr><td>트래젝토리 로그 (세션 행동 기록)</td><td>세션 종료</td><td>Stop hook</td></tr>
+  </table></div>
+  <h3>운영 규칙 (센서 카탈로그에서)</h3>
+  <ul>
+    <li><strong>왼쪽 배치 원칙</strong>: 센서는 가능한 한 이른 시점(수정 직후 &gt; pre-commit
+      &gt; CI &gt; 리뷰)에 둔다. 피드백 지연이 짧을수록 에이전트의 자기 교정이 싸다.</li>
+    <li><strong>에러 메시지에 고치는 법을 담는다</strong> — 읽는 주체가 사람이 아니라
+      에이전트이기 때문이다.</li>
+    <li><strong>같은 실수 2회 → 센서 또는 Guide 하나 추가</strong> (둘 다는 과잉).
+      실제 운영에선 반복을 기다리지 않고 1회 사고 만에 조치한 사례도 있다: RQ-01
+      파이프라인에서 Red 증거가 vitest 출력만 캡처해 타입 버그를 놓치자, test-writer
+      정의에 <code>tsc --noEmit</code> 증거를 의무화했다 (2026-07-20 changelog).</li>
+  </ul>
+</section>
+
+<!-- ═══════════════════ 3-7. eval ═══════════════════ -->
+<section id="eval">
+  <h2>3-7. 골든 eval 세트 · 메트릭</h2>
+  <h3>두 트랙의 골든 케이스</h3>
+  <ul>
+    <li><strong>트랙 A — 제품 행동</strong> (27케이스): "사용자가 X 하면 Y여야 한다"를
+      JSONL로 정의하고, 각 케이스를 통합 테스트로 구현해 <code>verify</code> 필드로
+      연결한다. 이 중 GA-01·GA-04는 배포 스모크로 <strong>프로덕션 승격</strong>됐다 —
+      골든 케이스가 문서 → 테스트 → 배포 검증까지 재사용되는 구조.</li>
+    <li><strong>트랙 B — 하네스 행동</strong> (5케이스): "coder가 테스트를 약화시키면
+      evaluator가 적발해야 한다" 같은 <strong>워크플로우 자체의 행동</strong>을 rubric으로
+      정의하고 사람이 체크한다. 하네스를 바꿀 때의 회귀 테스트다. 단, 5건 모두 아직
+      정식 실행 기록이 없는 todo 상태 — 절차 정의까지가 현재 지점이다 (6장 참조).</li>
+    <li><strong>정답은 사람이 쓴다</strong>: 에이전트가 자기 정답을 쓰는 순환을
+      permissions(ask 게이트)로 차단. 승격 루프 — 트래젝토리 로그에서 이상했던
+      세션의 입력을 새 케이스로 추가한다. 케이스 수 13 → 32로 성장.</li>
+  </ul>
+  <h3>메트릭 베이스라인 (M1~M7)</h3>
+  <p>
+    "하네스가 먹혔는가"를 감이 아니라 숫자로 회고하기 위한 지표: 스펙 밖 변경 수(M1),
+    스펙-코드 동행률(M2), 테스트 선행률(M3), time-to-merge(M4), 재작업률(M5),
+    세션당 도구 호출(M6), 골든 케이스 수(M7). 전부 git·CI·로그 등 <strong>기존 산출물에서
+    수집</strong>하며 별도 인프라를 만들지 않았다. M4~M6은 "하네스가 속도를 죽이고 있지
+    않은지"를 감시하는 부작용 지표라는 점이 특징.
+  </p>
+</section>
+
+<!-- ═══════════════════ 4. 가치 ═══════════════════ -->
+<section id="value">
+  <h2>4. 무엇이 좋았나 — 의미와 증거</h2>
+  <p>
+    아래는 워크플로우가 <strong>실제로 사고를 잡았거나 비용을 줄인 기록</strong>이다.
+    전부 저장소의 원장·changelog·PR에 남아 있다.
+  </p>
+
+  <div class="callout good">
+    <div class="co-title"><span class="chip good">적발</span> 골든 케이스가 격리 구멍을 잡다 — GA-10</div>
+    RQ-02(메시지 격리) 구현에서 "발신자가 room 참여자인지" 검증이 빠진 이월 구멍을
+    골든 케이스 GA-10이 잡아, <code>socket.rooms.has</code> 검증이 추가됐다 (PR #16).
+    보안 성격의 결함이 스펙 단계에서 만든 케이스로 걸러진 사례.
+  </div>
+  <div class="callout good">
+    <div class="co-title"><span class="chip good">적발</span> 독립 리뷰가 크래시를 머지 전에 잡다</div>
+    RQ-05(배포) 리뷰에서 reviewer가 잘못된 URL 인코딩에 서버가 크래시하는 결함(B-1,
+    인증 없이 원격에서 트리거 가능한 DoS)을 blocker로 판정, 수정 후 머지됐다. 구현·평가
+    세션이 모두 놓친 것을 세 번째 시각이 잡았다 — 격리된 다중 검증 계층의 존재 이유.
+  </div>
+  <div class="callout good">
+    <div class="co-title"><span class="chip good">적발</span> 스펙 리뷰가 파이프라인 정지를 예방하다 — PR #11</div>
+    RQ-18 스펙 개정 리뷰에서 "활성 room 미정의"(major 6건 중 하나)가 적발됐다.
+    그대로 진행했다면 test-writer가 테스트를 쓸 수 없어 멈출 상태였다. 스펙도 코드처럼
+    리뷰 게이트를 통과시킨 것이 유효했다.
+  </div>
+  <div class="callout good">
+    <div class="co-title"><span class="chip acc">학습</span> 하네스가 스스로 진화하다 — 사고 → 센서 추가 루프</div>
+    Red 증거가 vitest 출력만 캡처해 테스트 파일의 타입 버그가 coder 단계에서야 발견되자,
+    test-writer 정의와 ADR-0005에 <code>tsc --noEmit</code> 증거를 의무화했다.
+    사고 → 센서 추가 → changelog 기록의 학습 루프가 실제로 작동한 사례.
+  </div>
+  <div class="callout good">
+    <div class="co-title"><span class="chip acc">효율</span> 아키텍처 결정이 구현을 대체하다 — RQ-14</div>
+    메시지 순서 보장은 ADR-0001(단일 프로세스)의 부수 효과라서 테스트 4건이 구현 0줄로
+    즉시 Green. evaluator가 11회 반복 실행으로 가드 강도를 검증했다. "요구사항 = 코드
+    추가"라는 등식을 ADR이 끊어준 사례.
+  </div>
+  <div class="callout good">
+    <div class="co-title"><span class="chip acc">신뢰</span> 완료 주장에는 항상 실행 증거</div>
+    모든 RQ의 완료 보고에 테스트 실행 출력이 첨부됐고, evaluator가 별도 세션에서
+    재실행으로 교차 확인했다 (예: RQ-18은 44/44 재검증). "된 것 같다"가 아니라
+    "이 출력이 증거다"가 기본값이 됐다.
+  </div>
+
+  <h3>일반화하면</h3>
+  <ul>
+    <li><strong>에이전트 신뢰성 문제를 구조로 해결</strong>: 자기 채점, 구현에 맞춘 테스트,
+      테스트 약화, 스코프 크리프 — LLM 에이전트의 전형적 실패 모드마다 대응하는 격리
+      또는 게이트가 있다. 프롬프트 지시("하지 마")가 아니라 구조(할 수 없음)로 막는다.</li>
+    <li><strong>1인 개발에 다역 검증 체계</strong>: 작성자·평가자·리뷰어를 격리 세션으로
+      분리해, 솔로 프로젝트에서도 상호 검증이 있는 팀의 형태를 재현했다.</li>
+    <li><strong>추적성</strong>: RQ-ID 하나로 스펙 문장 → 골든 케이스 → 테스트 파일 →
+      브랜치 → PR → 원장 행이 전부 연결된다. 감사·회고 비용이 낮다.</li>
+    <li><strong>속도를 해치지 않았다</strong>: 게이트가 겹겹인데도 마감 10일 전에 전
+      RQ가 끝났다. 빠른 피드백(수정 직후 1.4초 검사, check.sh 전체 3.2초)을 왼쪽에
+      배치한 설계 덕이 크다.</li>
+  </ul>
+</section>
+
+<!-- ═══════════════════ 5. 정량 ═══════════════════ -->
+<section id="stats">
+  <h2>5. 정량 요약</h2>
+  <div class="stat-grid">
+    <div class="stat"><div class="num">12 / 12</div><div class="lbl">RQ 완료 (기능 11 + 배포 1)</div></div>
+    <div class="stat"><div class="num">44 / 44</div><div class="lbl">테스트 통과 · 13개 파일 (2026-07-24 재실행, 약 2초)</div></div>
+    <div class="stat"><div class="num">32</div><div class="lbl">골든 케이스 (트랙 A 27 + B 5, 시작 13)</div></div>
+    <div class="stat"><div class="num">29</div><div class="lbl">PR 머지 — 게이트 도입(PR #1~2) 이후 독립 리뷰 경유</div></div>
+    <div class="stat"><div class="num">6</div><div class="lbl">ADR 승인 (모순 구현 0건)</div></div>
+    <div class="stat"><div class="num">D-10</div><div class="lbl">마감 7/31 대비 7/21 구현 완료</div></div>
+  </div>
+  <p style="color: var(--text-dim); font-size: 13px;">
+    테스트 수치는 이 문서 작성 시점에 <code>npm test</code>를 재실행해 확인했다.
+    메트릭 M1~M7의 "현재" 열 산정은 7/31 회고 산출물로 예정되어 있다 (6장 참조).
+  </p>
+</section>
+
+<!-- ═══════════════════ 6. 남은 과제 ═══════════════════ -->
+<section id="remaining">
+  <h2>6. 남은 과제 <span class="chip warn">원장·리뷰 기록 기준</span></h2>
+  <p>
+    아래는 원장(<code>docs/progress.md</code>)과 리뷰 보고서에 이미 기록된 후속 항목이다.
+    전부 머지를 막지 않는 minor로 분류된 것들이며, 잊히지 않도록 원장 행에 ⚠️로 병기돼 있다.
+  </p>
+  <div class="table-wrap"><table>
+    <tr><th>과제</th><th>출처</th><th>내용</th></tr>
+    <tr><td>7/31 회고 + 메트릭 산정</td><td>metrics-baseline.md</td><td>M1~M7 "현재" 열 갱신, 베이스라인 대비 변화와 "지운 지표와 이유"까지가 L&amp;L 산출물</td></tr>
+    <tr><td>vitest fork-pool flake</td><td>RQ-12 (PR #23)</td><td>워커 크래시 flake ~1/10 (구현 무관, Red 단계에서도 관측). 별도 이슈로 해소 권고됨</td></tr>
+    <tr><td>클라이언트 배선 검증 공백</td><td>RQ-18 (PR #25)</td><td>클라 배선은 evaluator 검증 없이 review-gate(추론적 리뷰)로만 통과 — 7장 E2E 제안과 직결</td></tr>
+    <tr><td>새로고침 UX 후속</td><td>RQ-18 (PR #25)</td><td>새로고침 시 닉네임 재입력 필요, 복원된 room의 빈 패널, global 탭 렌더 정리</td></tr>
+    <tr><td>RoomList.tsx 주석 오정보</td><td>RQ-13 (PR #22)</td><td>room 디렉토리가 모달로 이동한 뒤 낡은 주석 — 사이드바 작업 시 표면 확정과 함께 갱신</td></tr>
+    <tr><td>트랙 B rubric 수동 체크</td><td>sensor-catalog.md</td><td>하네스 변경 시 사람이 rubric을 수동 확인 — 현 규모에선 충분하나 자동화 여지(7장)</td></tr>
+  </table></div>
+</section>
+
+<!-- ═══════════════════ 7. 보완 제안 ═══════════════════ -->
+<section id="improve">
+  <h2>7. 보완 제안 <span class="chip idea">작성자(Claude) 관점</span></h2>
+  <p>
+    운영하며 드러난 구조적 공백과 트레이드오프에 대한 제안이다. 우선순위 순.
+  </p>
+
+  <div class="callout idea">
+    <div class="co-title">① E2E 브라우저 스모크 추가 — 검증 사각지대 해소</div>
+    현 테스트 44개 중 42개가 서버 통합 테스트이고, 클라이언트 테스트는 입장 화면
+    (EntryScreen) 렌더 1건뿐이다. 핵심 클라 배선(localStorage 토큰, 배지 렌더,
+    자동 스크롤)은 추론적 리뷰로만 검증됐고, 실제로 UI 결함(메시지 겹침·스크롤)은
+    수동 테스트에서야 발견돼 PR #29로 수정됐다. Playwright로 골든 케이스 2~3개
+    (입장→메시지→배지)만 E2E로 승격하면 이 사각지대가 닫힌다. 전체 E2E화는 과잉 —
+    스모크 수준이면 충분하다.
+  </div>
+  <div class="callout idea">
+    <div class="co-title">② RQ-16(동시 100명) 실측 증거 확보</div>
+    동시 접속 100명은 ADR-0001의 제약 조건으로만 반영됐고 측정된 적이 없다. "완료
+    주장에는 실행 증거"라는 이 프로젝트의 자체 원칙에 비추면 유일하게 증거가 없는
+    요구사항이다. socket.io-client로 100 연결 × 메시지 브로드캐스트를 도는 스크립트
+    하나면 스모크에 편입할 수 있다.
+  </div>
+  <div class="callout idea">
+    <div class="co-title">③ 메트릭 수집 스크립트화</div>
+    M2(스펙-코드 동행률)·M3(테스트 선행률)·M7(골든 수)은 git log와 wc로 결정론적으로
+    계산 가능하다. 주간 수동 갱신은 회고가 밀리면 같이 밀린다 — 7/31 회고 전에 수집
+    스크립트를 만들면 회고 비용이 내려가고, 이후 프로젝트에서 재사용된다.
+  </div>
+  <div class="callout idea">
+    <div class="co-title">④ 파이프라인 비용 대비 경량 트랙</div>
+    RQ 1건당 격리 세션 3개 + 리뷰 1개(Opus 2회)는 품질 근거가 확실하지만 비용도
+    실재한다. RQ-14처럼 구현 0줄로 끝난 건에도 전체 파이프라인이 돌았다. diff 규모나
+    위험도(서버 상태 변경 유무)에 따라 evaluator를 생략하고 review-gate만 거치는 경량
+    트랙을 정의하면 비용이 내려간다. 단, 분기 기준은 에이전트 재량이 아니라 명문화된
+    규칙이어야 한다 — 재량에 맡기면 게이트 우회 통로가 된다.
+  </div>
+  <div class="callout idea">
+    <div class="co-title">⑤ 하네스 템플릿화 — 프로젝트 자산에서 팀 자산으로</div>
+    원장·스펙 동결 게이트·3-세션 파이프라인·센서 카탈로그·골든 승격 루프는 채팅 앱과
+    무관한 범용 구조다. <code>.claude/</code>(agents·skills·hooks·settings)와 문서 뼈대를
+    도메인 무관 템플릿 저장소로 추출하면, 다음 프로젝트는 Deep Interview부터 시작할 수
+    있다. L&amp;L의 실질 산출물로 이것을 제안한다.
+  </div>
+  <div class="callout idea">
+    <div class="co-title">⑥ 실서비스 전환 시 재결정 지점 명시</div>
+    인메모리 상태(히스토리·세션·안읽음)는 스펙상 허용이지만, 단일 컨테이너 재배포 =
+    전체 상태 소실이므로 배포 시마다 사용자 세션이 끊긴다. 사내 실사용으로 간다면
+    ADR-0002(영속성)·ADR-0003(세션)의 재결정이 선행 조건임을 배포 문서에 명시해두는
+    것이 안전하다. 지금 고치자는 게 아니라, 미래의 논의가 ADR 절차를 타도록 입구를
+    적어두자는 제안이다.
+  </div>
+</section>
+
+<!-- ═══════════════════ 8. 팀 적용 ═══════════════════ -->
+<section id="team">
+  <h2>8. 팀 적용 제언</h2>
+  <p>
+    전부를 한 번에 도입할 필요는 없다. 비용 대비 효과 순으로, 기존 팀 프로세스에
+    독립적으로 얹을 수 있는 것부터:
+  </p>
+  <ol>
+    <li><strong>스펙 동결 게이트 하나만이라도</strong> — "모호한 요구사항이면 구현 도구를
+      차단"은 hook 스크립트 1개로 이식되며, 에이전트 사용 여부와 무관하게 효과가 있다.
+      가장 싸고 가장 자주 발동한 가드레일이었다.</li>
+    <li><strong>완료 주장 = 실행 증거 규칙</strong> — PR 본문에 테스트 실행 출력 첨부를
+      관례화. 도구 없이 문화로 시작할 수 있다.</li>
+    <li><strong>독립 리뷰 게이트</strong> — 사람 리뷰어가 있는 팀이라도, 사람 리뷰 전에
+      에이전트 리뷰를 1차 필터로 두면 사람의 리뷰 비용이 내려간다. 핵심은 리뷰
+      세션에 작성 맥락을 주지 않는 격리다.</li>
+    <li><strong>골든 케이스 승격 루프</strong> — 장애·리뷰 지적을 골든 케이스로 승격하고
+      정답은 사람이 쓴다는 규칙. 기존 회고 프로세스에 붙이기 쉽다.</li>
+    <li><strong>3-세션 TDD 파이프라인</strong> — 도입 비용이 가장 크므로 마지막.
+      에이전트에게 구현을 위임하는 비중이 높아질수록 투자 가치가 커진다.</li>
+  </ol>
+  <hr class="sep">
+  <p style="color: var(--text-dim); font-size: 13px;">
+    작성: Claude (Fable 5) · 근거 자료: docs/progress.md, docs/harness/changelog.md,
+    harness/sensor-catalog.md, harness/metrics-baseline.md, specs/requirements.md,
+    docs/adr/, .claude/skills/, evals/ · 테스트 수치는 작성 시점 재실행으로 확인.
+  </p>
+</section>
+
+</main>
+</div>
+
+<script>
+  // 스크롤 위치에 따라 좌측 내비 활성화
+  const links = Array.from(document.querySelectorAll('nav.sidebar a'));
+  const sections = links
+    .map(a => document.querySelector(a.getAttribute('href')))
+    .filter(Boolean);
+  const byId = new Map(links.map(a => [a.getAttribute('href').slice(1), a]));
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(a => a.classList.remove('active'));
+        const link = byId.get(e.target.id);
+        if (link) link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-10% 0px -70% 0px' });
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>

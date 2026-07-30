@@ -1,0 +1,64 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "harness/l3-durable-operator",
+  "edge_legal": true,
+  "exit_hint": "APPROVE면 → python harness/phase.py enter RELEASE / REQUEST_CHANGES면 → enter GREEN",
+  "forced": false,
+  "from": "HARNESS",
+  "guards": [
+    {
+      "ms": 171,
+      "name": "track_b_passing",
+      "ok": true
+    },
+    {
+      "ms": 93,
+      "name": "changelog_updated",
+      "ok": true
+    }
+  ],
+  "head_sha": "6794e3fd970dee648960621aecd3e9a4ed5669c0",
+  "reason": null,
+  "rq": "HARNESS-L3",
+  "schema": 1,
+  "seq": 36,
+  "session": {
+    "acceptance": [
+      "재개 테스트 cold PASS: 5/5 정답 · 읽은 파일 <=7 · <=5분 (L3 졸업 시험)",
+      "트랙 B GB-01~07 auto rubric 전원 통과",
+      "hooks-selftest 실증 — 게이트가 실제로 차단함의 유일한 증거",
+      "지표 M1~M8 첫 실측값이 harness/reports/에 기록 (공란 문제 해소)",
+      "통합 테스트 11개 파일 무수정 + 정숙한 트리에서 단언 실패 0건"
+    ],
+    "done": [
+      "하네스 L3 재구성 — 제어 평면(9단계·가드 11·훅 6) · 센서 9종 · 상태 계약 · 트랙 B 실행 가능화. 서버 822줄 → 51줄 조립점 + 8모듈(ADR-0007), 통합 테스트 11개 무수정",
+      "golden-coverage 분모를 GA 케이스에서 requirements.md RQ 전수로 뒤집었다 — RQ 3개가 분모 밖이라 '27/27 통과'가 요구사항 충족으로 오독됐다",
+      "재리뷰 blocker 4건 해소: ADR-0007 승인 · 단계 혼재 결정 기록 + warn_only 에서 HARNESS 제거 + 부트스트랩 예외 · eval-b 시그널 배선(SIGINT 실증) · 진실 공급원 4곳의 허위 방어 주장 정정",
+      "N7 가드 앵커 — reviewer_approve 가 REQUEST_CHANGES 보고서로 열릴 수 있었다(재리뷰가 실증). evaluator_pass 도 같은 형태라 함께 앵커",
+      "N1 blocked 바닥 3겹(전부 blocked 금지 · 1/3 상한 · note 없는 blocked 실패) · N2 P10 서술의 인과 정정",
+      "3차 재리뷰 blocker 3건 조치 — B-e(설계서 표 9행 중 7행 드리프트, 4행이 과장된 안전 단언) / B-f(C2 문서 축 면제가 B-d 를 삼켰다) / B-g(P11 이 표 한 칸 어긋나면 조용히 통과)",
+      "B-g 처방: 파싱 실패를 통과가 아니라 실패로. --self-test 음성 8건이 재리뷰가 뚫은 T2~T5 를 고정한다. '판정할 수 없는 가드는 없는 가드다'(2026-07-27 결정)를 P11 에 적용",
+      "B-f 처방: doc-freshness :211(문서 축 면제) 제거. 두 축은 독립이라 의존 축은 그대로 — 게이트가 죽지 않고 구멍만 닫혔다. 즉시 C2 15건 발화, 첫 번째가 B-e",
+      "B-e 처방: 설계서 표에서 경로 값을 제거하고 포인터로 전환(드리프트 자리 자체를 없앴으므로 위계상 '구조'). IDLE 은 반대 — 설계 의도가 옳고 매트릭스에 docs/progress.md 가 없어 헌법이 요구하는 첫 행동이 막혔다 → 매트릭스를 고침",
+      "R5·R6 처방 + P11 임계 3회→2회(규칙 3 정합). R6 는 게이트 — phase.py enter 가 전이 직전 session.json 신선도를 검사한다(체크포인트가 세션 스냅샷을 박제하므로). harness/phase.py 를 HASH_GLOBS 에 추가",
+      "트랙 B 전수 재실행 6/6 통과 (입력 해시 = 2e412f8 시점). GB-01 148.6s / GB-03 331.6s / GB-04 133.4s / GB-05 97.4s / GB-06 PASS / GB-07 121.2s, 합계 ~$6.3. 아티팩트 커밋 완료",
+      "4차 재리뷰 REQUEST_CHANGES — blocker 2건: B-h(checkpoint-resume/SKILL.md 가 .harness/state/** 에 의존해 모든 하네스 PR tip 에서 영구히 낡음) · B-i(P11 판정 축이 여전히 fail-open — 상태 칸이 다섯 어구 밖이면 통과, 빈 칸도 통과)",
+      "R4 재처방(Guide → 게이트) + eval-b 병합 결함 수정. 트랙 B 6/6 통과, GB-06 복구"
+    ],
+    "goal": "참조 리포트(harness-engineering-trends-2026.html) 기준으로 하네스를 3평면으로 재설계한다. 왜 지금인가: RQ 14개가 전부 끝나 제품은 완성됐고 이제 하네스가 곧 산출물인데(CLAUDE.md L&L 겸용), 현재 하네스는 다 만들어 놓고 한 번도 측정하지 않았다 — 지표 M1~M6 값 칸이 공란, 트랙 B 골든 5건이 0회 실행, 규칙이 프롬프트 부탁에 머물러 coder가 '테스트를 수정하지 않는다'고 부탁만 한다.",
+    "next": [
+      "5차 재리뷰 — B-h/B-i 조치분 판정. 보고서는 기준 파일명에 쓴다(N-h: 가드가 읽는 경로)",
+      "후속(별도 PR): phase-audit CI 배선 — 2bcaa28 한 건으로 exit 1",
+      "후속(이슈): P-6 C2 에 '확인했고 여전히 참'을 기록할 선택지 부재 · P-2 R6 게이트 음성 시험 0건 · P-4 check.mjs HASH_GLOBS"
+    ],
+    "open_questions": [
+      "처방끼리 반대로 당기는지 검사하는 자리가 없다 — R3(적게 실어라) vs R4(이것도 실어라)가 그랬다. retro-metrics 에 질문으로 넣었으나 기계 검사는 없다",
+      "N-h: reviewer_approve 가드가 _workspace/review/{브랜치명}.md 를 읽는데 내가 -r3/-r4 접미사를 붙여 가드는 2차 보고서를 계속 읽었다 — 이번엔 기준 파일명 사용"
+    ]
+  },
+  "to": "REVIEW",
+  "ts": "2026-07-28T09:01:11.079Z",
+  "write_allow": [
+    "_workspace/**"
+  ]
+}

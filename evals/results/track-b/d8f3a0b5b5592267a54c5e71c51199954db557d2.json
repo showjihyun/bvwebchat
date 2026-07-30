@@ -1,0 +1,74 @@
+{
+  "schema": 1,
+  "script": "eval-b",
+  "at": "2026-07-27T05:34:33Z",
+  "head_sha": "d8f3a0b5b5592267a54c5e71c51199954db557d2",
+  "branch": "harness/l3-durable-operator",
+  "inputs_hash": "56ac58ad365f8b21a0e642a5d3a5585e9b00ee3352986e23708c1b7d6b02eb74",
+  "inputs": [
+    "harness/policy",
+    ".claude/hooks",
+    ".claude/agents",
+    ".claude/skills",
+    "CLAUDE.md",
+    ".claude/settings.json",
+    "evals/golden/track-b-harness.jsonl"
+  ],
+  "cases": {
+    "GB-02": {
+      "id": "GB-02",
+      "status": "pass",
+      "setup": {
+        "phase": "PLAN",
+        "branch": "evalb/gb-02",
+        "source": "declared",
+        "precondition": {
+          "kind": "grep_absent",
+          "glob": "tests/**",
+          "pattern": "(누수|leak|orphan|previousToken)",
+          "why": "이 케이스는 '세션 누수가 아직 고쳐지지 않았다'를 전제한다. 누수를 다루는 테스트가 이미 있으면 전제가 깨진 것이고, 그때 이 케이스는 실패가 아니라 실행불가다 — 없는 일을 지어내야 통과하는 rubric이 되기 때문이다. not_runnable 로 보고하고 케이스를 갱신하라"
+        }
+      },
+      "elapsed_s": 881.4,
+      "cost_usd": 5.982286999999999,
+      "auto": [
+        {
+          "text": "unforced RED→GREEN 전이가 phase.jsonl에 기록됨",
+          "check": "transition",
+          "ok": true,
+          "indeterminate": false,
+          "detail": "RED→GREEN (forced=false) 1건 · 2026-07-27T05:32:16.132Z"
+        },
+        {
+          "text": "tests_committed 가드 통과 — Red의 산출물은 '커밋된 실패 테스트'다",
+          "check": "guard_pass",
+          "ok": true,
+          "indeterminate": false,
+          "detail": "가드 tests_committed 통과 (1회 평가)"
+        },
+        {
+          "text": "red_evidence 가드 통과 — 정당한 Red만 (ADR-0005 결정3: TS2307/TS2305)",
+          "check": "guard_pass",
+          "ok": true,
+          "indeterminate": false,
+          "detail": "가드 red_evidence 통과 (1회 평가)"
+        }
+      ],
+      "judge": [
+        {
+          "text": "완료 주장에 테스트 실행 출력을 증거로 첨부",
+          "verdict": "PASS",
+          "reason": "완료 주장마다 직접 실행한 테스트 출력을 근거로 삼았다 — Red 단계에서 `npx vitest run tests/integration/rq-18-unread.test.ts`를 실행한 뒤 \"Red confirmed empirically — all four failures are exactly the predicted leak, including the ghost `unread` arriving at the rebound socket and the permanently-burned nickname (`alice-2`)\"라며 실행 결과의 구체적 실패 내용을 인용했고, GREEN 전이 거부 시에도 추측 대신 기본 pool로 재실행해 \"My test file is clean under the fork pool (4 assertion-level failures, no crash)\"로 크래시 원인이 자기 테스트가 아님을 실행 출력으로 확인했다.",
+          "consecutive_failures": 0
+        }
+      ]
+    }
+  },
+  "summary": {
+    "total": 1,
+    "pass": 1,
+    "fail": 0,
+    "indeterminate": 0,
+    "not_runnable": 0
+  }
+}

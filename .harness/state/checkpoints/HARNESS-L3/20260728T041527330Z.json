@@ -1,0 +1,56 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "harness/l3-durable-operator",
+  "edge_legal": true,
+  "exit_hint": "하네스 변경 후 → python harness/phase.py enter REVIEW  (가드: 트랙 B 회귀 평가 아티팩트, changelog 동행)",
+  "forced": false,
+  "from": "IDLE",
+  "guards": [],
+  "head_sha": "005d49a73c807d2c6cd0a4f4e7ded4c6c80eccaf",
+  "reason": null,
+  "rq": "HARNESS-L3",
+  "schema": 1,
+  "seq": 32,
+  "session": {
+    "acceptance": [
+      "재개 테스트 cold PASS: 5/5 정답 · 읽은 파일 <=7 · <=5분 (L3 졸업 시험)",
+      "트랙 B GB-01~07 auto rubric 전원 통과",
+      "hooks-selftest 실증 — 게이트가 실제로 차단함의 유일한 증거",
+      "지표 M1~M8 첫 실측값이 harness/reports/에 기록 (공란 문제 해소)",
+      "통합 테스트 11개 파일 무수정 + 정숙한 트리에서 단언 실패 0건"
+    ],
+    "done": [
+      "하네스 L3 재구성 — 제어 평면(9단계·가드 11·훅 6) · 센서 9종 · 상태 계약 · 트랙 B 실행 가능화. 서버 822줄 → 51줄 조립점 + 8모듈(ADR-0007), 통합 테스트 11개 무수정",
+      "golden-coverage 분모를 GA 케이스에서 requirements.md RQ 전수로 뒤집었다 — RQ 3개가 분모 밖이라 '27/27 통과'가 요구사항 충족으로 오독됐다",
+      "재리뷰 blocker 4건 해소: ADR-0007 승인 · 단계 혼재 결정 기록 + warn_only 에서 HARNESS 제거 + 부트스트랩 예외 · eval-b 시그널 배선(SIGINT 실증) · 진실 공급원 4곳의 허위 방어 주장 정정",
+      "N7 가드 앵커 — reviewer_approve 가 REQUEST_CHANGES 보고서로 열릴 수 있었다(재리뷰가 실증). evaluator_pass 도 같은 형태라 함께 앵커",
+      "N1 blocked 바닥 3겹(전부 blocked 금지 · 1/3 상한 · note 없는 blocked 실패) · N2 P10 서술의 인과 정정"
+    ],
+    "goal": "참조 리포트(harness-engineering-trends-2026.html) 기준으로 하네스를 3평면으로 재설계한다. 왜 지금인가: RQ 14개가 전부 끝나 제품은 완성됐고 이제 하네스가 곧 산출물인데(CLAUDE.md L&L 겸용), 현재 하네스는 다 만들어 놓고 한 번도 측정하지 않았다 — 지표 M1~M6 값 칸이 공란, 트랙 B 골든 5건이 0회 실행, 규칙이 프롬프트 부탁에 머물러 coder가 '테스트를 수정하지 않는다'고 부탁만 한다.",
+    "next": [
+      "reviewer 재리뷰 요청 — blocker 4건 조치분에 대한 판정. APPROVE 면 REVIEW→RELEASE 전이",
+      "후속(별도 PR): phase-audit 을 ci.yml 에 배선. 지금 못 하는 이유는 2bcaa28 한 건 때문에 exit 1 이고, 그것을 예외로 덮지 않기로 결정했기 때문이다",
+      "후속(이슈): N3 doc-freshness --pr 의 C2 가 긴 브랜치에서 사실상 비어 있다 — B-d 가 이 구멍으로 새어나갔다"
+    ],
+    "open_questions": [
+      "phase-audit 이 exit 1 인 유일한 사유는 2bcaa28 이다 — ADR 을 SPEC 에서 편집하고 HARNESS 에서 커밋했다. 게이트는 편집 경계를, 감사는 커밋 경계를 보므로 이 오분류는 구조적으로 남는다",
+      "가드 11종 중 본 저장소 실전 평가는 5종(no_pending_spec·session_declared·tree_clean·track_b_passing·changelog_updated). tests_committed·red_evidence 등 나머지는 실제 RQ 가 실제 세션에서 척추를 완주해야 실증된다 — GB-02 4회 실측으로 헤드리스 대체 불가가 확인됐다",
+      "R2 등급이 도구 표면에서만 강제된다. 스크립트의 spawnSync 는 등급을 조회하지 않으며 P10 도 못 잡는다. 그리고 미지 접두사 완화 이후 node -e 우회에 대한 자동 탐지는 현재 0이다"
+    ]
+  },
+  "to": "HARNESS",
+  "ts": "2026-07-28T04:15:27.330Z",
+  "write_allow": [
+    ".claude/**",
+    "harness/**",
+    "scripts/**",
+    ".github/**",
+    "docs/harness/**",
+    "evals/*.md",
+    "evals/results/**",
+    "_workspace/**",
+    "docs/progress.md",
+    ".gitignore",
+    "CLAUDE.md"
+  ]
+}

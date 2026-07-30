@@ -1,0 +1,262 @@
+{
+  "schema": 1,
+  "_doc": "문서 레지스트리 겸 라우팅 테이블. scripts/doc-freshness.mjs가 소비한다.\n\n핵심 설계 결정: 갱신일(updated)을 문서 안에 손으로 쓰지 않는다. 프론트매터의 날짜는 반드시 거짓말을 한다 — 문서를 고치면서 날짜를 안 고치거나, 날짜만 고친다. 갱신일은 git에서 유도한다: git log -1 --format=%cI -- <path>. 이 결정 하나가 '메타데이터 자체의 드리프트'라는 문제 계층을 통째로 제거한다. 따라서 문서가 파일 안에 지고 있는 메타데이터는 없고, 전부 이 파일 한 곳에 있다.",
+
+  "governed_globs": [
+    "CLAUDE.md",
+    "README.md",
+    "specs/**/*.md",
+    "docs/adr/*.md",
+    "docs/design/DESIGN.md",
+    "docs/design/handoff-brief.md",
+    "docs/progress.md",
+    "docs/deploy.md",
+    "harness/*.md",
+    "harness/policy/*.md",
+    "docs/harness/*.md",
+    "evals/README.md",
+    ".claude/agents/*.md",
+    ".claude/skills/*/SKILL.md"
+  ],
+
+  "exclude_globs": [
+    "docs/design/Design handoff for webchat/**",
+    "_workspace/**",
+    "node_modules/**",
+    "dist/**",
+    "claudedocs/**"
+  ],
+
+  "defaults": {
+    "tier": 2,
+    "owner": "showjihyun",
+    "review_every_days": 90,
+    "depends_on": []
+  },
+
+  "docs": [
+    {
+      "path": "CLAUDE.md",
+      "tier": 0,
+      "purpose": "진입 지도 — 진실 공급원 우선순위와 작업 유형별 참조 경로. 백과사전이 아니라 목차다.",
+      "max_lines": 100,
+      "_doc_depends": ".claude/skills/*/SKILL.md 를 뺐다(2026-07-29, recurrence R10). 판별 규칙: 재서술하면 의존, 포인터로만 참조하면 비의존. 이 파일의 참조 맵은 이제 '언제 어디로 가는가' 만 적고 스킬 내부 규칙을 재서술하지 않으므로 스킬 내용이 바뀌어도 이 파일의 문장이 거짓이 되지 않는다. 스킬이 추가·삭제되면 C1(레지스트리 완결성)이 doc-map.json 등록 누락을 잡는다 — 다만 C1 이 보는 것은 이 레지스트리이지 CLAUDE.md 의 참조 맵이 아니다(9차 재리뷰 n9-a 가 실측: 새 스킬을 여기 등록하고 참조 맵에 안 넣으면 doc-freshness 는 exit 0). 참조 맵의 행 누락을 잡는 센서는 현재 없고, 그 사실을 여기 적어 두는 것이 지금의 방어다. 왜 중요한가: 이 파일은 HASH_GLOBS 라 갱신할 때마다 트랙 B 전수 재실행(~$8)이 붙었고, 재서술 의존과 곱해져 스킬 한 줄 고치는 비용이 그것이 됐다. 개별로 옳은 두 규칙이 곱해져 틀린 사례다.",
+      "depends_on": [
+        "specs/requirements.md",
+        "docs/adr/*.md",
+        "harness/policy/phase-matrix.json"
+      ],
+      "review_every_days": 30
+    },
+    {
+      "path": "specs/requirements.md",
+      "tier": 1,
+      "purpose": "요구사항(EARS). 진실 공급원 #1 — 여기 없는 기능은 만들지 않는다.",
+      "depends_on": [],
+      "review_every_days": 90
+    },
+    {
+      "path": "docs/adr/*.md",
+      "tier": 1,
+      "purpose": "아키텍처 결정. 진실 공급원 #2 — 모순 구현 금지, 변경은 새 ADR 먼저.",
+      "depends_on": [],
+      "review_every_days": 180
+    },
+    {
+      "path": "docs/adr/0005-test-strategy.md",
+      "tier": 1,
+      "purpose": "테스트 전략 — Red 판정 기준(결정3)의 정본. phase-matrix의 red_evidence 가드가 이 문서를 집행한다.",
+      "_doc_depends": "phase-matrix.json 을 depends_on 에서 뺐다(2026-07-28). 판별 규칙: **의존은 '이 파일이 바뀌면 저 문서의 문장이 거짓이 될 수 있는가'다.** 이 ADR 은 매트릭스를 **포인터로만** 참조한다('이 결정의 집행 지점은 …의 RED→GREEN 전이') — 값을 재서술하지 않으므로 값이 바뀌어도 거짓이 되지 않는다. 경로가 사라지거나 이름이 바뀌는 경우는 C4(링크·경로 무결성)가 잡는다. 반대로 .claude/agents/*.md 는 매트릭스 값을 재서술하므로 의존을 유지한다. 부수 사유: HARNESS 단계는 docs/adr/** 를 쓸 수 없어, 하네스 변경이 ADR 을 낡게 만들면 같은 PR 에서 고칠 방법이 구조적으로 없다 — 포인터 참조에 의존을 걸면 그 교착이 정기적으로 발생한다.",
+      "depends_on": [
+        "scripts/check.mjs",
+        "vitest.config.ts"
+      ],
+      "review_every_days": 180
+    },
+    {
+      "path": "docs/design/DESIGN.md",
+      "tier": 1,
+      "purpose": "UI 디자인. 진실 공급원 #4 — ADR과 관할 직교, 충돌 시 requirements가 이긴다.",
+      "depends_on": ["src/client/styles.css"],
+      "review_every_days": 90
+    },
+    {
+      "path": "docs/progress.md",
+      "tier": 1,
+      "purpose": "진행 원장. 작업 시작 전 기록(🔄), 완료 시 체크(✅) 의무.",
+      "depends_on": [],
+      "review_every_days": 14
+    },
+    {
+      "path": "harness/sensor-catalog.md",
+      "tier": 2,
+      "purpose": "가드레일 지도 — 어떤 센서가 어디서 무엇을 잡는가. Guides / Boundary / S1~S4 4계열.",
+      "edit_policy": {
+        "fact_update": "agent",
+        "doctrine_change": "escalate",
+        "_doc": "이 문서는 두 층이 한 파일에 있다. **사실 층**(센서 행의 메커니즘·상태·실측값)은 코드가 바뀌면 따라 바뀌어야 하므로 에이전트가 직접 갱신한다 — 에스컬레이션을 요구하면 문서가 코드보다 낡는다. **교리 층**(운영 규칙 절)은 이후 모든 작업을 구속하므로 사람 판단이다. 에이전트는 제안만 하고 등재하지 않는다.\n\n판별: 이 변경이 '무엇이 참인가'를 갱신하는가(사실) 아니면 '무엇을 해야 하는가'를 늘리는가(교리). 애매하면 교리로 취급해 올린다.\n\n왜 owner 필드가 아니라 이것인가: 2026-07-27에 에이전트 둘이 규칙 8 결함을 각자 발견하고 둘 다 '내 관할이 아니다'에서 멈춰 서로 다른 경로로 team-lead 인박스에 올렸다. 이 저장소는 전원이 같은 git 신원으로 커밋해 author 로 에이전트가 구별되지 않으므로 owner 를 적어도 그 교착은 안 풀린다. 막힌 것은 소유가 아니라 **권한의 경계**였다. 실제로 그 사이 한 에이전트가 사실 갱신(S3 행)은 망설임 없이 했고 교리 추가에서만 멈췄다 — 경계는 이미 작동하고 있었고 문서에 없었을 뿐이다."
+      },
+      "depends_on": [
+        ".claude/settings.json",
+        ".claude/hooks/**",
+        "harness/policy/**",
+        "harness/rq-coverage.json",
+        ".github/workflows/**",
+        "scripts/**"
+      ],
+      "review_every_days": 90
+    },
+    {
+      "path": "harness/recurrence.md",
+      "tier": 2,
+      "purpose": "반복 실패 대장 — 같은 원인이 2회째면 등재하고, 3회 이상 미처방이면 policy-lint P11 이 차단한다. 운영 규칙 3은 '2회 반복 시 센서 또는 Guide'를 요구했는데 누적을 세는 자리가 없어 하루에 같은 원인으로 3~9회를 반복했다.",
+      "depends_on": ["scripts/policy-lint.mjs", ".claude/skills/harness-audit/SKILL.md"],
+      "review_every_days": 30
+    },
+    {
+      "path": "harness/metrics-baseline.md",
+      "tier": 2,
+      "purpose": "지표 M1~M8 정의. 실측값은 harness/reports/가 갖는다 — 이 문서에 값을 적지 않는다(공란 드리프트 방지).",
+      "depends_on": ["scripts/metrics.mjs", "evals/golden/*.jsonl"],
+      "review_every_days": 30
+    },
+    {
+      "path": "docs/harness/changelog.md",
+      "tier": 2,
+      "purpose": "하네스 변경 이력. HARNESS→REVIEW 전이의 changelog_updated 가드가 이 문서의 동행을 강제한다.",
+      "depends_on": [
+        ".claude/**",
+        "harness/**",
+        "scripts/**",
+        ".github/workflows/**"
+      ],
+      "review_every_days": 30
+    },
+    {
+      "path": "docs/harness/architecture-2026.html",
+      "tier": 2,
+      "purpose": "L3 하네스 아키텍처 설계 진실 공급원.",
+      "depends_on": [
+        "harness/policy/**",
+        ".claude/hooks/**",
+        "harness/sensor-catalog.md"
+      ],
+      "review_every_days": 90
+    },
+    {
+      "path": "evals/README.md",
+      "tier": 2,
+      "purpose": "골든 셋 교리 — 트랙 A(제품) / 트랙 B(하네스) 실행 절차.",
+      "depends_on": [
+        "evals/golden/*.jsonl",
+        "scripts/eval-b.mjs",
+        "scripts/golden-coverage.mjs"
+      ],
+      "review_every_days": 60
+    },
+    {
+      "path": ".claude/skills/tdd-workflow/SKILL.md",
+      "tier": 2,
+      "purpose": "RQ 구현 파이프라인 — Red→Green→독립 평가를 격리된 세션 3개로.",
+      "max_lines": 150,
+      "depends_on": [
+        ".claude/agents/test-writer.md",
+        ".claude/agents/coder.md",
+        ".claude/agents/evaluator.md",
+        "harness/policy/phase-matrix.json"
+      ],
+      "review_every_days": 60
+    },
+    {
+      "path": ".claude/skills/review-gate/SKILL.md",
+      "tier": 2,
+      "purpose": "머지 전 독립 리뷰 게이트 — reviewer APPROVE가 머지의 필요조건.",
+      "depends_on": [".claude/agents/reviewer.md", "harness/policy/phase-matrix.json"],
+      "review_every_days": 60
+    },
+    {
+      "path": ".claude/skills/checkpoint-resume/SKILL.md",
+      "tier": 2,
+      "purpose": "상태 계약의 읽기·쓰기 — 체크포인트 저장과 세션 재개.",
+      "_doc_depends": ".harness/state/** 를 뺐다(2026-07-28, 4차 재리뷰 B-h). 판별 규칙 적용: **체크포인트·전이 로그 인스턴스는 데이터이지 계약이 아니다.** 계약은 _state.py 의 스키마와 phase.py 의 명령 표면이 지고, 이 문서는 그 계약을 적지 인스턴스를 적지 않는다 — 체크포인트가 하나 늘어난다고 이 문서의 어떤 문장도 거짓이 되지 않는다. 그리고 인스턴스에 걸면 **만족 불가능**했다: 체크포인트는 추적 대상이고 하네스 PR 의 마지막 행동은 언제나 REVIEW 진입 체크포인트의 커밋이므로, 이 문서는 모든 하네스 PR 의 tip 에서 반드시 낡는다. 만족시키는 유일한 길이 '체크포인트를 커밋한 뒤 SKILL.md 를 한 번 더 건드리기'인데 그것은 이 저장소가 금지한 무변경 터치다.",
+      "depends_on": ["harness/phase.py", "harness/_state.py"],
+      "review_every_days": 60
+    },
+    {
+      "path": ".claude/skills/harness-audit/SKILL.md",
+      "tier": 2,
+      "purpose": "하네스 변경의 선행 조건 — 정책·훅·문서·회귀 평가 일괄 점검.",
+      "depends_on": [
+        "scripts/policy-lint.mjs",
+        "scripts/hooks-selftest.mjs",
+        "scripts/doc-freshness.mjs",
+        "scripts/eval-b.mjs"
+      ],
+      "review_every_days": 60
+    },
+    {
+      "path": ".claude/skills/retro-metrics/SKILL.md",
+      "tier": 2,
+      "purpose": "주간 학습 루프 — 지표 갱신·실패 분류·골든 승격 후보 제시.",
+      "_doc_depends": ".harness/logs/** 를 뺐다(2026-07-28) — B-h 와 같은 형태다. 트레이스 로그 인스턴스는 데이터이고, 이 문서가 적는 것은 어느 원천에서 어느 지표가 나오는가라는 계약이다. 로그 한 줄이 늘어난다고 문장이 거짓이 되지 않는다. 계약을 지는 것은 metrics.mjs 이고 recurrence.md 는 P11 을 통해 이 문서에 새로 들어왔으므로 함께 건다.",
+      "depends_on": ["scripts/metrics.mjs", "harness/recurrence.md"],
+      "review_every_days": 60
+    },
+    {
+      "path": ".claude/agents/*.md",
+      "tier": 2,
+      "purpose": "격리 세션 에이전트 정의. 프롬프트가 구조를 설명하되 대체하지 않는다.",
+      "depends_on": ["harness/policy/phase-matrix.json"],
+      "review_every_days": 90
+    },
+    {
+      "path": "docs/deploy.md",
+      "tier": 2,
+      "purpose": "배포 절차 — CI 책임 경계와 사내망 수동 반입.",
+      "depends_on": ["Dockerfile", ".github/workflows/deploy.yml", "scripts/smoke.sh"],
+      "review_every_days": 90
+    },
+    {
+      "path": "docs/design/handoff-brief.md",
+      "tier": 3,
+      "purpose": "디자인 핸드오프 입력 기록 (동결된 아카이브).",
+      "depends_on": [],
+      "review_every_days": 365
+    },
+    {
+      "path": "specs/interview/*.md",
+      "tier": 3,
+      "purpose": "인터뷰 기록 (동결된 아카이브).",
+      "depends_on": [],
+      "review_every_days": 365
+    },
+    {
+      "path": "README.md",
+      "tier": 2,
+      "purpose": "프로젝트 개요.",
+      "depends_on": ["package.json", "specs/requirements.md"],
+      "review_every_days": 90
+    },
+    {
+      "path": "harness/policy/README.md",
+      "tier": 2,
+      "purpose": "정책의 사람용 표 — scripts/policy-lint.mjs --print 가 생성한다. 손으로 고치지 않는다.",
+      "generated_by": "node scripts/policy-lint.mjs --print",
+      "depends_on": ["harness/policy/phase-matrix.json", "harness/policy/tool-risk.json"],
+      "review_every_days": 90
+    }
+  ],
+
+  "checks": {
+    "C1": { "name": "레지스트리 완결성", "severity": "blocking", "scope": "repo" },
+    "C2": { "name": "결합 낡음", "severity": "blocking", "scope": "pr", "advisory_scope": "repo",
+            "_doc": "PR 범위에서만 차단한다. 저장소 전체 낡음을 게이트로 걸면 첫날부터 모든 PR이 빨개지고, 게이트는 그날로 무시된다. '이 PR이 건드린 의존만 책임진다'가 게이트를 살려둔다." },
+    "C3": { "name": "나이 초과", "severity": "advisory", "scope": "repo" },
+    "C4": { "name": "링크·경로 무결성", "severity": "blocking", "scope": "repo" },
+    "C5": { "name": "진입점 예산", "severity": "blocking", "scope": "repo",
+            "_doc": "max_lines를 가진 문서에만 적용. 안티패턴 01(거대한 단일 지시문)의 유일한 기계 방어다." },
+    "C6": { "name": "열린 마커 낡음", "severity": "advisory", "scope": "repo",
+            "marker_pattern": "(\\ud83d\\udfe1|TODO\\()", "stale_after_days": 14,
+            "_doc": "tier ≤2 문서의 🟡/TODO(가 14일을 넘으면 경고. 센서 카탈로그의 죽은 🟡과 ci.yml의 스테일 TODO가 이 검사의 발단이다." }
+  }
+}

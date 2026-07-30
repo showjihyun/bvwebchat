@@ -1,0 +1,53 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "harness/l3-durable-operator",
+  "edge_legal": true,
+  "exit_hint": "작업을 시작하려면: python harness/phase.py enter PLAN  (또는 SPEC / HARNESS)",
+  "forced": false,
+  "from": "HARNESS",
+  "guards": [],
+  "head_sha": "e2ac3b9c9e9fa0387ce0395918035be4103380e6",
+  "reason": null,
+  "rq": "HARNESS-L3",
+  "schema": 1,
+  "seq": 8,
+  "session": {
+    "acceptance": [
+      "재개 테스트 cold PASS: 5/5 정답 · 읽은 파일 <=7 · <=5분 (L3 졸업 시험)",
+      "트랙 B GB-01~07 auto rubric 전원 통과",
+      "hooks-selftest 실증 — 게이트가 실제로 차단함의 유일한 증거",
+      "지표 M1~M8 첫 실측값이 harness/reports/에 기록 (공란 문제 해소)",
+      "통합 테스트 11개 파일 무수정 + 정숙한 트리에서 단언 실패 0건"
+    ],
+    "done": [
+      "harness/policy/{phase-matrix,tool-risk}.json — 9단계·11가드·R0~R3 계약 확정 (policy-lint P1~P7 통과)",
+      "harness/_state.py + harness/phase.py — 상태 계약 라이브러리 + phase.json 의 유일한 writer. 가드 5종 전부 구현",
+      ".claude/hooks/ 5종 — gate_phase(p95 51ms, 서브프로세스 0) / session_start(11줄) / post_observe / stop_state / log_trajectory(schema 2)",
+      "gate_spec_freeze.py 삭제 — 영구 no-op(🟡 0건)인데 매 Write마다 파이썬 프로세스를 붙였다. 기능은 PLAN→RED 가드 no_pending_spec 으로 흡수(메커니즘 2→1)",
+      "게이트 실증에서 실제 버그 2건을 잡았다: cp949 stdout UnicodeEncodeError(훅이 죽어 fail-open) / lstrip('./')가 '.harness'의 선행 점을 먹어 리다이렉트 차단이 빗나감",
+      "phase.py session·decide 서브커맨드 추가 — stop_state가 요구하는 갱신을 수행할 수단이 없던 계약 구멍을 닫았다",
+      "W1a 검증 단일 구현체 check.mjs — .tsx/.mjs 린트 구멍 2회 해소, --red가 ADR-0005 결정3을 집행(RQ-01 목 버그 재발 불가), 절대경로 제거",
+      "W1c 아키텍처 HTML 설계서 153KB — 결함 D1~D9, 약점 W1~W7, 7트렌드 대조표(미구현 열 포함)",
+      "W2a 제어 평면 — phase.py(전이 가드 11종) + 훅 5종 + 상태 계약. settings.json 배선 완료(allow38/ask13/deny17)",
+      "W1b 서버 분해 Phase A 완료 + Phase B4/8 — ADR-0007, 순수 모듈 2개는 ESLint로 socket.io 차단 강제",
+      "가드 11종 전수 실증 (22/22 기대대로) — PASS 경로·FAIL 경로 양쪽. 이 과정에서 no_pending_spec 이 영구 통과 상태였음을 발견해 수정",
+      "센서 스크립트와의 reader/writer 계약 실증 — phase-audit·metrics 가 내 phase.jsonl·tools.jsonl·trajectory.jsonl(v2)을 실제로 소비한다",
+      "W3 교리 계층: CLAUDE.md 89줄(9단계·토폴로지 추가) · sensor-catalog Guides/Boundary/S1~S4 · metrics-baseline 정의만(M8 신설·M4 삭제사유) · 스킬 2갱신+3신설 · 에이전트 4 · 트랙 B 7케이스 실행가능화 · changelog 백필+마이그레이션 · ci.yml 헤더 (ff65780·2d9ab3e·46a74ee·264f343)"
+    ],
+    "goal": "참조 리포트(harness-engineering-trends-2026.html) 기준으로 하네스를 3평면으로 재설계한다. 왜 지금인가: RQ 14개가 전부 끝나 제품은 완성됐고 이제 하네스가 곧 산출물인데(CLAUDE.md L&L 겸용), 현재 하네스는 다 만들어 놓고 한 번도 측정하지 않았다 — 지표 M1~M6 값 칸이 공란, 트랙 B 골든 5건이 0회 실행, 규칙이 프롬프트 부탁에 머물러 coder가 '테스트를 수정하지 않는다'고 부탁만 한다.",
+    "next": [
+      "W4 통합: settings.json allow 에 phase.py session·decide 추가",
+      "hook.py 디스패처 배선 여부 결정",
+      "enforce.warn_only 정리 후 block 전환"
+    ],
+    "open_questions": [
+      "exec 가드(red_evidence·check_full_green)는 vitest fork-pool flake 를 그대로 물려받는다 — 동시 에이전트 부하에서 정당한 전이가 거짓 FAIL 로 거부될 수 있다. W4 는 에이전트가 전부 멈춘 뒤 전이하라",
+      "hook.py 디스패처 배선 여부는 미결 (W4 판단)"
+    ]
+  },
+  "to": "IDLE",
+  "ts": "2026-07-27T02:31:02.117Z",
+  "write_allow": [
+    "_workspace/**"
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "harness/l3-durable-operator",
+  "edge_legal": true,
+  "exit_hint": "스펙이 확정되면(🟡 0건) → python harness/phase.py enter PLAN",
+  "forced": false,
+  "from": "IDLE",
+  "guards": [],
+  "head_sha": "7259a50194587a5dbfe3716451ca8923e718ade4",
+  "reason": null,
+  "rq": "HARNESS-L3",
+  "schema": 1,
+  "session": {
+    "acceptance": [
+      "node scripts/hooks-selftest.mjs — 합성 페이로드로 allow/deny 실증. 테스트 없는 게이트는 연극이다",
+      "node scripts/resume-test.mjs --cold — 5/5 · 읽은 파일 ≤7 · ≤5분 (L3 졸업 시험)",
+      "node scripts/eval-b.mjs — GB-01~07 auto rubric 전원 통과",
+      "node scripts/metrics.mjs report — M1~M8 첫 실측값이 harness/reports/에 기록",
+      "수동: RED 단계에서 src/** 쓰기 시도가 차단되고, 에러가 고치는 법을 알려준다"
+    ],
+    "done": [
+      "harness/policy/{phase-matrix,tool-risk}.json — 9단계·11가드·R0~R3 계약 확정",
+      "harness/_state.py + harness/phase.py — 상태 계약 라이브러리 + 유일한 writer",
+      ".claude/hooks/ 5종 — gate_phase / session_start / post_observe / stop_state / log_trajectory(v2)",
+      "gate_spec_freeze.py 삭제 — 영구 no-op(🟡 0건)이면서 매 Write에 파이썬 프로세스를 붙였다. 기능은 PLAN→RED 가드 no_pending_spec으로 흡수(매 쓰기 검사 → 전이 1회 검사, 메커니즘 2→1)"
+    ],
+    "goal": "RQ 14개가 전부 ✅이고 제품은 끝났다. 이제 하네스가 곧 산출물이다(CLAUDE.md: 'L&L 겸용'). 그런데 이 하네스는 다 만들어 놓고 한 번도 측정된 적이 없다 — 지표 M1~M6은 컬럼이 공란이고, 트랙 B 회귀 평가는 GB-01~05가 전부 status:todo이며, 규칙 절반은 에이전트 프롬프트의 '부탁'에 머문다(coder.md가 테스트 수정을 금지가 아니라 요청한다). 부탁은 압박이 오면 진다. 그래서 부탁을 구조로 바꾼다: 단계→도구 상태 머신이 RED에서 src/** 쓰기를 물리적으로 불가능하게 만들고, 전이 가드가 '직전 단계만 만들 수 있는 산출물'을 요구한다. 목표는 기능 추가가 아니라 두 가지가 기계로 증명되는 상태다 — (1) 새 세션이 5분 안에 무엇을 왜 했고 다음이 뭔지 복원한다, (2) 하네스를 바꾸면 회귀 평가가 자동으로 채점한다.",
+    "next": [
+      "W1 산출물(scripts/check.mjs) 도착 후 red_evidence·check_full_green 가드 실측 검증",
+      "settings.json에 훅 5종 배선 — 통합 담당(main)이 수행, 동시 편집 충돌 회피",
+      "맨 마지막에 enforce.warn_only에서 HARNESS 제거 → block 전환. 부트스트랩 중에 block이면 후속 작업이 전부 차단된다"
+    ],
+    "open_questions": [
+      ".harness/state/decisions.jsonl 에 어떤 단계도 쓰기 허용이 없다 — 매트릭스 결함으로 보고함. phase.py를 writer로 확장할지 write_allow에 추가할지 결정 필요",
+      "EVAL/REVIEW의 write_allow가 매트릭스는 _workspace/** 전체인데 승인 계획 §2 표는 _workspace/${rq}/03_*.md 로 더 좁다. 넓은 쪽은 GB-01 rubric을 약화시킨다"
+    ]
+  },
+  "to": "SPEC",
+  "ts": "2026-07-27T01:50:59Z",
+  "write_allow": [
+    "specs/**",
+    "docs/adr/**",
+    "docs/design/DESIGN.md",
+    "docs/progress.md",
+    "_workspace/**"
+  ]
+}

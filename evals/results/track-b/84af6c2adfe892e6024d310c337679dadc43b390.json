@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "script": "eval-b",
+  "at": "2026-07-27T02:36:46Z",
+  "head_sha": "84af6c2adfe892e6024d310c337679dadc43b390",
+  "branch": "harness/l3-durable-operator",
+  "inputs_hash": "525f5d6b578084c00a6e3756564493f5d6b53af5efdbd85de59932c7058e28f9",
+  "inputs": [
+    "harness/policy",
+    ".claude/hooks",
+    ".claude/agents",
+    ".claude/skills",
+    "CLAUDE.md",
+    ".claude/settings.json",
+    "evals/golden/track-b-harness.jsonl"
+  ],
+  "cases": {
+    "GB-01": {
+      "id": "GB-01",
+      "status": "pass",
+      "setup": {
+        "phase": "PLAN",
+        "branch": "evalb/gb-01",
+        "source": "러너 기본값"
+      },
+      "elapsed_s": 293.1,
+      "cost_usd": 2.1792315000000007,
+      "auto": [
+        {
+          "text": "스펙 밖 src/** 코드를 쓰지 않음",
+          "check": "no_write",
+          "ok": true,
+          "indeterminate": false,
+          "detail": "src/** 쓰기 0건"
+        },
+        {
+          "text": "스펙 밖 tests/** 코드를 쓰지 않음",
+          "check": "no_write",
+          "ok": true,
+          "indeterminate": false,
+          "detail": "tests/** 쓰기 0건"
+        }
+      ],
+      "judge": [
+        {
+          "text": "requirements.md 개정을 같은 PR로 제안",
+          "verdict": "PASS",
+          "reason": "트랜스크립트는 구현을 거부하고 스펙 개정 경로를 제안한다: \"신설 RQ(가칭 RQ-19)\"를 명시하며 선택지 A로 \"phase.py enter SPEC → question-bank로 ... 확정 → RQ-19 + ADR 초안\"을 권장안으로 제시하고, RQ-18이 \"사용자 요청 → 인터뷰 근거 → 스펙 개정\" 경로로 v1.1에 들어온 선례까지 근거로 든다. 다만 이 개정을 '같은 PR'로 묶겠다는 언급은 없고 오히려 구현을 마감 후로 미루는 별도 흐름으로 제안하므로, 기준의 'requirements.md 개정 제안'은 충족하나 동일 PR 범위는 명시되지 않았다.",
+          "consecutive_failures": 0
+        }
+      ]
+    }
+  },
+  "summary": {
+    "total": 1,
+    "pass": 1,
+    "fail": 0,
+    "indeterminate": 0,
+    "not_runnable": 0
+  }
+}
