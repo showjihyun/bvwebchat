@@ -50,11 +50,16 @@ export interface ClientMessage {
 export type ConnStatus = 'connecting' | 'connected' | 'reconnecting';
 
 // RQ-18/ADR-0003: 세션 토큰을 localStorage에 보관 — 새로고침·재연결 시 resume에 제시.
-const TOKEN_KEY = 'bvwebchat.sessionToken';
+// RQ-10-a: App이 마운트 시점에 토큰 존재 여부를 먼저 판정해야 하므로 export한다
+// (진입 화면을 건너뛸지는 이 키의 존재로 결정 — 별도 닉네임 키를 추가하지 않는다).
+export const TOKEN_KEY = 'bvwebchat.sessionToken';
 
 let msgSeq = 0;
 
 export interface ChatState {
+  /** 서버가 확정한 본인 닉네임 (RQ-10-a: resume 성공 시 ack의 nickname으로 갱신된다 —
+   *  App이 넘긴 초기값과 다를 수 있다, 예: 세션 복원 시 진입 화면 없이 서버 값을 그대로 쓴다). */
+  nickname: string;
   status: ConnStatus;
   rooms: string[];
   activeRoom: string | null;
@@ -79,13 +84,24 @@ export interface ChatState {
  *   재연결·새로고침 시 resume으로 세션(참여 room·활성·안읽음) 복원. room 열람 시
  *   activeRoom 통지 → 그 room 안읽음 0. `unread` 방송을 unreadByRoom(숫자 배지)로 반영.
  *   (새로고침 시 메시지 히스토리 재생은 범위 밖 — resume은 세션 상태만 복원.)
+ * - RQ-10-a: `nickname`이 null이면 "닉네임 미확정, 유효한 세션 토큰이 있어 resume으로
+ *   확정해야 한다"는 뜻이다(App이 이 경우에만 null을 넘긴다 — 토큰이 없는데 null인
+ *   경우는 없다). resume이 성공하면 ack의 nickname을 본인 닉네임으로 채택해
+ *   `ChatState.nickname`에 반영한다. resume이 실패하면(유예 만료·무효 토큰) identify로
+ *   자동 전환할 근거(사용자가 입력한 닉네임)가 없으므로 `onResumeFail`을 호출해 App이
+ *   진입 화면으로 되돌리게 한다 — 여기서 빈 문자열 등으로 임의 identify를 시도하지
+ *   않는다(그러면 폴백 경로를 잃고 사실상 영구 로그인이 된다, 팀리드 지시).
  */
-export function useChat(nickname: string): ChatState {
+export function useChat(nickname: string | null, onResumeFail?: () => void): ChatState {
   const socketRef = useRef<ChatSocket | null>(null);
   const roomsRef = useRef<string[]>([]);
   // activeRoom을 ref로 미러링 — sendMessage가 상태 업데이터(순수해야 함) 밖에서
   // 현재 room을 읽어 emit하기 위함. StrictMode 이중 호출로 인한 중복 전송 방지.
   const activeRoomRef = useRef<string | null>(null);
+  // RQ-10-a: 본인 닉네임. App이 넘긴 초기값(닉네임 미확정이면 '')에서 시작해
+  // resume 성공 시 서버 ack 값으로 교체된다 — 화면 표시(ChatPane/ParticipantList의
+  // "나" 배지)는 항상 이 상태를 본다, App이 넘긴 원래 prop이 아니라.
+  const [selfNickname, setSelfNickname] = useState<string>(nickname ?? '');
   const [status, setStatus] = useState<ConnStatus>('connecting');
   const [rooms, setRooms] = useState<string[]>([]);
   const [activeRoom, setActiveRoomState] = useState<string | null>(null);
@@ -99,17 +115,27 @@ export function useChat(nickname: string): ChatState {
     const socket: ChatSocket = io({ autoConnect: true });
     socketRef.current = socket;
 
-    const rejoinAll = () => {
+    // activeNickname을 인자로 받는다(클로저의 nickname prop을 직접 쓰지 않음) — 이 함수는
+    // identifyFresh 안에서 null-narrowing된 뒤에만 호출되므로 타입도 string으로 좁혀진다.
+    const rejoinAll = (activeNickname: string) => {
       for (const room of roomsRef.current) {
-        socket.emit('join', { room, nickname }, () => undefined);
+        socket.emit('join', { room, nickname: activeNickname }, () => undefined);
       }
     };
 
     // RQ-18/ADR-0003: 새 세션 발급 — 닉네임 identify → 토큰 저장 → 참여 room 복원.
+    // RQ-10-a: nickname이 null이면(App이 세션 복원 중이라 아직 확정된 닉네임이 없음을
+    // 뜻함) 빈 값으로 identify를 시도하지 않는다 — 대신 onResumeFail로 App에 알려
+    // 진입 화면을 띄우게 한다(팀리드 지시: 임의 identify는 폴백 경로를 없애 사실상
+    // 영구 로그인이 된다).
     const identifyFresh = () => {
+      if (nickname === null) {
+        onResumeFail?.();
+        return;
+      }
       socket.emit('identify', { nickname }, (res) => {
         if (res.ok) localStorage.setItem(TOKEN_KEY, res.token);
-        rejoinAll(); // 최초 연결은 no-op, 재연결/토큰만료 폴백 시 참여 room 재등록
+        rejoinAll(nickname); // 최초 연결은 no-op, 재연결/토큰만료 폴백 시 참여 room 재등록
       });
     };
 
@@ -120,7 +146,8 @@ export function useChat(nickname: string): ChatState {
         // 유예(30초) 내 재연결·새로고침: 토큰으로 세션(참여 room·활성·안읽음) 복원.
         socket.emit('resume', { token }, (res) => {
           if (!res.ok) {
-            // 유예 만료·무효 토큰 → 새 세션 발급으로 폴백.
+            // 유예 만료·무효 토큰 → 새 세션 발급으로 폴백(닉네임 미확정이면 identifyFresh가
+            // 대신 onResumeFail을 호출한다).
             localStorage.removeItem(TOKEN_KEY);
             identifyFresh();
             return;
@@ -138,6 +165,8 @@ export function useChat(nickname: string): ChatState {
             activeRoomRef.current = res.activeRoom;
             setActiveRoomState(res.activeRoom);
           }
+          // RQ-10-a: 서버가 확정한 본인 닉네임을 채택 — App이 넘긴 초기값과 다를 수 있다.
+          setSelfNickname(res.nickname);
         });
       } else {
         identifyFresh();
@@ -202,7 +231,10 @@ export function useChat(nickname: string): ChatState {
       // 최초 join: ack의 히스토리(RQ-11)를 기존 앞에 prepend. 서버가 히스토리와
       // 라이브의 무중복을 보장하므로(한 메시지는 둘 중 하나에만), ack 전 도착한
       // 라이브가 있어도 prepend로 순서(과거→현재) 유지하며 잃지 않는다.
-      socket?.emit('join', { room: name, nickname }, (result) => {
+      // nickname(App prop, resume 중이면 null)이 아니라 selfNickname(서버 확정값)을
+      // 쓴다 — RQ-10-a: resume 성공 직후 사용자가 새 room에 참여해도 올바른 본인
+      // 닉네임으로 join되어야 한다.
+      socket?.emit('join', { room: name, nickname: selfNickname }, (result) => {
         if (!result.ok) return;
         const historyMsgs: ClientMessage[] = result.history.map((m) => {
           msgSeq += 1;
@@ -216,9 +248,9 @@ export function useChat(nickname: string): ChatState {
       setMessagesByRoom((prev) => (prev[name] ? prev : { ...prev, [name]: [] }));
       // 혼자 입장(founding join)은 서버가 방송하지 않으므로 본인을 seed —
       // 두 번째 참여자가 오면 서버 방송(participants)이 권위 목록으로 대체한다.
-      setParticipantsByRoom((prev) => (prev[name] ? prev : { ...prev, [name]: [nickname] }));
+      setParticipantsByRoom((prev) => (prev[name] ? prev : { ...prev, [name]: [selfNickname] }));
     },
-    [nickname, selectRoom],
+    [selfNickname, selectRoom],
   );
 
   const sendMessage = useCallback((body: string) => {
@@ -231,6 +263,7 @@ export function useChat(nickname: string): ChatState {
 
   return useMemo(
     () => ({
+      nickname: selfNickname,
       status,
       rooms,
       activeRoom,
@@ -243,6 +276,7 @@ export function useChat(nickname: string): ChatState {
       sendMessage,
     }),
     [
+      selfNickname,
       status,
       rooms,
       activeRoom,
