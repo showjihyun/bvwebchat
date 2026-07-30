@@ -107,7 +107,7 @@ Sensor로 두는 것은 낭비이고, 반대로 추론이 필요한 판단을 �
 | 파일 수정 후 빠른 검사 | Comp | 수정 직후 (PostToolUse) | `post_observe.py` → `node scripts/check.mjs --fast` | ✅ |
 | lint / typecheck / 단위·통합 테스트 | Comp | CI PR 게이트 | `ci.yml` → `check.sh` → `node scripts/check.mjs` | ✅ |
 | 전체 검증 전이 가드 | Comp | `GREEN→EVAL` | `check_full_green` 가드 (`check.mjs` exit 0) | ✅ |
-| Red 정당성 판정 | Comp | `RED→GREEN` | `red_evidence` 가드 → `check.mjs --red --rq` (ADR-0005 결정3: TS2307/TS2305만 정당한 Red) | ✅ |
+| Red 정당성 판정 | Comp | `RED→GREEN` | `red_evidence` 가드 → `check.mjs --red --rq` (ADR-0005 결정3: TS2307/TS2305만 정당한 Red). **접미사 ID(`RQ-10-a`) 를 받는다** — 2026-07-30 이전에는 잘못된 인자로 거부해 전이가 막혔다(`recurrence.md` R12). 음성 시험 `check.mjs --self-test` 10건 | ✅ |
 
 **`--fast` 실측 (2026-07-27)**: 변경 파일 5개 기준 0.72–0.84초 (`--cache` 웜, 3회 측정).
 ADR-0005 결정5의 예산은 5초이고, 초과 시 실패가 아니라 경고를 낸다.

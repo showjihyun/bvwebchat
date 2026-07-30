@@ -88,7 +88,7 @@ Red→Green→Eval 파이프라인에 팀 모드(SendMessage)를 쓰지 않는�
 ## 명령어·컨벤션
 
 - 검증 일괄: `node scripts/check.mjs` (`scripts/check.sh`는 이 파일을 부르는 shim)
-- 빠른 검사: `--fast` · Red 정당성 판정: `--red --rq RQ-XX` · flake: `--repeat N`
+- 빠른 검사: `--fast` · Red 정당성 판정: `--red --rq RQ-XX` (접미사 `RQ-10-a` 허용) · flake: `--repeat N` · 자기시험: `--self-test`
 - 커밋: `feat|fix|chore|test|docs(scope): 설명` · 브랜치: `feat/<RQ-ID>-<설명>`
 - 전이 뒤에는 **반드시** `git commit -- .harness/state`. 빠뜨리면 `eval-b`가
   시작 자체를 거부한다(4회 반복 뒤 게이트로 올라왔다 — `harness/recurrence.md` R4).
