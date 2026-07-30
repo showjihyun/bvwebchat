@@ -793,8 +793,47 @@ function selfTest() {
     console.log(`  ${pass ? 'PASS' : 'FAIL'}  ${name.padEnd(22)} 기대 ${mustFail ? '차단' : '통과'} · 실측 ${didFail ? '차단' : '통과'}` +
       (didFail ? `  (${[...problems, ...open][0]?.slice(0, 70)})` : ''));
   }
-  console.log(bad ? `\nP11 자기시험 실패 ${bad}건 — 파서가 뚫린다.` : '\nP11 자기시험 18건 통과.');
+  // P9 — 줄바꿈 정규화. **통과값 + 부정어** 짝을 넣는다(`recurrence.md` R2):
+  // 'CRLF 만 다르다'(통과)와 '내용도 다르다'(차단)를 함께 두지 않으면, 정규화가
+  // 실제 드리프트까지 지워버리는 것을 이 시험이 못 본다.
+  const eolCases = [
+    ['E3 완전히 같다',        'a\nb\n',        'a\nb\n',        false],
+    ['E4 CRLF 만 다르다',     'a\r\nb\r\n',    'a\nb\n',        false],
+    ['E5 내용이 다르다',      'a\r\nc\r\n',    'a\nb\n',        true],
+    ['E6 줄 하나가 빠졌다',   'a\r\n',         'a\nb\n',        true],
+    ['E7 CR 단독은 다르다',   'a\rb\r',        'a\nb\n',        true],
+    ['E8 끝 개행 유무',       'a\r\nb',        'a\nb\n',        true],
+  ];
+  for (const [name, disk, rendered, mustFail] of eolCases) {
+    const didFail = !sameIgnoringEol(disk, rendered);
+    const pass = didFail === mustFail;
+    if (!pass) bad++;
+    console.log(`  ${pass ? 'PASS' : 'FAIL'}  ${name.padEnd(22)} 기대 ${mustFail ? '차단' : '통과'} · 실측 ${didFail ? '차단' : '통과'}`);
+  }
+
+  const total = cases.length + eolCases.length;
+  console.log(bad ? `\n정책 린트 자기시험 실패 ${bad}건 / ${total}건 — 파서가 뚫린다.` : `\n정책 린트 자기시험 ${total}건 통과 (P11 파서 ${cases.length} · P9 줄바꿈 ${eolCases.length}).`);
   process.exit(bad ? 1 : 0);
+}
+
+/**
+ * 줄바꿈을 빼고 같은가. **순수 함수다** (`--self-test`).
+ *
+ * P9 는 "생성물이 정책 JSON 과 동기화돼 있는가"를 묻는다. 줄바꿈 종류는 그 물음의
+ * 일부가 아닌데, 바이트 비교는 그것까지 센다. 이 저장소의 `.gitattributes` 는
+ * `* text=auto` 라서 **Windows 체크아웃에서 README 가 CRLF 로 깔리고**, 생성기는
+ * `\n` 으로 쓴다 — 커밋된 블롭은 LF 라 `git diff` 는 비었는데 P9 만 빨갛다.
+ * 즉 이 게이트는 **저장소 상태가 아니라 체크아웃 환경을 재고 있었다.**
+ * (`recurrence.md` R9 와 같은 부류다. 그때는 CI 의 gitignore 산출물이었고 이번엔
+ * 개발기의 줄바꿈이다 — 공통 원인은 '센서가 저장소 밖 변수를 읽는다'.)
+ *
+ * 한 파일만 `eol=lf` 로 카브아웃하지 않는 이유: 그건 이 파일에서만 증상을 지우고
+ * 다음 생성물에서 같은 실패가 다시 난다. 게다가 `* text=auto` 는 이 저장소가 이미
+ * 내린 결정이고, 센서 하나를 위해 그 결정을 조각내는 것은 방향이 반대다.
+ */
+export function sameIgnoringEol(a, b) {
+  const norm = (s) => String(s).replace(/\r\n/g, '\n');
+  return norm(a) === norm(b);
 }
 
 function checkGenerated(m, r) {
@@ -803,7 +842,7 @@ function checkGenerated(m, r) {
     fail('P9', 'harness/policy/README.md가 없다 — 정책의 사람용 표가 생성되지 않았다', 'node scripts/policy-lint.mjs --print 로 생성하고 커밋하라.');
     return;
   }
-  if (readFileSync(README, 'utf8') !== rendered) {
+  if (!sameIgnoringEol(readFileSync(README, 'utf8'), rendered)) {
     fail(
       'P9',
       'harness/policy/README.md가 정책 JSON과 어긋났다 — 생성물이 낡았다',

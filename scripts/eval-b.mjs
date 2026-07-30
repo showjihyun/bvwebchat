@@ -94,9 +94,38 @@ if (argv.includes('--self-test')) {
     const got = judgeDirtyPaths(porcelain).length;
     const ok = got === want;
     if (!ok) bad++;
-    console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(22)} 기대 ${want ? `차단 ${want}건` : '통과'} · 실측 ${got ? `차단 ${got}건` : '통과'}`);
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(24)} 기대 ${want ? `차단 ${want}건` : '통과'} · 실측 ${got ? `차단 ${got}건` : '통과'}`);
   }
-  console.log(bad ? `\neval-b 준비 게이트 자기시험 실패 ${bad}건.` : '\neval-b 준비 게이트 자기시험 8건 통과.');
+
+  // 체크포인트 신선도 — **통과값에 부정어를 곱한 형태**를 반드시 넣는다.
+  // `recurrence.md` R2: 차단 쪽 시험이 '통과하는 값' 하나와 '통과하는 값 + 부정어'
+  // 하나를 함께 갖지 않으면, 판정이 부분 문자열로 새는 것을 시험이 못 본다.
+  // 여기서 부정어에 해당하는 것은 `ok:false` · `indeterminate` 다 — 경로는 낡았지만
+  // 세면 안 되는 자리이고, 이것을 빼면 '낡음'과 '실패'가 이중 계상된다.
+  const NEW = '.harness/state/checkpoints/RQ-9/20260730T120000000Z.json';
+  const OLD = '.harness/state/checkpoints/RQ-9/20260729T120000000Z.json';
+  const pass = (ck) => ({ id: 'GB-06', auto: [{ check: 'resume_test', ok: true, indeterminate: false, sub: { checkpoint: ck } }] });
+  const ckCases = [
+    ['채점 기록 없음',        [{ id: 'GB-01', auto: [{ ok: true }] }],                                        NEW,  0],
+    ['최신과 일치',            [pass(NEW)],                                                                    NEW,  0],
+    ['옛 체크포인트',          [pass(OLD)],                                                                    NEW,  1],
+    ['옛 것 + ok:false',       [{ id: 'GB-06', auto: [{ ok: false, sub: { checkpoint: OLD } }] }],             NEW,  0],
+    ['옛 것 + 판정불가',       [{ id: 'GB-06', auto: [{ ok: true, indeterminate: true, sub: { checkpoint: OLD } }] }], NEW, 0],
+    ['sub 는 있고 경로 없음',  [{ id: 'GB-06', auto: [{ ok: true, sub: { mode: 'cold' } }] }],                  NEW,  0],
+    ['커밋된 체크포인트 없음', [pass(OLD)],                                                                    null, 1],
+    ['접두사만 같은 경로',     [pass(NEW.replace('.json', '-1.json'))],                                        NEW,  1],
+    ['여럿 중 하나만 낡음',    [pass(NEW), pass(OLD), pass(NEW)],                                              NEW,  1],
+    ['한 케이스에 2건 낡음',   [{ id: 'GB-06', auto: [{ ok: true, sub: { checkpoint: OLD } }, { ok: true, sub: { checkpoint: OLD } }] }], NEW, 2],
+  ];
+  for (const [name, cs, newest, want] of ckCases) {
+    const got = judgeCheckpointFreshness(cs, newest).length;
+    const ok = got === want;
+    if (!ok) bad++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(24)} 기대 ${want ? `차단 ${want}건` : '통과'} · 실측 ${got ? `차단 ${got}건` : '통과'}`);
+  }
+
+  const total = cases.length + ckCases.length;
+  console.log(bad ? `\neval-b 자기시험 실패 ${bad}건 / ${total}건.` : `\neval-b 자기시험 ${total}건 통과 (준비 게이트 ${cases.length} · 체크포인트 신선도 ${ckCases.length}).`);
   process.exit(bad ? EXIT_FAIL : EXIT_PASS);
 }
 const VERIFY_ONLY = argv.includes('--verify-artifact');
@@ -1139,12 +1168,20 @@ function verifyArtifact() {
     for (const j of c.judge || []) if ((j.consecutive_failures || 0) >= 2) judgeFail.push(`${c.id} · ${j.text} · ${j.reason}`);
     if (c.status === 'not_runnable') notRunnable.push(`${c.id}: ${c.why}`);
   }
+  // 체크포인트 신선도 — 통과 판정이 **지금** 상태에 대한 판정인가.
+  // blocked 는 필수 집합 밖이므로 여기서도 뺀다(위 실패 집계와 같은 규칙).
+  const newestCk = newestCommittedCheckpoint();
+  problems.push(...judgeCheckpointFreshness(cases.filter((c) => !blockedIds.has(c.id)), newestCk));
+
   if (autoFail.length) problems.push(`auto rubric 실패 ${autoFail.length}건:\n     ${autoFail.join('\n     ')}\n     고치는 법: 하네스를 고쳐라. 골든을 손대는 것이 아니다 — 골든이 틀렸다고 판단되면 근거를 note 에 남기고 고친다. 실패를 지우려고 고치는 것과 구별되는 것은 그 근거뿐이다.`);
   if (judgeFail.length) problems.push(`추론 rubric 2회 연속 실패 ${judgeFail.length}건:\n     ${judgeFail.join('\n     ')}\n     고치는 법: 2회 연속은 판정 분산이 아니라 실제 회귀다. 트랜스크립트를 읽고 원인을 고쳐라.`);
 
   say(`아티팩트: evals/results/track-b/${chosen.file}${exact ? ' (HEAD 정확 일치)' : ' (최신)'}`);
   say(`  기록 시각 ${d.at || '?'} · head_sha ${String(d.head_sha).slice(0, 8)} · 케이스 ${cases.length}건`);
   say(`  입력 해시 ${String(d.inputs_hash).slice(0, 12)} ${d.inputs_hash === INPUTS_HASH ? '= 현재 (유효)' : `≠ 현재 ${INPUTS_HASH.slice(0, 12)}`}`);
+  // 해시가 덮지 않는 축을 **말없이 통과시키지 않는다** — 무엇을 기준으로 신선도를
+  // 판정했는지 보이지 않으면, 통과했을 때 그것이 무엇의 통과인지도 보이지 않는다.
+  say(`  최신 커밋 체크포인트 ${newestCk || '(없음)'} — 입력 해시 밖의 축이라 따로 대조한다`);
   const passed = cases.filter((c) => c.status === 'pass').length;
   say(`  판정: pass ${passed} · fail ${cases.filter((c) => c.status === 'fail').length} · 판정불가 ${cases.filter((c) => c.status === 'indeterminate').length} · 실행불가 ${notRunnable.length}`);
   say(`  커버리지: 필수 ${required.length}건 중 ${cases.filter((c) => required.some((g) => g.id === c.id)).length}건 기록${missingCases.length ? ` · 누락 ${missingCases.join(' ')}` : ''}`);
@@ -1252,6 +1289,78 @@ if (DRY_RUN) {
  */
 export function judgeDirtyPaths(porcelain) {
   return String(porcelain || '').split('\n').map((l) => l.trim()).filter(Boolean);
+}
+
+/**
+ * 체크포인트를 채점한 **통과** 판정이 지금도 그 체크포인트에 대한 판정인가.
+ * **순수 함수다** — `cases` 배열과 '최신 커밋된 체크포인트' 경로만 받는다.
+ *
+ * **왜 이 검사가 따로 필요한가.** `inputs_hash` 는 HASH_GLOBS(정책·훅·스킬·
+ * `CLAUDE.md`)만 덮고 `.harness/state/` 는 의도적으로 그 밖이다 — 전이마다 바뀌는
+ * 값을 해시에 넣으면 모든 전이가 전수 재실행을 부른다. 그 설계의 대가가 이것이다:
+ * **체크포인트가 교체돼도 입력 해시는 그대로**여서, GB-06(재개 시험)의 초록이 옛
+ * 체크포인트에 대한 판정인 채로 `track_b_passing` 을 계속 연다.
+ *
+ * 추정이 아니라 관측이다. 아티팩트 `e286fa86`(2026-07-29T13:12)의 GB-06 은
+ * `HARNESS-L3/20260729T124140990Z.json` 을 채점했고, 그 뒤 07-30 의 전이들이 새
+ * 체크포인트를 쌓는 동안 판정은 갱신되지 않았다. 그 초록은 **하루 전 다른 RQ 의
+ * 내구 기록에 대한 판정**이지 지금 상태에 대한 보증이 아니다.
+ *
+ * **왜 '커밋된' 최신인가.** GB-06 자신이 그 기준이기 때문이다 — 커밋되지 않은
+ * 체크포인트는 다른 클론에서 읽히지 않아 `checkpoint_uncommitted` 로 시험이 시작조차
+ * 못 한다. 덤으로 닭-달걀이 풀린다: `phase.py enter` 는 가드를 **먼저** 돌리고
+ * 체크포인트를 **나중에** 쓰므로(`record_transition`), 전이가 만들 새 체크포인트는
+ * 이 판정 시점에 아직 미커밋이라 자기 자신을 낡게 만들지 않는다.
+ *
+ * 실패/미판정 항목은 세지 않는다 — 이미 다른 문제로 잡혔고, 같은 사실을 두 번
+ * 세면 고치는 사람이 어느 쪽을 고쳐야 하는지 알 수 없게 된다.
+ */
+export function judgeCheckpointFreshness(cases, newest) {
+  const problems = [];
+  for (const c of cases || []) {
+    for (const a of c.auto || []) {
+      const scored = a && a.sub && a.sub.checkpoint;
+      if (!scored) continue;
+      if (!a.ok || a.indeterminate) continue;
+      if (!newest) {
+        problems.push(
+          `${c.id} 은 체크포인트 ${scored} 를 채점했다는데 커밋된 체크포인트가 하나도 없다.\n` +
+            `     고치는 법: \`git commit -- .harness/state/checkpoints\` 로 내구 기록을 커밋하고 \`node scripts/eval-b.mjs --case ${c.id}\` 를 다시 돌려라.`
+        );
+        continue;
+      }
+      if (scored !== newest) {
+        problems.push(
+          `${c.id} 의 초록은 옛 체크포인트에 대한 판정이다 (채점한 것 ${scored} ≠ 최신 커밋본 ${newest}).\n` +
+            `     고치는 법: \`node scripts/eval-b.mjs --case ${c.id}\` 로 다시 채점하고 아티팩트를 커밋하라.\n` +
+            `     입력 해시는 \`.harness/state\` 를 덮지 않는다 — 체크포인트가 바뀌어도 해시가 그대로라서, 이 대조가 없으면 옛 판정이 새 상태의 보증처럼 읽힌다.`
+        );
+      }
+    }
+  }
+  return problems;
+}
+
+/**
+ * 최신 **커밋된** 체크포인트의 저장소 상대 경로. 없으면 null.
+ *
+ * 정렬 키는 파일명의 `(스탬프, 충돌순번)` 이다. `resume-test.mjs` 의
+ * `listCheckpoints()` 는 `(내용의 ts, 스탬프, 충돌순번)` 으로 정렬하는데, 두 값은
+ * `record_transition` 이 같은 전이에서 함께 쓰므로 일치한다 — 여기서 파일 내용을
+ * 읽지 않는 이유다(커밋본을 읽으려면 파일마다 `git cat-file` 이 필요하고, 가드는
+ * 빨라야 한다). 손으로 고친 체크포인트에서는 둘이 갈릴 수 있고, 그건 계약 밖이다.
+ */
+function newestCommittedCheckpoint() {
+  const r = git(['ls-files', '--', '.harness/state/checkpoints']);
+  if (!r.ok || !r.out) return null;
+  const rows = r.out.split('\n').map((s) => s.trim()).filter((f) => f.endsWith('.json'))
+    .map((rel) => {
+      const base = rel.slice(rel.lastIndexOf('/') + 1);
+      const m = /^(.+?)(?:-(\d+))?\.json$/.exec(base);
+      return { rel, stamp: m ? m[1] : base, seq: m && m[2] ? Number(m[2]) : 0 };
+    })
+    .sort((a, b) => a.stamp.localeCompare(b.stamp) || a.seq - b.seq);
+  return rows.length ? rows[rows.length - 1].rel : null;
 }
 
 function requireCleanState() {
