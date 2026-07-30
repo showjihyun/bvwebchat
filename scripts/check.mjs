@@ -377,6 +377,17 @@ function classifyTscErrors(errors) {
 
 // ── 모드: --red --rq RQ-XX ───────────────────────────────────────────────────
 
+/**
+ * RQ ID → 테스트 이름에서 찾을 문자열 변형들.
+ *
+ * **접미사 ID(`RQ-10-a`)에서는 기저 번호 변형을 만들지 않는다.** `RQ-10` 을 변형에
+ * 넣으면 `matchesRq` 가 부분 문자열로 판정하므로 **기존 `rq-10-nickname-identity`
+ * 테스트까지 잡는다** — 그러면 새 결함의 Red 가 아니라 남의 통과 테스트를 근거로
+ * 삼게 되고, 최악의 경우 **내 테스트가 하나도 실패하지 않아도 정당한 Red 로 읽힌다.**
+ *
+ * 접미사가 없을 때만 `RQ-07`/`RQ-7` 자리수 변형을 만든다. 그것은 같은 RQ 를 가리키는
+ * 표기 차이일 뿐이라 범위가 넓어지지 않는다.
+ */
 function rqMatchers(rawId) {
   const id = rawId.trim().toUpperCase();
   const variants = new Set([id]);
@@ -553,17 +564,62 @@ const USAGE = `사용법: node scripts/check.mjs [모드]
 
   (인자 없음)          전체 검증: eslint . → tsc --noEmit → vitest run  (CI 게이트)
   --fast              변경·미추적 .ts/.tsx/.mts/.cts/.js/.mjs/.cjs만 lint  (hook, 예산 5초)
-  --red --rq RQ-XX    ADR-0005 결정3 Red 정당성 판정
+  --red --rq RQ-XX    ADR-0005 결정3 Red 정당성 판정 (접미사 허용: RQ-10-a)
   --repeat N          테스트 스위트 N회 반복 — flake 시그니처 수집
+  --self-test         RQ ID 파싱·매칭 음성 시험 (테스트 미실행 · 비용 0)
   --help              이 도움말
 
 종료 코드: 0 통과 · 1 일반 실패 · 2 잘못된 인자 · 3 깨진 테스트 · 4 부적격 타입 오류 · 5 실패 테스트 없음`;
+
+/**
+ * RQ ID 파싱·매칭 음성 시험. **가드가 자기 인자를 못 받는 형상**을 고정한다 —
+ * 2026-07-30 에 `red_evidence` 가 `--rq RQ-10-a` 로 exit 2 를 받아 전이가 막혔고,
+ * 그때까지 이 검증에는 시험이 없었다(`harness/recurrence.md` R2: 새 판정 로직에는
+ * 음성 시험을 같은 커밋에 넣는다).
+ *
+ * **차단 쪽에 `통과값 + 부정어` 형태를 넣는다** — 접미사를 허용하면서 공백·경로
+ * 문자까지 새는지가 이 시험의 핵심이다.
+ */
+function modeSelfTest() {
+  const ok = (id) => /^RQ-?\d+(-[A-Za-z0-9]+)*$/i.test(id);
+  const cases = [
+    ['RQ-07 (기본)',            'RQ-07',        true,  ['RQ-07', 'RQ-7']],
+    ['RQ7 (하이픈 없음)',        'RQ7',          true,  ['RQ-07', 'RQ-7']],
+    ['RQ-10-a (접미사)',        'RQ-10-a',      true,  []],
+    ['RQ-10-a-2 (다중 접미사)',  'RQ-10-a-2',    true,  []],
+    ['빈 문자열',                '',             false, []],
+    ['RQ 없음',                 '10-a',         false, []],
+    ['숫자 없음',                'RQ-a',         false, []],
+    ['공백 포함',                'RQ-10 a',      false, []],
+    ['경로 문자',                'RQ-10/a',      false, []],
+    ['후행 하이픈',              'RQ-10-',       false, []],
+  ];
+  let bad = 0;
+  for (const [name, id, want, alsoExpect] of cases) {
+    const got = ok(id);
+    let pass = got === want;
+    let extra = '';
+    if (pass && want) {
+      const v = rqMatchers(id);
+      // 접미사 ID 는 기저 번호 변형을 만들면 안 된다 — 남의 테스트를 잡는다.
+      const hasBase = id.includes('-') && /^RQ-?\d+-/i.test(id) && v.some((x) => /^RQ-\d+$/.test(x));
+      if (hasBase) { pass = false; extra = ' ← 기저 변형이 새어 남의 테스트를 잡는다'; }
+      for (const e of alsoExpect) if (!v.includes(e)) { pass = false; extra = ` ← 변형 ${e} 없음`; }
+      if (pass) extra = `  변형 [${v.join(' · ')}]`;
+    }
+    if (!pass) bad++;
+    console.log(`  ${pass ? 'PASS' : 'FAIL'}  ${name.padEnd(24)} 기대 ${want ? '수용' : '거부'} · 실측 ${got ? '수용' : '거부'}${extra}`);
+  }
+  console.log(bad ? `\nRQ ID 자기시험 실패 ${bad}건.` : '\nRQ ID 자기시험 10건 통과.');
+  return bad ? 1 : 0;
+}
 
 function main(argv) {
   if (argv.includes('--help') || argv.includes('-h')) {
     console.log(USAGE);
     return 0;
   }
+  if (argv[0] === '--self-test') return modeSelfTest();
 
   if (argv.length === 0) return modeFull();
 
@@ -578,8 +634,20 @@ function main(argv) {
   if (argv[0] === '--red') {
     const rqIndex = argv.indexOf('--rq');
     const rqId = rqIndex === -1 ? null : argv[rqIndex + 1];
-    if (!rqId || !/^RQ-?\d+$/i.test(rqId)) {
-      console.error(`✗ --red 에는 --rq RQ-XX 가 필요합니다 (예: --red --rq RQ-07)\n\n${USAGE}`);
+    // 접미사를 허용한다: `RQ-10-a` 처럼 **기존 RQ 에 대한 결함**을 가리키는 ID 가
+    // 정당한 형식이다. 새 번호를 붙이면 요구사항 신설이 되어 스펙 인터뷰가 앞에
+    // 붙고, 기존 번호를 그대로 쓰면 완료된 RQ 와 원장에서 구별되지 않는다.
+    //
+    // 2026-07-30 에 `tdd-workflow` 를 실제로 완주해 보다가 두 전이 만에 나왔다 —
+    // `red_evidence` 가드가 `--rq RQ-10-a` 를 넘기는데 여기서 **잘못된 인자(exit 2)**
+    // 로 떨어져 `RED→GREEN` 이 막혔다. Red 자체는 정당했고(`--rq RQ-10` 으로는 exit 0)
+    // **게이트가 자기 인자를 못 받은 것**이다.
+    //
+    // 여전히 거부하는 것: 접두사 `RQ` 와 숫자가 없는 형식. 접미사는 영숫자·하이픈만
+    // 받는다 — 공백이나 경로 문자가 들어오면 `matchesRq` 의 부분 문자열 판정이
+    // 엉뚱한 테스트를 잡는다.
+    if (!rqId || !/^RQ-?\d+(-[A-Za-z0-9]+)*$/i.test(rqId)) {
+      console.error(`✗ --red 에는 --rq RQ-XX 가 필요합니다 (예: --red --rq RQ-07 · --red --rq RQ-10-a)\n\n${USAGE}`);
       return 2;
     }
     return modeRed(rqId);

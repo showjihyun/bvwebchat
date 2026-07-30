@@ -61,6 +61,7 @@ pathspec 을 좁게 쓸수록 상태 파일이 자동으로 빠진다. 그래서
 | 2-1 | `node scripts/policy-lint.mjs --self-test` | **P11 파서가 뚫리는가** (음성 18건) | blocking |
 | 2-2 | `node scripts/eval-b.mjs --self-test` | **평가 준비 게이트가 무엇을 차단하는가** (8건) | blocking |
 | 2-3 | `python harness/phase.py self-test` | **전이 게이트(R6 상태 신선도)가 무엇을 차단하는가** (8건) | blocking |
+| 2-4 | `node scripts/check.mjs --self-test` | **RQ ID 파싱·매칭** — 접미사 ID(`RQ-10-a`)를 받는가, 기저 변형이 새어 남의 테스트를 잡지 않는가 (10건) | blocking |
 | 3 | `node scripts/hooks-selftest.mjs` | **게이트가 실제로 작동하는가** | blocking |
 | 4 | `node scripts/eval-b.mjs` | 하네스 회귀 평가 GB-01~07 | auto rubric만 blocking |
 | 5 | 센서 카탈로그 대조 (아래) | 문서의 지도가 실제 배선과 일치하는가 | 보고 |
