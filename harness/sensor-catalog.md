@@ -123,7 +123,7 @@ ADR-0005 결정5의 예산은 5초이고, 초과 시 실패가 아니라 경고�
 | 골든 정답 셸 우회 차단 | Comp | `evals/golden/**` 셸 리다이렉트 | `tool-risk.json` `deny_redirect` → `gate_phase.py` | ✅ |
 | 독립 평가 에이전트 (evaluator) | Inf | 각 RQ 구현 직후 | `tdd-workflow` Phase 3 → `evaluator_pass` 가드 | ✅ |
 | PR 리뷰 게이트 (reviewer) | Inf | 머지 전 | `review-gate` 스킬 → `reviewer_approve` 가드 | ✅ |
-| 트랙 B 하네스 회귀 평가 | Comp(auto) + Inf(judge) | 하네스 변경 시 · 주간 | `eval-b.mjs` → `evals/results/track-b/<sha>.json` → `track_b_passing` 가드. **필수 6건**(GB-02 만 `blocked`). 시작 시 `.harness/state` **와 `HASH_GLOBS` 전부**의 미커밋을 검사해 **첫 케이스 전에** 거부한다(recurrence R4 2차 처방 + 5차 재리뷰 B-k). 음성 시험 `--self-test` 8건. **부분 실행(`--case X --force`)으로 물려받은 케이스에는 `carried_from` 이 찍힌다** — 표식이 없으면 한 건만 돈 아티팩트가 전수 실행처럼 읽힌다 | ⚠️ **러너 실동작** — 7케이스 중 **필수 6건**(GB-02 만 `blocked`). GB-06 은 2026-07-29 에 뺐다가 근거가 반증돼 같은 날 되돌렸다 — 골든 `note` 에 전말이 있다. 입력 해시가 바뀌면 옛 아티팩트를 가드가 거부한다 |
+| 트랙 B 하네스 회귀 평가 | Comp(auto) + Inf(judge) | 하네스 변경 시 · 주간 | `eval-b.mjs` → `evals/results/track-b/<sha>.json` → `track_b_passing` 가드. **필수 6건**(GB-02 만 `blocked`). 시작 시 `.harness/state` **와 `HASH_GLOBS` 전부**의 미커밋을 검사해 **첫 케이스 전에** 거부한다(recurrence R4 2차 처방 + 5차 재리뷰 B-k). 음성 시험 `--self-test` 34건. **부분 실행(`--case X --force`)으로 물려받은 케이스에는 `carried_from` 이 찍힌다** — 표식이 없으면 한 건만 돈 아티팩트가 전수 실행처럼 읽힌다 | ⚠️ **러너 실동작** — 7케이스 중 **필수 6건**(GB-02 만 `blocked`). GB-06 은 2026-07-29 에 뺐다가 근거가 반증돼 같은 날 되돌렸다 — 골든 `note` 에 전말이 있다. 입력 해시가 바뀌면 옛 아티팩트를 가드가 거부한다. **해시 밖의 축이 하나 더 있다** — GB-06 이 채점한 체크포인트가 아티팩트의 `head_sha` 시점 최신이 아니면 거부한다(2026-08-02). 그 뒤로 쌓인 체크포인트는 **관측만** 한다 — 차단하면 전이 직후 상시 빨강이 된다 |
 
 이 계열의 상한은 `evaluator` 하나에 걸려 있다. 추론 센서를 결정론으로 위장하지 않는다.
 

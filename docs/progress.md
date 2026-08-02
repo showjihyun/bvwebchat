@@ -79,7 +79,7 @@
 > RQ-16(동시 100명)·RQ-17(사내망 단일 서버)은 독립 구현 항목이 아니라
 > ADR-0001과 "게이트 실질화"(deploy.yml·smoke.sh)의 제약 조건으로 반영한다.
 
-## 하네스 작업 이력 (완료분)
+## 진행 중
 
 - [ ] 🔄 2026-07-31 — **입력 해시 밖의 축 두 개** (브랜치 `fix/harness-artifact-checkpoint`)
       8차 재리뷰가 "추정"으로 남기고 9차가 관측한 위험을 게이트로 내린다.
@@ -92,8 +92,23 @@
       음성 시험 16건 신설. 참조: `scripts/{eval-b,policy-lint}.mjs`, `harness/recurrence.md` R2·R9.
       ⚠️ 같은 부류의 미처방 구멍 1건 — `HASH_GLOBS` 에 `scripts/` 가 없어 **채점기
       (`resume-test.mjs`)와 채점 엔진(`eval-b.mjs`) 자체를 바꿔도 옛 아티팩트가 유효**하다.
-      아직 실패로 관측된 적이 없어 반복 대장에는 넣지 않았다(대장은 실패 원장이다).
-      처방 비용이 트랙 B 전수 재실행 1회라 `HASH_GLOBS` 를 건드리는 다음 PR 에 동행한다.
+      **이 PR 안에서 실제로 발현했다**(재리뷰 M-2, 서술 정정): `cacheIsStale` 을 워킹트리에만
+      둔 채 `--case GB-06` 을 돌려 통과 아티팩트가 났고, 그 아티팩트의 `head_sha`(`060ea249`)에
+      커밋된 엔진에는 그 함수가 **없다**(`git show 060ea249:scripts/eval-b.mjs | grep -c
+      cacheIsStale` = 0). `requireCleanState()` 는 `scripts/` 를 안 보므로 막지 못했다.
+      "아직 실패로 관측된 적이 없다"고 적었던 앞 판단은 **틀렸고**, 그래서 후속이 아니라
+      다음 하네스 PR 의 1순위다. 처방 비용은 트랙 B 전수 재실행 1회.
+
+- [ ] 🔄 후속 — `resume-test.mjs` Q3 만 100% 일치를 요구한다(Q4·Q5 는 60%). 2026-08-02 에
+      데이터 2건이 더 쌓였다(0/2 · 1/2). 정답지가 체크포인트 자신의 `next` 필드라
+      **작성 규칙으로 점수를 움직일 수 있는 구조**이고, `.claude/skills/checkpoint-resume/SKILL.md`
+      가 그 길을 이미 기각했으므로 남은 처방은 채점기 쪽이다.
+- [ ] 🔄 후속 — `.claude/skills/checkpoint-resume/SKILL.md:62` 가 존재하지 않는 인자 `--did`
+      를 가르친다(실제는 `--done`). 실행해 보고 알았다 — `harness/recurrence.md` R12 와 같은
+      발견 방식(문서로만 검증된 인터페이스).
+
+## 하네스 작업 이력 (완료분)
+
 - [x] 2026-07-16 — 하네스 구축·게이트·CD 골격·원장 체계 (PR #1~#6)
       상세: `docs/harness/changelog.md`
 - [x] 2026-07-28 — **반복 실패 대장** `harness/recurrence.md` + `policy-lint` P11
