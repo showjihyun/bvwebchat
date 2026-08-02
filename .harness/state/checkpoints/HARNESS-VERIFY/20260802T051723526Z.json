@@ -1,0 +1,52 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "fix/harness-artifact-checkpoint",
+  "edge_legal": true,
+  "exit_hint": "하네스 변경 후 → python harness/phase.py enter REVIEW  (가드: 트랙 B 회귀 평가 아티팩트, changelog 동행)",
+  "forced": false,
+  "from": "IDLE",
+  "guards": [],
+  "head_sha": "3a52907d5d31638ce8e24c481be0f1d57a149fd7",
+  "reason": null,
+  "rq": "HARNESS-VERIFY",
+  "schema": 1,
+  "seq": 84,
+  "session": {
+    "acceptance": [
+      "--verify-artifact 가 아티팩트의 auto[0].sub.checkpoint 를 현재 최신 체크포인트와 대조하고 다르면 거부한다",
+      "음성 시험이 붙는다"
+    ],
+    "done": [
+      "하네스 L3 재구성 완료 (PR #31 머지 · 9차 재리뷰 APPROVE) — 3평면 · 9단계 상태 머신 · 전이 가드 11 · 센서 S1~S4 · 상태 계약 · 트랙 B 실행 가능화 · 반복 대장 R1~R11. 회차별 상세는 docs/harness/changelog.md",
+      "tdd-workflow 첫 완주 (PR #34 · RQ-10-a 새로고침 시 닉네임 재입력). 게이트가 세 번 막았고 셋 다 실재 문제였다 — R12 등재. 상세는 docs/progress.md 작업 원장",
+      "scripts/eval-b.mjs 에 judgeCheckpointFreshness 추가 — --verify-artifact 가 GB-06 의 채점 대상 체크포인트를 최신 커밋본과 대조한다. 실측 발화 확인: 옛 판정 HARNESS-L3/20260729T124140 vs 최신 RQ-10/20260730T120315. 음성 시험 10건",
+      "scripts/policy-lint.mjs 의 P9 를 sameIgnoringEol 로 고쳤다 — .gitattributes 의 * text=auto 탓에 Windows 체크아웃에서만 빨갛던 검사였다(블롭 LF, 워킹트리 CRLF 127). 음성 시험 6건",
+      "트랙 B 전수 재평가 5 pass · 1 fail. GB-06 이 Q3 에서 0/2, 1/2 로 두 번 떨어졌다 — next 에 이 세션 goal 범위 밖 작업을 넣으면 재개 세션이 goal 축으로 서사를 복원하며 누락한다. checkpoint-resume 스킬이 이 부류를 작성 규칙으로 메우는 길을 이미 기각했고, Q3 만 100% 일치를 요구하는 것이 후속 이슈로 남아 있다",
+      "checkpoint-resume/SKILL.md 62행이 존재하지 않는 인자 --did 를 가르친다(실제는 --done). 문서로만 검증된 인터페이스가 틀린 사례 — recurrence.md R12 와 같은 발견 방식"
+    ],
+    "goal": "scripts/eval-b.mjs 의 --verify-artifact 가 입력 해시만 보고 GB-06 이 실제로 어느 체크포인트를 채점했는지는 안 본다. .harness/state 는 HASH_GLOBS 밖이라 체크포인트가 교체돼도 해시가 그대로다 — 즉 옛 체크포인트에서 난 초록이 새 체크포인트에 대한 보증처럼 읽힌다. 8차 재리뷰가 추정으로 남기고 9차가 관측했다. 이것이 다른 모든 측정의 신뢰도를 결정하므로 후속 1순위다",
+    "next": [
+      "evals/results/track-b 의 재평가 아티팩트를 커밋한다 — track_b_passing 가드가 읽는 입력이다",
+      "python harness/phase.py enter REVIEW 로 전이한다 (가드: track_b_passing · changelog_updated)",
+      "review-gate 스킬로 reviewer 재리뷰를 받는다 — APPROVE 가 머지의 필요조건"
+    ],
+    "open_questions": [
+      "major-1: useChat.ts:104 의 nickname ?? '' 가 타입 체커 사각지대다. resume 대기 창에서 room 참여를 누르면 서버가 거부하는데 낙관적 갱신은 그대로 실행돼 유령 room 이 남는다"
+    ]
+  },
+  "to": "HARNESS",
+  "ts": "2026-08-02T05:17:23.525Z",
+  "write_allow": [
+    ".claude/**",
+    "harness/**",
+    "scripts/**",
+    ".github/**",
+    "docs/harness/**",
+    "evals/*.md",
+    "evals/results/**",
+    "_workspace/**",
+    "docs/progress.md",
+    ".gitignore",
+    "CLAUDE.md"
+  ]
+}
