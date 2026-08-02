@@ -811,8 +811,35 @@ function selfTest() {
     console.log(`  ${pass ? 'PASS' : 'FAIL'}  ${name.padEnd(22)} 기대 ${mustFail ? '차단' : '통과'} · 실측 ${didFail ? '차단' : '통과'}`);
   }
 
-  const total = cases.length + eolCases.length;
-  console.log(bad ? `\n정책 린트 자기시험 실패 ${bad}건 / ${total}건 — 파서가 뚫린다.` : `\n정책 린트 자기시험 ${total}건 통과 (P11 파서 ${cases.length} · P9 줄바꿈 ${eolCases.length}).`);
+  // P12 — 저장소 밖 라벨. **거짓 양성이 이 검사의 진짜 위험이다**: 7차 재리뷰가
+  // 앵커(파일명·규칙 ID)를 지운 것이 GB-06 을 3/5 까지 떨어뜨렸음을 실측했다.
+  // 그래서 통과 쪽 케이스를 차단 쪽보다 많이 둔다 — 넓게 잡는 게이트는 규칙을 뒤집는다.
+  const labelCases = [
+    ['리뷰 라벨 M-1',        ['M-1: 기준축을 고정한다'],                                  1],
+    ['소문자 m-2',           ['m-2 정렬을 고친다'],                                       1],
+    ['알파벳 꼬리 B-j',      ['B-j 처방을 이행한다'],                                     1],
+    ['회차 라벨 N9-2',       ['N9-2 를 반영한다'],                                        1],
+    ['괄호 안 (B-1)',        ['재리뷰 지적 (B-1) 을 닫는다'],                             1],
+    ['한 줄에 둘',           ['M-1 과 M-3 을 함께'],                                      2],
+    ['RQ-10 은 통과',        ['RQ-10 의 폴백 경로를 확인한다'],                           0],
+    ['GB-06 은 통과',        ['GB-06 재개 시험을 다시 채점한다'],                         0],
+    ['ADR-0005 는 통과',     ['ADR-0005 결정3 을 갱신한다'],                              0],
+    ['R12·P11 은 통과',      ['recurrence.md R12 와 policy-lint P11 을 본다'],            0],
+    ['파일명·경로는 통과',   ['scripts/eval-b.mjs 의 verify-artifact 를 고친다'],         0],
+    ['하이픈 단어는 통과',   ['fail-open 을 막고 auto-1 같은 이름은 그대로 둔다'],        0],
+    ['숫자 시작은 통과',     ['3-1 절의 표를 갱신한다'],                                  0],
+    ['빈 목록',              [],                                                          0],
+    ['null 항목',            [null, undefined, ''],                                       0],
+  ];
+  for (const [name, items, want] of labelCases) {
+    const got = judgeOutsideLabels(items).length;
+    const ok = got === want;
+    if (!ok) bad++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(22)} 기대 ${want ? `차단 ${want}건` : '통과'} · 실측 ${got ? `차단 ${got}건` : '통과'}`);
+  }
+
+  const total = cases.length + eolCases.length + labelCases.length;
+  console.log(bad ? `\n정책 린트 자기시험 실패 ${bad}건 / ${total}건 — 파서가 뚫린다.` : `\n정책 린트 자기시험 ${total}건 통과 (P11 파서 ${cases.length} · P9 줄바꿈 ${eolCases.length} · P12 바깥 라벨 ${labelCases.length}).`);
   process.exit(bad ? 1 : 0);
 }
 
@@ -834,6 +861,72 @@ function selfTest() {
 export function sameIgnoringEol(a, b) {
   const norm = (s) => String(s).replace(/\r\n/g, '\n');
   return norm(a) === norm(b);
+}
+
+/**
+ * P12 — 최신 체크포인트의 `next`·`open_questions` 에 **저장소 밖 라벨**이 있는가.
+ * **순수 함수다** (`--self-test`).
+ *
+ * `recurrence.md` R7 의 **재처방**이다. 1차 처방은 `checkpoint-resume` 스킬의 Guide 였고
+ * 2026-08-02 에 **내가 그 규칙을 쓴 뒤에 내가 어겼다** — `next` 에 `M-1`·`M-3`·`B-1`
+ * (리뷰 보고서 라벨)을 넣었고 `_workspace/` 는 gitignore 라 신선한 워크트리에 없어
+ * 재개 세션이 복원할 것을 못 찾았다. GB-06 Q3 가 1/3 으로 떨어졌다.
+ * 위계대로 Guide 가 실패하면 게이트로 올린다(R4 선례).
+ *
+ * **왜 최신 하나만 보는가**: 재개 시험이 읽는 것은 최신 체크포인트 하나다. 이력 전체를
+ * 걸면 과거의 모든 체크포인트가 영구히 빨갛고, 그런 게이트는 그날로 무시된다.
+ *
+ * **판별**: 저장소에 실재하는 식별자(`RQ-10`·`GB-06`·`ADR-0005`·`R12`·`P11`)는 통과시키고
+ * 리뷰 보고서 라벨(`M-1`·`B-1`·`m-2`·`B-j`·`N9-2`)만 잡는다. 전자는 글자 2개 이상으로
+ * 시작하거나 하이픈이 없고, 후자는 **한 글자 + (숫자) + 하이픈 + 한 자리**다.
+ * 스킬이 *"저장소에 실재하는 식별자는 반드시 남긴다"* 고 못박았으므로 넓게 잡으면 안 된다 —
+ * 7차 재리뷰가 앵커를 지운 것이 점수를 3/5 까지 떨어뜨렸음을 실측했다.
+ */
+const OUTSIDE_LABEL = /(^|[\s([{"'])([A-Za-z]\d?-[0-9a-z])(?=[\s:.,)\]}"']|$)/gu;
+export function judgeOutsideLabels(items) {
+  const hits = [];
+  for (const raw of items || []) {
+    const text = String(raw == null ? '' : raw);
+    for (const m of text.matchAll(OUTSIDE_LABEL)) hits.push({ label: m[2], text: text.slice(0, 60) });
+  }
+  return hits;
+}
+
+function checkCheckpointNarrative() {
+  const ls = spawnSync('git', ['ls-tree', '-r', '--name-only', 'HEAD', '--', '.harness/state/checkpoints'],
+    { cwd: ROOT, encoding: 'utf8' });
+  if (ls.status !== 0 || !ls.stdout.trim()) return; // 체크포인트가 없으면 이 검사의 관할이 아니다
+  const rows = ls.stdout.split('\n').map((s) => s.trim()).filter((f) => f.endsWith('.json'))
+    .map((rel) => {
+      const base = rel.slice(rel.lastIndexOf('/') + 1);
+      const mm = /^(.+?)(?:-(\d+))?\.json$/.exec(base);
+      const raw = mm ? mm[1] : base;
+      const t = /^(\d{8}T\d{6})(\d*)Z?$/.exec(raw);
+      return { rel, stamp: t ? `${t[1]}${(t[2] || '').padEnd(3, '0').slice(0, 3)}` : raw, seq: mm && mm[2] ? Number(mm[2]) : 0 };
+    })
+    .sort((a, b) => (a.stamp < b.stamp ? -1 : a.stamp > b.stamp ? 1 : a.seq - b.seq));
+  if (!rows.length) return;
+  const rel = rows[rows.length - 1].rel;
+  const show = spawnSync('git', ['show', `HEAD:${rel}`], { cwd: ROOT, encoding: 'utf8' });
+  if (show.status !== 0) return;
+  let ck;
+  try {
+    ck = JSON.parse(show.stdout);
+  } catch {
+    return; // 깨진 체크포인트는 P12 의 관할이 아니다 — 재개 시험이 그것을 잡는다
+  }
+  const s = ck.session || {};
+  const hits = judgeOutsideLabels([...(s.next || []), ...(s.open_questions || [])]);
+  if (!hits.length) return;
+  fail(
+    'P12',
+    `최신 체크포인트(${rel})의 next·open 에 저장소 밖 라벨 ${hits.length}건: ${[...new Set(hits.map((h) => h.label))].join(' ')}`,
+    '리뷰 보고서·이슈 번호·회차 약칭은 `_workspace/` 에 살고 그건 gitignore 라 신선한 워크트리에 없다. ' +
+      '재개하는 쪽은 복원할 것이 없어 자기 서사로 대체한다. 라벨을 지우고 **그 라벨이 가리키던 내용**을 쓰라 — ' +
+      '파일명·스크립트명·단계명·규칙 ID 같은 저장소에 실재하는 식별자는 그대로 남긴다. ' +
+      '`python harness/phase.py session --next "…"` 로 다시 선언한 뒤 전이를 한 번 거쳐야 체크포인트에 반영된다. ' +
+      '(recurrence R7 재처방 — 1차 Guide 가 실패해 게이트로 올라왔다.)'
+  );
 }
 
 function checkGenerated(m, r) {
@@ -994,6 +1087,7 @@ if (matrix) {
   checkShadowing(matrix);
 }
 checkRecurrence();
+checkCheckpointNarrative();
 if (matrix) checkPatterns(matrix);
 if (risk) checkRisk(risk);
 if (matrix && risk && !args.includes('--print')) checkGenerated(matrix, risk);
@@ -1023,6 +1117,8 @@ const checks = [
   ['P8', '매칭 불가능한 패턴 없음'],
   ['P9', '생성물(README) 동기화'],
   ['P10', 'enforced_by 대조 (settings.json 실집행)'],
+  ['P11', '반복 대장 — 2회 이상 미처방 없음'],
+  ['P12', '최신 체크포인트 서사에 저장소 밖 라벨 없음 (R7 재처방)'],
 ];
 for (const [id, label] of checks) {
   const n = problems.filter((p) => p.id === id).length;
