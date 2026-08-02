@@ -81,6 +81,19 @@
 
 ## 하네스 작업 이력 (완료분)
 
+- [ ] 🔄 2026-07-31 — **입력 해시 밖의 축 두 개** (브랜치 `fix/harness-artifact-checkpoint`)
+      8차 재리뷰가 "추정"으로 남기고 9차가 관측한 위험을 게이트로 내린다.
+      ① `--verify-artifact` 가 GB-06 의 채점 대상 체크포인트를 최신 커밋본과 대조한다
+      — `inputs_hash` 는 `HASH_GLOBS` 만 덮고 `.harness/state` 는 밖이라, 체크포인트가
+      교체돼도 해시가 그대로여서 **옛 판정이 새 상태의 보증처럼 읽혔다**(실측: 아티팩트
+      `e286fa86` 의 초록은 하루 전 다른 RQ 의 체크포인트에 대한 것).
+      ② `policy-lint` P9 가 저장소가 아니라 체크아웃 환경을 재고 있었다 — `* text=auto`
+      탓에 Windows 에서만 빨갛고 CI(Linux)는 초록. 비교 축에서 줄바꿈을 뺐다(R9 부류).
+      음성 시험 16건 신설. 참조: `scripts/{eval-b,policy-lint}.mjs`, `harness/recurrence.md` R2·R9.
+      ⚠️ 같은 부류의 미처방 구멍 1건 — `HASH_GLOBS` 에 `scripts/` 가 없어 **채점기
+      (`resume-test.mjs`)와 채점 엔진(`eval-b.mjs`) 자체를 바꿔도 옛 아티팩트가 유효**하다.
+      아직 실패로 관측된 적이 없어 반복 대장에는 넣지 않았다(대장은 실패 원장이다).
+      처방 비용이 트랙 B 전수 재실행 1회라 `HASH_GLOBS` 를 건드리는 다음 PR 에 동행한다.
 - [x] 2026-07-16 — 하네스 구축·게이트·CD 골격·원장 체계 (PR #1~#6)
       상세: `docs/harness/changelog.md`
 - [x] 2026-07-28 — **반복 실패 대장** `harness/recurrence.md` + `policy-lint` P11

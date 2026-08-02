@@ -124,8 +124,27 @@ if (argv.includes('--self-test')) {
     console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(24)} 기대 ${want ? `차단 ${want}건` : '통과'} · 실측 ${got ? `차단 ${got}건` : '통과'}`);
   }
 
-  const total = cases.length + ckCases.length;
-  console.log(bad ? `\neval-b 자기시험 실패 ${bad}건 / ${total}건.` : `\neval-b 자기시험 ${total}건 통과 (준비 게이트 ${cases.length} · 체크포인트 신선도 ${ckCases.length}).`);
+  // 캐시 무효화 — 신선도 판정과 **다른 규칙**임을 시험이 고정한다.
+  // 특히 `ok:false` 는 신선도에서는 무시되고 캐시에서는 무효화 사유다.
+  // 두 표를 나란히 두지 않으면 다음 사람이 하나를 다른 하나로 "통일"한다.
+  const cacheCases = [
+    ['일치 → 재사용',        { auto: [{ ok: true, sub: { checkpoint: NEW } }] },        NEW, false],
+    ['불일치 → 무효',        { auto: [{ ok: true, sub: { checkpoint: OLD } }] },        NEW, true],
+    ['실패 + 불일치 → 무효', { auto: [{ ok: false, sub: { checkpoint: OLD } }] },       NEW, true],
+    ['실패 + 일치 → 재사용', { auto: [{ ok: false, sub: { checkpoint: NEW } }] },       NEW, false],
+    ['채점 대상 없음',       { auto: [{ ok: true }] },                                  NEW, false],
+    ['auto 없음',            { status: 'pass' },                                        NEW, false],
+    ['최신이 null',          { auto: [{ ok: true, sub: { checkpoint: OLD } }] },        null, true],
+  ];
+  for (const [name, prev, newest, want] of cacheCases) {
+    const got = cacheIsStale(prev, newest);
+    const ok = got === want;
+    if (!ok) bad++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(24)} 기대 ${want ? '캐시 무효' : '재사용'} · 실측 ${got ? '캐시 무효' : '재사용'}`);
+  }
+
+  const total = cases.length + ckCases.length + cacheCases.length;
+  console.log(bad ? `\neval-b 자기시험 실패 ${bad}건 / ${total}건.` : `\neval-b 자기시험 ${total}건 통과 (준비 게이트 ${cases.length} · 체크포인트 신선도 ${ckCases.length} · 캐시 무효화 ${cacheCases.length}).`);
   process.exit(bad ? EXIT_FAIL : EXIT_PASS);
 }
 const VERIFY_ONLY = argv.includes('--verify-artifact');
@@ -1342,6 +1361,24 @@ export function judgeCheckpointFreshness(cases, newest) {
 }
 
 /**
+ * 캐시된 케이스 결과를 **버려야 하는가**. **순수 함수다** (`--self-test`).
+ *
+ * `cacheValid` 는 `inputs_hash` 하나만 본다. 그 해시는 `.harness/state` 를 안 덮으므로
+ * 체크포인트가 교체돼도 캐시는 유효로 남는다. 그러면 `--verify-artifact` 는
+ * "옛 체크포인트를 채점했다"며 거부하는데 그 거부가 처방한 `--case GB-06` 은
+ * 캐시를 재사용해 **아무것도 다시 채점하지 않는다** — 게이트가 요구하는 것을
+ * 게이트의 처방이 만들어내지 못한다. 2026-08-02 실측으로 물렸다.
+ *
+ * `judgeCheckpointFreshness` 와 판정이 **일부러 다르다**: 저쪽은 통과 판정만 세고
+ * (실패는 이미 다른 문제로 잡혔으므로), 이쪽은 **실패한 결과도 무효로 만든다.**
+ * 오늘 물린 것이 정확히 그 자리다 — 옛 체크포인트에 대한 `fail` 이 재사용됐다.
+ * 같은 규칙을 두 곳에 쓰면 둘 중 하나가 반드시 틀린다.
+ */
+export function cacheIsStale(prevCase, newest) {
+  return (prevCase?.auto || []).some((a) => a && a.sub && a.sub.checkpoint && a.sub.checkpoint !== newest);
+}
+
+/**
  * 최신 **커밋된** 체크포인트의 저장소 상대 경로. 없으면 null.
  *
  * 정렬 키는 파일명의 `(스탬프, 충돌순번)` 이다. `resume-test.mjs` 의
@@ -1413,10 +1450,20 @@ const prevArt = prevArts.length ? prevArts[prevArts.length - 1].data : null;
 const cacheValid = prevArt && prevArt.inputs_hash === INPUTS_HASH && !FORCE;
 if (cacheValid) say(`  캐시      : 입력 해시가 직전 실행과 같다 — 이미 결과가 있는 케이스는 재실행하지 않는다 (--force 로 무시)`);
 
+// 캐시가 무효가 되는 **두 번째** 축 — 채점 대상이 바뀌었는가.
+// `inputs_hash` 는 HASH_GLOBS 만 덮으므로 체크포인트가 교체돼도 캐시는 유효로 남는다.
+// 그 상태에서 `--verify-artifact` 는 "옛 체크포인트를 채점했다"며 거부하는데
+// `--case GB-06` 은 캐시를 재사용해 **아무것도 다시 채점하지 않는다** — 게이트가
+// 요구하는 것을 게이트의 처방이 만들어내지 못한다. 실측으로 물렸다(2026-08-02).
+// 두 메커니즘이 같은 축을 봐야 모순이 없다.
+const NEWEST_CK = newestCommittedCheckpoint();
+
 const results = {};
 for (const c of selected) {
   const prev = prevArt?.cases?.[c.id] || null;
-  if (cacheValid && prev && (prev.status === 'pass' || prev.status === 'fail')) {
+  if (cacheValid && prev && cacheIsStale(prev, NEWEST_CK)) {
+    say(`  ${c.id}  캐시 무효 — 채점 대상 체크포인트가 교체됐다 (${prev.auto.find((a) => a?.sub?.checkpoint)?.sub.checkpoint} → ${NEWEST_CK})`);
+  } else if (cacheValid && prev && (prev.status === 'pass' || prev.status === 'fail')) {
     results[c.id] = { ...prev, cached: true };
     say(`  ${c.id}  캐시 재사용 (${prev.status})`);
     continue;
