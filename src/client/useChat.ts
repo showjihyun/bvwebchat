@@ -228,20 +228,14 @@ export function useChat(nickname: string | null, onResumeFail?: () => void): Cha
         return;
       }
       const socket = socketRef.current;
-      // 최초 join: ack의 히스토리(RQ-11)를 기존 앞에 prepend. 서버가 히스토리와
-      // 라이브의 무중복을 보장하므로(한 메시지는 둘 중 하나에만), ack 전 도착한
-      // 라이브가 있어도 prepend로 순서(과거→현재) 유지하며 잃지 않는다.
-      // nickname(App prop, resume 중이면 null)이 아니라 selfNickname(서버 확정값)을
-      // 쓴다 — RQ-10-a: resume 성공 직후 사용자가 새 room에 참여해도 올바른 본인
-      // 닉네임으로 join되어야 한다.
-      socket?.emit('join', { room: name, nickname: selfNickname }, (result) => {
-        if (!result.ok) return;
-        const historyMsgs: ClientMessage[] = result.history.map((m) => {
-          msgSeq += 1;
-          return { id: `h${msgSeq}`, room: m.room, nickname: m.nickname, body: m.body, at: Date.now() };
-        });
-        setMessagesByRoom((prev) => ({ ...prev, [name]: [...historyMsgs, ...(prev[name] ?? [])] }));
-      });
+      // RQ-13-a: 거부(ok:false) 시 되돌릴 직전 활성 room을 스냅샷한다. 이 room
+      // 자체는 (위 가드가 재참여를 이미 걸러내) 시도 전엔 rooms/messagesByRoom/
+      // participantsByRoom 어디에도 없었으므로 그쪽 롤백은 "제거"로 충분하지만,
+      // activeRoom은 "어디로 되돌릴지"가 자명하지 않아(직전 room? null?) 직전 값을
+      // 보존해 되돌린다.
+      const prevActiveRoom = activeRoomRef.current;
+
+      // 낙관적 갱신: 서버 ack을 기다리지 않고 즉시 반영(체감 지연 없음, GA-30).
       roomsRef.current = [...roomsRef.current, name];
       setRooms(roomsRef.current);
       selectRoom(name);
@@ -249,6 +243,41 @@ export function useChat(nickname: string | null, onResumeFail?: () => void): Cha
       // 혼자 입장(founding join)은 서버가 방송하지 않으므로 본인을 seed —
       // 두 번째 참여자가 오면 서버 방송(participants)이 권위 목록으로 대체한다.
       setParticipantsByRoom((prev) => (prev[name] ? prev : { ...prev, [name]: [selfNickname] }));
+
+      // nickname(App prop, resume 중이면 null)이 아니라 selfNickname(서버 확정값)을
+      // 쓴다 — RQ-10-a: resume 성공 직후 사용자가 새 room에 참여해도 올바른 본인
+      // 닉네임으로 join되어야 한다.
+      socket?.emit('join', { room: name, nickname: selfNickname }, (result) => {
+        if (!result.ok) {
+          // RQ-13-a(GA-28/GA-29): 서버 거부 — 위 낙관적 갱신 5개를 모두 되돌린다.
+          // 거부 사유(예약 이름 vs 빈 nickname)는 구분하지 않는다 — ok:false만 본다.
+          roomsRef.current = roomsRef.current.filter((r) => r !== name);
+          setRooms(roomsRef.current);
+          activeRoomRef.current = prevActiveRoom;
+          setActiveRoomState(prevActiveRoom);
+          setMessagesByRoom((prev) => {
+            if (!(name in prev)) return prev;
+            const next = { ...prev };
+            delete next[name];
+            return next;
+          });
+          setParticipantsByRoom((prev) => {
+            if (!(name in prev)) return prev;
+            const next = { ...prev };
+            delete next[name];
+            return next;
+          });
+          return;
+        }
+        // 최초 join 성공: ack의 히스토리(RQ-11)를 기존 앞에 prepend. 서버가 히스토리와
+        // 라이브의 무중복을 보장하므로(한 메시지는 둘 중 하나에만), ack 전 도착한
+        // 라이브가 있어도 prepend로 순서(과거→현재) 유지하며 잃지 않는다.
+        const historyMsgs: ClientMessage[] = result.history.map((m) => {
+          msgSeq += 1;
+          return { id: `h${msgSeq}`, room: m.room, nickname: m.nickname, body: m.body, at: Date.now() };
+        });
+        setMessagesByRoom((prev) => ({ ...prev, [name]: [...historyMsgs, ...(prev[name] ?? [])] }));
+      });
     },
     [selfNickname, selectRoom],
   );
