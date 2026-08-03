@@ -1,0 +1,62 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "fix/RQ-13-a-join-rollback",
+  "edge_legal": true,
+  "exit_hint": "테스트를 커밋한 뒤 → python harness/phase.py enter GREEN  (가드: tests/** 커밋 ≥1, 정당한 Red 증거)",
+  "forced": false,
+  "from": "PLAN",
+  "guards": [
+    {
+      "ms": 0,
+      "name": "no_pending_spec",
+      "ok": true
+    },
+    {
+      "ms": 0,
+      "name": "session_declared",
+      "ok": true
+    },
+    {
+      "ms": 30,
+      "name": "tree_clean",
+      "ok": true
+    }
+  ],
+  "head_sha": "47d03d068d5393958767391aee79484fe43948ca",
+  "reason": null,
+  "rq": "RQ-13",
+  "schema": 1,
+  "seq": 118,
+  "session": {
+    "acceptance": [
+      "서버가 join 을 거부하면(ok:false) 클라이언트의 참여 room 목록·활성 room·참여자 목록·메시지 패널에 그 room 이 남지 않는다",
+      "예약 이름(global) 거부와 빈 닉네임 거부 두 경로 모두에서 성립한다",
+      "성공 경로의 낙관적 갱신은 그대로 유지된다 — 롤백이 정상 참여를 느리게 하거나 깜빡이게 하지 않는다",
+      "골든 케이스가 클라이언트 축을 덮는다 — 서버 거부만으로는 이 결함이 관측되지 않았다"
+    ],
+    "done": [
+      "직전 작업(하네스 동결)은 PR #35 로 머지되고 배포까지 초록으로 끝났다. 종료 조건 4개가 docs/progress.md 에 있고, 이 과업은 그 조건 1이 말하는 '하네스가 아닌 제품 작업'의 첫 건이다",
+      "결함의 소재를 확정했다 — src/client/useChat.ts 의 joinRoom 이 socket.emit('join') 의 ack 콜백 밖에서 roomsRef·setRooms·selectRoom·setMessagesByRoom·setParticipantsByRoom 을 무조건 실행한다. ack 콜백은 if (!result.ok) return 으로 거부를 삼킬 뿐 되돌리지 않는다",
+      "서버의 거부 경로 두 개를 확인했다 — src/server/chat/room.ts 의 room·nickname 빈 문자열 검사와 예약 이름 global 검사. 전자가 resume 대기 창의 빈 닉네임으로 발화하고 후자가 GA-24 다",
+      "GA-24 의 then 이 서버 측(별도 room 미생성·목록 불변)만 말하고 클라이언트 축이 비어 있음을 확인했다 — 이 결함이 골든을 통과한 이유다",
+      "SPEC 에서 골든 3건을 신설했다 — GA-28 예약 이름 거부 · GA-29 빈 닉네임 거부 · GA-30 성공 경로 유지(대조군). 대조군이 없으면 항상 롤백 이라는 틀린 구현이 앞의 둘을 통과한다",
+      "SPEC 산출물을 커밋했다 — 골든 3건과 원장 행"
+    ],
+    "goal": "GA-24 는 서버가 예약 이름 참여를 거부하는 것까지만 검증한다. 클라이언트는 그 거부를 읽지 않고 낙관적 갱신을 그대로 두므로, 사용자에게는 참여에 성공한 것으로 보이는 room 이 남는다. 거기서 보낸 메시지는 서버가 다시 거부해 아무 일도 일어나지 않는다 — UI 가 시스템이 갖고 있지 않은 상태를 단언하는 것이고, 이것이 RQ-13 의 거부를 사용자에게 무의미하게 만든다. 빈 닉네임 경로는 같은 결함의 두 번째 트리거일 뿐이라 롤백 하나로 둘 다 닫힌다",
+    "next": [
+      "RED 로 전이해 test-writer 로 실패 테스트를 만든다 — 제목에 골든 ID 를 넣어야 커버리지가 이어진다",
+      "GREEN 에서 coder 로 최소 구현한다",
+      "EVAL 에서 evaluator 로 독립 평가한다"
+    ],
+    "open_questions": [
+      "센티널 제거(nickname ?? '')는 이 PR 범위 밖이다 — 순서상 롤백이 먼저이고, 센티널을 먼저 고치면 빈 닉네임 거부가 사라져 이 결함의 실패 테스트를 쓸 수 없다"
+    ]
+  },
+  "to": "RED",
+  "ts": "2026-08-03T09:26:38.362Z",
+  "write_allow": [
+    "tests/**",
+    "_workspace/**",
+    "docs/progress.md"
+  ]
+}

@@ -228,27 +228,103 @@ export function useChat(nickname: string | null, onResumeFail?: () => void): Cha
         return;
       }
       const socket = socketRef.current;
-      // 최초 join: ack의 히스토리(RQ-11)를 기존 앞에 prepend. 서버가 히스토리와
-      // 라이브의 무중복을 보장하므로(한 메시지는 둘 중 하나에만), ack 전 도착한
-      // 라이브가 있어도 prepend로 순서(과거→현재) 유지하며 잃지 않는다.
+      // RQ-13-a: 거부(ok:false) 시 되돌릴 상태를 스냅샷한다. `name` 자체는 (위 가드가
+      // 재참여를 이미 걸러내) roomsRef엔 시도 전엔 없었지만, messagesByRoom/
+      // participantsByRoom은 **다를 수 있다** — 예: 'global'은 roomsRef엔 절대
+      // 안 들어가도(:156) 이미 대화가 쌓여 있을 수 있다. 낙관적 갱신은 키가 이미
+      // 있으면 no-op이므로(D5), 되돌릴 때 필요한 건 값이 아니라 **존재 여부**뿐이다
+      // — 있었으면 롤백도 no-op(그 사이 도착한 갱신을 보존), 없었으면 새로 만든
+      // 키를 제거한다.
+      // activeRoom도 마찬가지로 직전 값을 보존해 되돌린다(D3: 그 사이 사용자가
+      // 다른 room으로 옮겼으면 되돌리지 않는다 — 아래 ack 분기에서 조건부 복원).
+      const prevActiveRoom = activeRoomRef.current;
+      let hadMessages = false;
+      let hadParticipants = false;
+
+      // 낙관적 갱신: 서버 ack을 기다리지 않고 즉시 반영(체감 지연 없음, GA-30).
+      roomsRef.current = [...roomsRef.current, name];
+      setRooms(roomsRef.current);
+      // activeRoom은 로컬 상태만 낙관적으로 세팅한다(GA-30 충족). 서버 통지
+      // (emit('activeRoom'))와 안읽음 0 처리는 join 성공이 ack로 확정된 뒤로
+      // 미룬다 — RQ-13-a D1: 아직 참여하지 않은(서버 기준) room을 activeRoom으로
+      // 통지하면 서버가 거부해(session.ts:228) RQ-18 회귀(안읽음 오증가)가 생긴다.
+      // emit('join')의 위치는 되돌리지 않는다 — 그러면 테스트 더블의 동기 ack
+      // 때문에 롤백이 낙관적 갱신보다 먼저 실행돼 무효화된다(축4 관찰).
+      activeRoomRef.current = name;
+      setActiveRoomState(name);
+      setMessagesByRoom((prev) => {
+        hadMessages = name in prev;
+        return prev[name] ? prev : { ...prev, [name]: [] };
+      });
+      // 혼자 입장(founding join)은 서버가 방송하지 않으므로 본인을 seed —
+      // 두 번째 참여자가 오면 서버 방송(participants)이 권위 목록으로 대체한다.
+      setParticipantsByRoom((prev) => {
+        hadParticipants = name in prev;
+        return prev[name] ? prev : { ...prev, [name]: [selfNickname] };
+      });
+
       // nickname(App prop, resume 중이면 null)이 아니라 selfNickname(서버 확정값)을
       // 쓴다 — RQ-10-a: resume 성공 직후 사용자가 새 room에 참여해도 올바른 본인
       // 닉네임으로 join되어야 한다.
       socket?.emit('join', { room: name, nickname: selfNickname }, (result) => {
-        if (!result.ok) return;
+        if (!result.ok) {
+          // RQ-13-a(GA-28/GA-29): 서버 거부 — 위 낙관적 갱신을 되돌린다.
+          // 거부 사유(예약 이름 vs 빈 nickname)는 구분하지 않는다 — ok:false만 본다.
+          roomsRef.current = roomsRef.current.filter((r) => r !== name);
+          setRooms(roomsRef.current);
+          // D3: 그 사이 사용자가 다른 room으로 옮겼으면 activeRoom을 되돌리지
+          // 않는다 — 먼저 보낸 join의 늦은 거부가 지금 보고 있는 room을 빼앗지
+          // 않도록.
+          if (activeRoomRef.current === name) {
+            // M-2: prevActiveRoom을 무조건 복원하면, 동시에 진행 중이던 다른 join이
+            // 먼저 거부되어 prevActiveRoom 자신이 이미 rooms에서 빠진 뒤일 수 있다
+            // (예: room-A join 도중 room-B join이 활성화 → A 거부(활성은 이미 B라
+            // 안 건드림, rooms에서 A만 제거) → B도 거부 → prevActiveRoom_B='room-A'를
+            // 무조건 복원하면 rooms=[]인데 activeRoom='room-A'를 가리키는 유령 상태가
+            // 된다). 위 filter로 최신 상태가 반영된 roomsRef.current에 prevActiveRoom이
+            // 여전히 있을 때만 복원하고, 없으면(또는 애초에 null이면) null로 떨어뜨린다.
+            const restoreTo =
+              prevActiveRoom !== null && roomsRef.current.includes(prevActiveRoom) ? prevActiveRoom : null;
+            activeRoomRef.current = restoreTo;
+            setActiveRoomState(restoreTo);
+          }
+          // D5: 낙관적 갱신은 키가 이미 있으면(예: 'global') 아무것도 하지 않는
+          // no-op이었다(:255,:262) — 그 역연산도 no-op이어야 한다. 스냅샷 값으로
+          // "복원"하면 ack 대기 중 도착한 message/participants(:187,:195)가
+          // 지워진다(부모 191847f와 같은 손실 — D2 잔여). 낙관적 갱신이 새로
+          // 키를 만든 경우에만 그 키를 제거한다.
+          setMessagesByRoom((prev) => {
+            if (hadMessages || !(name in prev)) return prev;
+            const next = { ...prev };
+            delete next[name];
+            return next;
+          });
+          setParticipantsByRoom((prev) => {
+            if (hadParticipants || !(name in prev)) return prev;
+            const next = { ...prev };
+            delete next[name];
+            return next;
+          });
+          // D4: 낙관적 unread 0 처리를 애초에 성공 분기로 미뤘으므로(아래) 거부
+          // 시 되돌릴 unread 변경 자체가 없다.
+          return;
+        }
+        // 최초 join 성공: ack의 히스토리(RQ-11)를 기존 앞에 prepend. 서버가 히스토리와
+        // 라이브의 무중복을 보장하므로(한 메시지는 둘 중 하나에만), ack 전 도착한
+        // 라이브가 있어도 prepend로 순서(과거→현재) 유지하며 잃지 않는다.
         const historyMsgs: ClientMessage[] = result.history.map((m) => {
           msgSeq += 1;
           return { id: `h${msgSeq}`, room: m.room, nickname: m.nickname, body: m.body, at: Date.now() };
         });
         setMessagesByRoom((prev) => ({ ...prev, [name]: [...historyMsgs, ...(prev[name] ?? [])] }));
+        // RQ-18/D1·D4: join이 서버에서 확정된 뒤에야 활성 room을 통지하고
+        // 안읽음을 0 처리한다 — 그 사이 사용자가 다른 room으로 옮겼으면 건드리지
+        // 않는다(D3과 동일 원칙).
+        if (activeRoomRef.current === name) {
+          socketRef.current?.emit('activeRoom', { room: name }, () => undefined);
+          setUnreadByRoom((prev) => (prev[name] ? { ...prev, [name]: 0 } : prev));
+        }
       });
-      roomsRef.current = [...roomsRef.current, name];
-      setRooms(roomsRef.current);
-      selectRoom(name);
-      setMessagesByRoom((prev) => (prev[name] ? prev : { ...prev, [name]: [] }));
-      // 혼자 입장(founding join)은 서버가 방송하지 않으므로 본인을 seed —
-      // 두 번째 참여자가 오면 서버 방송(participants)이 권위 목록으로 대체한다.
-      setParticipantsByRoom((prev) => (prev[name] ? prev : { ...prev, [name]: [selfNickname] }));
     },
     [selfNickname, selectRoom],
   );
