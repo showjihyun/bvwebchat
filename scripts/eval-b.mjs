@@ -166,8 +166,31 @@ if (argv.includes('--self-test')) {
     console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(24)} 기대 ${want ? want.slice(P.length) : '(없음)'} · 실측 ${got ? got.slice(P.length) : '(없음)'}`);
   }
 
-  const total = cases.length + ckCases.length + cacheCases.length + sortCases.length;
-  console.log(bad ? `\neval-b 자기시험 실패 ${bad}건 / ${total}건.` : `\neval-b 자기시험 ${total}건 통과 (준비 게이트 ${cases.length} · 체크포인트 신선도 ${ckCases.length} · 캐시 무효화 ${cacheCases.length} · 최신 정렬 ${sortCases.length}).`);
+  // 실행 범위 슬라이스 — rubric 이 저장소 전 이력이 아니라 **이번 실행**을 재게 한다.
+  // 차단 쪽에 `통과값 + 부정어` 짝을 넣는다(R2): 기준선 **앞**에 forced 가 있는데도
+  // 통과해야 하는 형상이 이 결함의 본체이기 때문이다.
+  const F = (from, to, forced) => ({ from, to, forced });
+  const HIST = [F('IDLE', 'HARNESS'), F('RED', 'GREEN', true), F('HARNESS', 'REVIEW')];
+  const sliceCases = [
+    ['기준선 0 — 전부 이번 실행',   HIST, 0, 3, 1],
+    ['기준선이 이력 전체',           HIST, 3, 0, 0],
+    ['이력에 forced, 이번엔 없음',   HIST, 2, 1, 0],
+    ['이번 실행이 forced 를 냈다',   [...HIST, F('RED', 'GREEN', true)], 3, 1, 1],
+    ['기준선이 길이 초과',           HIST, 99, 0, 0],
+    ['기준선 없음(구 아티팩트)',     HIST, undefined, 3, 1],
+    ['기준선 음수',                  HIST, -1, 3, 1],
+    ['빈 로그',                      [], 0, 0, 0],
+  ];
+  for (const [name, log, baseline, wantLen, wantForced] of sliceCases) {
+    const got = sliceRunPhaseLog(log, baseline);
+    const gotForced = got.filter((r) => r.forced).length;
+    const ok = got.length === wantLen && gotForced === wantForced;
+    if (!ok) bad++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(24)} 기대 ${wantLen}건(forced ${wantForced}) · 실측 ${got.length}건(forced ${gotForced})`);
+  }
+
+  const total = cases.length + ckCases.length + cacheCases.length + sortCases.length + sliceCases.length;
+  console.log(bad ? `\neval-b 자기시험 실패 ${bad}건 / ${total}건.` : `\neval-b 자기시험 ${total}건 통과 (준비 게이트 ${cases.length} · 체크포인트 신선도 ${ckCases.length} · 캐시 무효화 ${cacheCases.length} · 최신 정렬 ${sortCases.length} · 실행 범위 ${sliceCases.length}).`);
   process.exit(bad ? EXIT_FAIL : EXIT_PASS);
 }
 const VERIFY_ONLY = argv.includes('--verify-artifact');
@@ -407,10 +430,35 @@ function globMatch(p, pat) {
   return globRe(pat).test(String(p).replace(/\\/g, '/'));
 }
 
-function collectEvidence(wt, baseSha) {
+/**
+ * **이번 실행이 만든 전이만** 잘라낸다.
+ *
+ * `phase.jsonl` 은 append-only 이고 커밋 대상이라 워크트리에 **저장소의 전 이력**이
+ * 들어 있다. rubric 이 그것을 그대로 세면 *"이번 세션이 무엇을 했나"* 가 아니라
+ * *"이 저장소가 여태 무엇을 했나"* 를 재게 된다.
+ *
+ * 2026-08-04 실측: RQ-13-a 에서 사람이 승인한 `force` 1건(151 전이 중)이 GB-04·GB-07
+ * 의 `no_force` 를 **영구히** 실패시켰다 — 지우지 않는 한 앞으로 모든 트랙 B 가 빨갛다.
+ * `evaluator_pass` 의 fail-open(append 된 옛 판정이 최신을 덮음)과 **같은 부류**이고
+ * `recurrence.md` R5 가 이름 붙인 것이기도 하다: *"rubric 이 측정 대상이 아닌 것을 잰다"*.
+ *
+ * 기준선은 **시드 직후의 줄 수**다 — 시드가 만드는 전이는 준비이지 세션의 행동이
+ * 아니므로 함께 잘라낸다. 기준선이 없으면(구 아티팩트 호환) 전체를 돌려주되
+ * 그 사실이 판정에 드러나야 하므로 호출부가 명시적으로 넘긴다.
+ */
+export function sliceRunPhaseLog(phaseLog, baselineCount) {
+  const n = Number.isInteger(baselineCount) && baselineCount >= 0 ? baselineCount : 0;
+  return phaseLog.slice(n);
+}
+
+function collectEvidence(wt, baseSha, phaseBaseline) {
   const trajectory = readJsonl(join(wt, '.harness/logs/trajectory.jsonl'));
   const tools = readJsonl(join(wt, '.harness/logs/tools.jsonl'));
-  const phaseLog = readJsonl(join(wt, '.harness/state/phase.jsonl'));
+  const phaseLogAll = readJsonl(join(wt, '.harness/state/phase.jsonl'));
+  // rubric 이 보는 것은 **이번 실행의 전이**다. 전 이력은 phaseLogAll 로 따로 둔다 —
+  // 지우지 않는 이유: 이력이 필요한 판정이 나중에 생길 수 있고, 그때 이 구별이
+  // 이미 있어야 한다. 지금 그것을 쓰는 rubric 은 없다.
+  const phaseLog = sliceRunPhaseLog(phaseLogAll, phaseBaseline);
 
   // git 이 본 실제 변경 — **셸 우회를 잡는 유일한 증거다.** 훅 로그는 도구를
   // 거친 것만 알고, `node -e "fs.writeFileSync(...)"` 는 훅에서 보이지 않는다.
@@ -435,6 +483,7 @@ function collectEvidence(wt, baseSha) {
     trajectory,
     tools,
     phaseLog,
+    phaseLogAll,
     dirty,
     committed,
     commitTouched: [...new Set(commitTouched)],
@@ -997,6 +1046,9 @@ function runCase(c, prev) {
     if (!add.ok) return { id: c.id, status: 'unprepared', why: `worktree add 실패: ${add.err.slice(0, 200)}`, auto: [], judge: [], hint: '`git worktree list` 후 `git worktree prune` 하고 다시 실행하라.' };
     const baseSha = git(['rev-parse', 'HEAD'], wt).out;
     for (const n of seedWorktree(wt, setup, c.id)) say(`    준비: ${n}`);
+    // 시드 **직후**의 전이 줄 수가 기준선이다 — 저장소 전 이력과 시드가 만든 전이는
+    // 이 세션의 행동이 아니다. 이 줄이 없으면 rubric 이 남의 이력을 센다(2026-08-04).
+    const phaseBaseline = readJsonl(join(wt, '.harness/state/phase.jsonl')).length;
 
     const pp = preconditionProblem(wt, setup.precondition);
     if (pp) {
@@ -1037,7 +1089,7 @@ function runCase(c, prev) {
       return { id: c.id, status: 'unavailable', why: `claude -p 가 결과를 내지 못했다 (exit ${r.status}): ${(r.stderr || '').trim().slice(-200)}`, auto: [], judge: [], hint: '`claude` 를 대화형으로 띄워 로그인 상태를 확인하라. 실행 못 한 것은 FAIL 이 아니다.' };
     }
 
-    const ev = collectEvidence(wt, baseSha);
+    const ev = collectEvidence(wt, baseSha, phaseBaseline);
     const rows = exec.auto.map((r2) => {
       const res = CHECKS[r2.auto.check](r2.auto.args || {}, ev, { setupPhase: setup.phase });
       return { text: r2.text, check: r2.auto.check, ...res };
