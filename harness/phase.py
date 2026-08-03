@@ -243,13 +243,48 @@ def guard_exec(root: Path, spec: dict, var: dict) -> tuple[bool, str, dict]:
     return p.returncode == want, detail, {}
 
 
+def judge_latest_verdict(text: str, latest_re: str, pattern: str) -> tuple[bool, str]:
+    """판정 줄이 여러 번 나오는 문서에서 **마지막 것만** 본다.
+
+    `file_contains` 는 `re.search` 로 파일 전체를 봤다. 평가·리뷰 보고서는 회차를
+    append 하는 규약이라, **옛 `판정: PASS` 가 최신 `판정: FAIL` 을 덮었다** —
+    RQ-13-a 실측: 856행 PASS(3차) · 1239행 FAIL(4차) 공존에 가드가 통과했다.
+    `newer_than_glob` 도 append 가 mtime 을 갱신해 함께 충족됐다.
+
+    구조 처방(보고서를 단일 판정으로 강제)은 버렸다 — 회차별 근거가 사라진다.
+    실제로 RQ-13-a 에서 평가자가 자기 1차 판정을 4차에 정정한 것이 append 였기에
+    남았고 그것이 리뷰어의 판단 재료였다. **감사 추적을 없애서 얻는 안전은 순손실이다.**
+
+    매칭이 하나도 없으면 실패한다 — 판정할 수 없는 가드는 없는 가드다(R2).
+    """
+    hits = list(re.finditer(latest_re, text))
+    if not hits:
+        return False, f"판정 줄이 하나도 없다 (찾는 형태: {latest_re!r})"
+    last = hits[-1]
+    if not re.search(pattern, last.group(0)):
+        line_no = text.count("\n", 0, last.start()) + 1
+        return False, (
+            f"**최신** 판정이 기대와 다르다 — {last.group(0).strip()!r} "
+            f"({len(hits)}건 중 마지막, {line_no}행). "
+            f"앞에 기대값이 있어도 열리지 않는다: 보고서는 회차를 append 하므로 "
+            f"마지막 판정만 유효하다. 조치: 판정을 다시 받고 새 줄을 append 하라"
+        )
+    return True, ""
+
+
 def guard_file_contains(root: Path, spec: dict, var: dict) -> tuple[bool, str, dict]:
     rel = st.interpolate(spec["file"], var)
     target = root / rel
     if not target.exists():
         return False, f"파일이 없다: {rel}", {}
     text = target.read_text(encoding="utf-8", errors="replace")
-    if not re.search(spec["pattern"], text):
+    latest = spec.get("latest_of")
+    if latest:
+        # 최신 판정 축. latest_of 가 없는 가드는 동작이 바뀌지 않는다(하위 호환).
+        ok, why = judge_latest_verdict(text, latest, spec["pattern"])
+        if not ok:
+            return False, f"{rel} — {why}", {}
+    elif not re.search(spec["pattern"], text):
         return False, f"{rel} 에 패턴 {spec['pattern']!r} 가 없다", {}
     newer = spec.get("newer_than_glob")
     if newer:
@@ -522,8 +557,36 @@ def cmd_self_test() -> int:
             bad += 1
         _out(f"  {'PASS' if ok else 'FAIL'}  {name:<22} 기대 {'차단' if want else '통과'} · "
              f"실측 {'차단' if got else '통과'}")
+    # 최신 판정 축 — append 보고서에서 옛 판정이 최신을 덮던 fail-open (2026-08-03).
+    # R2 요구대로 차단 쪽에 **통과값 + 부정어** 짝을 넣는다: 기대값 문자열이 파일 안에
+    # 있는데도 차단돼야 하는 형상이 이 결함의 본체이기 때문이다.
+    LATEST = r"(?m)^\s*판정\s*:\s*\S+\s*$"
+    WANT_PASS = r"(?m)^\s*판정\s*:\s*PASS\s*$"
+    verdict_cases = [
+        ("PASS 하나",              "판정: PASS\n",                                          True),
+        ("FAIL 하나",              "판정: FAIL\n",                                          False),
+        ("PASS→FAIL (실형상)",     "판정: PASS\n…3차…\n판정: FAIL\n",                       False),
+        ("FAIL→PASS",              "판정: FAIL\n…재작업…\n판정: PASS\n",                    True),
+        ("PASS→FAIL→PASS",         "판정: PASS\n판정: FAIL\n판정: PASS\n",                  True),
+        ("판정 줄 없음",           "PASS 라고 생각한다\n",                                  False),
+        ("BLOCKED",                "판정: PASS\n판정: BLOCKED\n",                           False),
+        ("산문 속 PASS (부정어)",  "판정: PASS\n판정: FAIL\nPASS 판정을 내리지 않는다\n",   False),
+        ("PASS 뒤 판정 아닌 산문", "판정: PASS\n근거는 아래와 같다\n",                      True),
+        ("앞뒤 공백",              "판정: FAIL\n   판정:   PASS   \n",                      True),
+        ("헤딩·볼드는 판정 아님",  "판정: FAIL\n## 판정: **PASS**\n",                       False),
+    ]
+    for name, text, want in verdict_cases:
+        got, _why = judge_latest_verdict(text, LATEST, WANT_PASS)
+        ok = got == want
+        if not ok:
+            bad += 1
+        _out(f"  {'PASS' if ok else 'FAIL'}  {name:<22} 기대 {'통과' if want else '차단'} · "
+             f"실측 {'통과' if got else '차단'}")
+    total = len(cases) + len(verdict_cases)
     _out("")
-    _out(f"전이 게이트 자기시험 실패 {bad}건." if bad else "전이 게이트 자기시험 8건 통과.")
+    _out(f"전이 게이트 자기시험 실패 {bad}건 / {total}건."
+         if bad else f"전이 게이트 자기시험 {total}건 통과 (R6 상태 신선도 {len(cases)} · "
+                     f"최신 판정 {len(verdict_cases)}).")
     return 1 if bad else 0
 
 
