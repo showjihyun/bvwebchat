@@ -62,6 +62,7 @@ pathspec 을 좁게 쓸수록 상태 파일이 자동으로 빠진다. 그래서
 | 2-2 | `node scripts/eval-b.mjs --self-test` | **평가 준비 게이트 · 체크포인트 신선도 · 캐시 무효화 · 최신 정렬** | blocking |
 | 2-3 | `python harness/phase.py self-test` | **전이 게이트(R6 상태 신선도)가 무엇을 차단하는가** | blocking |
 | 2-4 | `node scripts/check.mjs --self-test` | **RQ ID 파싱·매칭** — 접미사 ID(`RQ-10-a`)를 받는가, 기저 변형이 새어 남의 테스트를 잡지 않는가 | blocking |
+| 2-5 | `node scripts/doc-freshness.mjs --self-test` | **C2 면제 판정** — `_c2_reviewed` 가 억제로 변질되지 않는가(sha 불일치 시 재무장 · 근거 없으면 fail-closed) | blocking |
 
 > **건수를 여기 적지 않는다.** 각 명령이 마지막 줄에 총계와 축별 내역을 찍고, **그
 > 출력이 정본이다.** 한때 이 표에 숫자를 박아 두었다가 두 번 낡았다 — 시험을 추가한

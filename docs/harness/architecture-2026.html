@@ -3195,6 +3195,26 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
               <b>하필 §04가 "직전 단계만 만들 수 있는 산출물을 요구한다"며 설계의 핵심이라 부른 가드들이 전부 여기 있다.</b>
             </p>
             <p>
+              <b>후속 (2026-08-04) — 8종이 실전에서 돌자 그중 둘이 fail-open 이었다.</b>
+              RQ-13-a 파이프라인이 <code>tests_committed</code>·<code>red_evidence</code>·
+              <code>check_full_green</code>·<code>golden_coverage</code>·<code>evaluator_pass</code>·
+              <code>track_b_passing</code>·<code>changelog_updated</code> 를 모두 실제로 평가시켰고,
+              <b>그 순간 <code>evaluator_pass</code> 가 FAIL 보고서를 통과시키는 것이 드러났다</b> —
+              보고서가 회차를 append 하는 규약이라 <code>re.search</code> 로 파일 전체를 보면
+              옛 <code>판정: PASS</code> 가 최신 <code>판정: FAIL</code> 을 덮었다(실측: 856행 PASS · 1239행 FAIL 공존에 통과).
+              같은 실행에서 <code>no_force</code> rubric 도 저장소 <b>전 이력</b>을 세어,
+              사람이 승인한 <code>force</code> 1건이 트랙 B 를 <b>영구히</b> 실패시켰다.
+            </p>
+            <p>
+              <b>둘은 같은 오류다: "이번 실행이 무엇을 했나"를 묻는 판정이 "여태 무엇이 있었나"를 쟀다.</b>
+              처방도 같은 모양이다 — <code>latest_of</code>(판정 줄 중 마지막만 대조) ·
+              <code>sliceRunPhaseLog</code>(시드 직후를 기준선으로 절단). 둘 다 매칭이 0건이면
+              실패한다(<i>판정할 수 없는 가드는 없는 가드다</i>).
+              <b>이 절의 원래 교훈이 한 겹 깊어진다</b>: 실행되지 않은 가드는 작동 여부를 모를 뿐 아니라
+              <b>무엇을 재는지도 검증되지 않은 상태</b>다. 배선의 값어치는 실패를 잡는 것보다
+              <b>센서 자신의 판정 축을 드러내는 것</b>에 있다(§R9 와 같은 줄기).
+            </p>
+            <p>
               <b>왜 그랬는지가 더 불편하다.</b> 기록된 전이의 절반 이상이 <code>HARNESS ↔ IDLE</code> 왕복이고,
               매트릭스상 <b>이 두 간선에는 가드가 없다</b>. 즉 이 재구성 작업 자체가
               <b>가드가 없는 경로만 골라 왕복했다</b> — 악의가 아니라 하네스 작업의 성격이 그렇기 때문이지만,
