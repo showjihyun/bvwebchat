@@ -276,8 +276,17 @@ export function useChat(nickname: string | null, onResumeFail?: () => void): Cha
           // 않는다 — 먼저 보낸 join의 늦은 거부가 지금 보고 있는 room을 빼앗지
           // 않도록.
           if (activeRoomRef.current === name) {
-            activeRoomRef.current = prevActiveRoom;
-            setActiveRoomState(prevActiveRoom);
+            // M-2: prevActiveRoom을 무조건 복원하면, 동시에 진행 중이던 다른 join이
+            // 먼저 거부되어 prevActiveRoom 자신이 이미 rooms에서 빠진 뒤일 수 있다
+            // (예: room-A join 도중 room-B join이 활성화 → A 거부(활성은 이미 B라
+            // 안 건드림, rooms에서 A만 제거) → B도 거부 → prevActiveRoom_B='room-A'를
+            // 무조건 복원하면 rooms=[]인데 activeRoom='room-A'를 가리키는 유령 상태가
+            // 된다). 위 filter로 최신 상태가 반영된 roomsRef.current에 prevActiveRoom이
+            // 여전히 있을 때만 복원하고, 없으면(또는 애초에 null이면) null로 떨어뜨린다.
+            const restoreTo =
+              prevActiveRoom !== null && roomsRef.current.includes(prevActiveRoom) ? prevActiveRoom : null;
+            activeRoomRef.current = restoreTo;
+            setActiveRoomState(restoreTo);
           }
           // D5: 낙관적 갱신은 키가 이미 있으면(예: 'global') 아무것도 하지 않는
           // no-op이었다(:255,:262) — 그 역연산도 no-op이어야 한다. 스냅샷 값으로
