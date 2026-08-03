@@ -70,6 +70,41 @@
  * 관측(기록만, 응답 조작 없음)** 두 가지 역할뿐이다. join/leave/identify/
  * resume/message/activeRoom 전부 실서버(`createChatServer`)가 실제로
  * 판정·응답한다. 모든 대기에는 상한을 명시한다(ADR-0005).
+ *
+ * ── 3차 추가 — 결함 회귀 잠금 (D2~D5, 골든 아님) ──
+ * evaluator RQ-13-a 재평가(2차, `_workspace/RQ-13/03_evaluator_report.md`
+ * "재평가(2차)" 절)가 뮤테이션(`_workspace/RQ-13/03b_evaluator_mutate.py.txt`)
+ * 으로 실측했다 — D1은 이 파일의 GA-30+D1 테스트가 이미 잡지만, **D2·D3·
+ * D4·D5는 51/51 통과 상태에서 뮤테이션을 되돌려 넣어도 아무 테스트도 못
+ * 잡았다**(대조군 NOROLLBACK은 3건 실패해 스위트에 애초에 이빨이 있었음을
+ * 확인 — 죽은 뮤테이션이 아니다). evaluator 프로브
+ * `03a_evaluator_probe.rq13a-lock-probe.test.ts.txt`가 저장소 밖 사본에서
+ * 이미 이 판별력을 증명했고, 아래 4건은 그 프로브와 같은 시나리오를 이
+ * 파일의 기존 헬퍼·타임아웃 규율에 맞춰 통합한 것이다. 이 네 건은 골든
+ * GA-28/29/30의 `then`이 아니라 리뷰가 잡은 **회귀 잠금**이라 제목에 골든
+ * ID 대신 결함 ID(D2~D5)를 쓴다(위 M-2 파생 테스트와 동일 관례).
+ *
+ * 결함 정의(전문은 `03_evaluator_report.md` "재평가(2차)" 절 D2~D5):
+ *  - D2: 롤백이 무조건 delete — 시도 전부터 있던 messagesByRoom·
+ *    participantsByRoom을 파괴한다.
+ *  - D3: 롤백 activeRoom 가드 제거 — 먼저 보낸 join의 늦은 거부가 그 사이
+ *    사용자가 옮겨간 room을 훔친다.
+ *  - D4: 안읽음 0 처리를 낙관적 경로로 — 거부된 join이 읽지 않은 배지를 지운다.
+ *  - D5: 롤백이 스냅샷 값으로 "복원" — ack 대기 창(join emit ~ ack 도착
+ *    사이)에 도착한 message/participants 갱신이 지워진다(D2보다 좁은 잔여).
+ *
+ * D2/D4/D5는 반드시 소문자 'global'을 대상으로 한다 — messagesByRoom·
+ * unreadByRoom의 실제 키가 'global'(GLOBAL_ROOM)이기 때문에, 다른 대소문자를
+ * 쓰면 낙관적 갱신이 새 키를 만들었다 지우는 무해한 경로만 밟아 뮤테이션이
+ * 죽는다(evaluator 1차 보고서 D2 절 "테스트가 대문자 'GLOBAL'을 써서 … 무해한
+ * 경로만 밟은 것이 스위트가 초록이었던 이유" 참고). D3은 대소문자와 무관해
+ * 위 M-2와 동일 관례대로 'GLOBAL'을 쓴다.
+ *
+ * D5만 아래 `fake` 목에 join emit ack의 **전달 시점 보류**
+ * (`holdJoinAckFor`/`heldJoinAcks`)를 추가로 요구한다 — 서버 판정(ok:false)은
+ * 손대지 않고 그 콜백이 언제 호출되는지만 테스트가 통제한다(evaluator 2차
+ * 프로브의 `fake.setHold`와 동일 기법). 기본값(null)에서는 다른 어떤 join에도
+ * 개입하지 않으므로 기존 4건(GA-28·29·30+D1·M-2)의 동작은 바뀌지 않는다.
  */
 import type { AddressInfo } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -90,6 +125,11 @@ import { createChatServer } from '../../src/server/createChatServer';
 const fake = vi.hoisted(() => {
   let url = '';
   const activeRoomAcks: unknown[] = [];
+  // D5 잠금 전용: 특정 room으로의 join ack **전달**만 보류한다(서버 판정
+  // 자체는 손대지 않는다 — 아래 vi.mock에서 그 판정을 그대로 전달할 콜백을
+  // heldJoinAcks에 쌓아 두고, releaseHeldJoinAcks가 호출될 때만 실행한다).
+  let holdJoinAckForRoom: string | null = null;
+  const heldJoinAcks: Array<() => void> = [];
   return {
     setUrl(u: string): void {
       url = u;
@@ -98,6 +138,16 @@ const fake = vi.hoisted(() => {
       return url;
     },
     activeRoomAcks,
+    holdJoinAckFor(room: string | null): void {
+      holdJoinAckForRoom = room;
+    },
+    isHeldJoinRoom(room: string): boolean {
+      return holdJoinAckForRoom === room;
+    },
+    heldJoinAcks,
+    releaseHeldJoinAcks(): void {
+      while (heldJoinAcks.length > 0) heldJoinAcks.shift()?.();
+    },
   };
 });
 
@@ -128,6 +178,18 @@ vi.mock('socket.io-client', async (importOriginal) => {
           fake.activeRoomAcks.push(ack);
           cb?.(ack);
         });
+      }
+      // D5 잠금 전용 — 특정 room으로의 join ack **전달**만 보류(판정은
+      // originalEmit이 그대로 받아 낸다). holdJoinAckFor(null)인 기본
+      // 상태에서는 이 분기를 타지 않아 다른 3건(D2/D3/D4)에 개입하지 않는다.
+      if (event === 'join') {
+        const payload = rest[0] as { room?: string } | undefined;
+        const cb = rest[1] as ((ack: unknown) => void) | undefined;
+        if (payload && typeof payload.room === 'string' && fake.isHeldJoinRoom(payload.room)) {
+          return originalEmit(event, payload, (ack: unknown) => {
+            fake.heldJoinAcks.push(() => cb?.(ack));
+          });
+        }
       }
       return originalEmit(event, ...rest);
     }) as typeof socket.emit;
@@ -212,6 +274,8 @@ async function waitForResumeFail(onResumeFail: () => void, timeoutMs = 2000): Pr
 beforeEach(() => {
   localStorage.clear();
   fake.activeRoomAcks.length = 0;
+  fake.holdJoinAckFor(null);
+  fake.heldJoinAcks.length = 0;
 });
 
 afterEach(() => {
@@ -415,6 +479,195 @@ describe('RQ-13-a (파생, 골든 아님): 동시 join이 역순으로 거부되
         expect(result.current.rooms).toEqual([]);
       });
       expect(result.current.activeRoom).toBeNull();
+    },
+  );
+});
+
+describe('RQ-13-a (파생, 골든 아님): 거부된 joinRoom이 시도 전부터 있던 global 대화를 지우지 않는다 (결함 D2)', () => {
+  const cleanupFns: Array<() => void | Promise<void>> = [];
+
+  afterEach(async () => {
+    while (cleanupFns.length > 0) {
+      const fn = cleanupFns.pop();
+      if (fn) await fn();
+    }
+  });
+
+  it(
+    '시도 전부터 global에 메시지가 있으면, 거부된 joinRoom("global")의 롤백이 그 대화를 지우지 않는다 (RQ-13-a 파생, 결함 D2)',
+    async () => {
+      const url = await startServer(cleanupFns);
+
+      // given: user1 접속(닉네임 확정). global은 서버 소켓 레벨에서 상시
+      // 자동 참여이므로(ADR-0004 결정1, connection.ts:28) user1은 이미 global의
+      // 실 소켓 멤버 — 별도 join 없이도 user2가 보낸 메시지를 그대로 받는다.
+      const { result, unmount } = renderHook(() => useChat('user1'));
+      cleanupFns.push(() => unmount());
+      await waitForIdentified();
+
+      // handleMessage가 socket.data.nickname을 요구하므로(room.ts) user2는
+      // 먼저 아무 일반 room에 join해 nickname을 등록한 뒤 global에 발신한다.
+      const user2 = connectRaw(url, cleanupFns);
+      expect((await waitForJoinAck(user2, { room: 'room-seed', nickname: 'user2' })).ok).toBe(true);
+      user2.emit('message', { room: 'global', body: 'M1' });
+      await actWaitFor(() => {
+        expect(result.current.messagesByRoom['global']?.length).toBe(1);
+      });
+
+      // when: 예약 이름 'global'로 join 시도 — 실 서버가 거부(ok:false).
+      act(() => {
+        result.current.joinRoom('global');
+      });
+      await actWaitFor(() => {
+        expect(result.current.rooms).not.toContain('global');
+      });
+
+      // then: 시도 전부터 있던 global 대화가 롤백에 지워지지 않는다.
+      expect(result.current.messagesByRoom['global']?.map((m) => m.body)).toEqual(['M1']);
+    },
+  );
+});
+
+describe('RQ-13-a (파생, 골든 아님): 먼저 보낸 join의 늦은 거부가 그 사이 옮겨간 room을 빼앗지 않는다 (결함 D3)', () => {
+  const cleanupFns: Array<() => void | Promise<void>> = [];
+
+  afterEach(async () => {
+    while (cleanupFns.length > 0) {
+      const fn = cleanupFns.pop();
+      if (fn) await fn();
+    }
+  });
+
+  it(
+    '같은 소켓에서 예약 이름(거부) → room-B(승인) 순으로 연속 join하면, 예약 이름의 늦은 거부가 이미 옮겨간 room-B를 빼앗지 않는다 (RQ-13-a 파생, 결함 D3)',
+    async () => {
+      await startServer(cleanupFns);
+
+      const { result, unmount } = renderHook(() => useChat('user1'));
+      cleanupFns.push(() => unmount());
+      await waitForIdentified();
+
+      // when: 같은 소켓에서 예약 이름(반드시 거부) → room-B(승인) 순으로
+      // 연속 emit — Socket.IO 단일 연결의 순서 보장으로 ack도 이 순서로
+      // 도착한다(위 M-2 파생 테스트와 동일 근거).
+      act(() => {
+        result.current.joinRoom('GLOBAL');
+        result.current.joinRoom('room-B');
+      });
+
+      await actWaitFor(() => {
+        expect(result.current.rooms).toEqual(['room-B']);
+      });
+      // then: 'GLOBAL'의 늦은 거부 롤백이 그 사이 활성화된 room-B를 빼앗지 않는다.
+      expect(result.current.activeRoom).toBe('room-B');
+    },
+  );
+});
+
+describe('RQ-13-a (파생, 골든 아님): 거부된 join이 그 room의 안읽음 배지를 지우지 않는다 (결함 D4)', () => {
+  const cleanupFns: Array<() => void | Promise<void>> = [];
+
+  afterEach(async () => {
+    while (cleanupFns.length > 0) {
+      const fn = cleanupFns.pop();
+      if (fn) await fn();
+    }
+  });
+
+  it(
+    'global이 비활성이고 안읽음이 쌓인 상태에서 joinRoom("global")이 거부되면, 그 배지가 0으로 지워지지 않는다 (RQ-13-a 파생, 결함 D4)',
+    async () => {
+      const url = await startServer(cleanupFns);
+
+      const { result, unmount } = renderHook(() => useChat('user1'));
+      cleanupFns.push(() => unmount());
+      await waitForIdentified();
+
+      // given: 활성 room을 room-X로 옮겨 global을 비활성으로 만든다.
+      act(() => {
+        result.current.joinRoom('room-X');
+      });
+      await actWaitFor(() => {
+        expect(result.current.activeRoom).toBe('room-X');
+      });
+
+      const user2 = connectRaw(url, cleanupFns);
+      expect((await waitForJoinAck(user2, { room: 'room-seed', nickname: 'user2' })).ok).toBe(true);
+      user2.emit('message', { room: 'global', body: 'unread-1' });
+      await actWaitFor(() => {
+        expect(result.current.unreadByRoom['global']).toBe(1);
+      });
+
+      // when: global join 시도(반드시 소문자 — unreadByRoom의 실제 키와
+      // 일치시켜야 낙관적 unread 0 처리가 뮤테이션에서 이 키를 실제로
+      // 건드린다) — 실 서버가 예약 이름으로 거부.
+      act(() => {
+        result.current.joinRoom('global');
+      });
+      await actWaitFor(() => {
+        expect(result.current.rooms).toEqual(['room-X']);
+      });
+
+      // then: 읽지 않은 1건의 배지가 살아 있다 — 거부가 배지를 지우지 않는다.
+      expect(result.current.unreadByRoom['global']).toBe(1);
+    },
+  );
+});
+
+describe('RQ-13-a (파생, 골든 아님): 거부 ack 대기 중 도착한 메시지가 롤백에 지워지지 않는다 (결함 D5)', () => {
+  const cleanupFns: Array<() => void | Promise<void>> = [];
+
+  afterEach(async () => {
+    while (cleanupFns.length > 0) {
+      const fn = cleanupFns.pop();
+      if (fn) await fn();
+    }
+  });
+
+  it(
+    'join("global") ack가 아직 도착하지 않은 창 안에서 global에 메시지가 하나 더 오면, 그 메시지는 거부 롤백에 지워지지 않는다 (RQ-13-a 파생, 결함 D5)',
+    async () => {
+      const url = await startServer(cleanupFns);
+
+      const { result, unmount } = renderHook(() => useChat('user1'));
+      cleanupFns.push(() => unmount());
+      await waitForIdentified();
+
+      const user2 = connectRaw(url, cleanupFns);
+      expect((await waitForJoinAck(user2, { room: 'room-seed', nickname: 'user2' })).ok).toBe(true);
+      user2.emit('message', { room: 'global', body: 'M1' });
+      await actWaitFor(() => {
+        expect(result.current.messagesByRoom['global']?.length).toBe(1);
+      });
+
+      // join('global') ack의 **전달**만 보류(서버 판정은 그대로 — 파일 상단
+      // fake.holdJoinAckFor 주석 참고).
+      fake.holdJoinAckFor('global');
+      act(() => {
+        result.current.joinRoom('global');
+      });
+      await actWaitFor(() => {
+        expect(fake.heldJoinAcks.length).toBe(1);
+      });
+
+      // 대기 창 안에서 global에 메시지가 하나 더 도착한다.
+      user2.emit('message', { room: 'global', body: 'M2' });
+      await actWaitFor(() => {
+        expect(result.current.messagesByRoom['global']?.length).toBe(2);
+      });
+
+      // 이제 보류했던 거부 ack을 전달한다 → 롤백 실행.
+      fake.holdJoinAckFor(null);
+      await act(async () => {
+        fake.releaseHeldJoinAcks();
+        await Promise.resolve();
+      });
+      await actWaitFor(() => {
+        expect(result.current.rooms).not.toContain('global');
+      });
+
+      // then: 대기 중 도착한 M2가 롤백에 지워지지 않는다.
+      expect(result.current.messagesByRoom['global']?.map((m) => m.body)).toEqual(['M1', 'M2']);
     },
   );
 });
