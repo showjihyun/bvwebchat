@@ -231,15 +231,15 @@ export function useChat(nickname: string | null, onResumeFail?: () => void): Cha
       // RQ-13-a: 거부(ok:false) 시 되돌릴 상태를 스냅샷한다. `name` 자체는 (위 가드가
       // 재참여를 이미 걸러내) roomsRef엔 시도 전엔 없었지만, messagesByRoom/
       // participantsByRoom은 **다를 수 있다** — 예: 'global'은 roomsRef엔 절대
-      // 안 들어가도(:156) 이미 대화가 쌓여 있을 수 있다. 그래서 "제거"가 아니라
-      // "시도 전 값으로 복원"하기 위해 존재 여부·값을 함께 스냅샷한다(D2).
+      // 안 들어가도(:156) 이미 대화가 쌓여 있을 수 있다. 낙관적 갱신은 키가 이미
+      // 있으면 no-op이므로(D5), 되돌릴 때 필요한 건 값이 아니라 **존재 여부**뿐이다
+      // — 있었으면 롤백도 no-op(그 사이 도착한 갱신을 보존), 없었으면 새로 만든
+      // 키를 제거한다.
       // activeRoom도 마찬가지로 직전 값을 보존해 되돌린다(D3: 그 사이 사용자가
       // 다른 room으로 옮겼으면 되돌리지 않는다 — 아래 ack 분기에서 조건부 복원).
       const prevActiveRoom = activeRoomRef.current;
       let hadMessages = false;
-      let prevMessages: ClientMessage[] | undefined;
       let hadParticipants = false;
-      let prevParticipants: string[] | undefined;
 
       // 낙관적 갱신: 서버 ack을 기다리지 않고 즉시 반영(체감 지연 없음, GA-30).
       roomsRef.current = [...roomsRef.current, name];
@@ -254,14 +254,12 @@ export function useChat(nickname: string | null, onResumeFail?: () => void): Cha
       setActiveRoomState(name);
       setMessagesByRoom((prev) => {
         hadMessages = name in prev;
-        prevMessages = prev[name];
         return prev[name] ? prev : { ...prev, [name]: [] };
       });
       // 혼자 입장(founding join)은 서버가 방송하지 않으므로 본인을 seed —
       // 두 번째 참여자가 오면 서버 방송(participants)이 권위 목록으로 대체한다.
       setParticipantsByRoom((prev) => {
         hadParticipants = name in prev;
-        prevParticipants = prev[name];
         return prev[name] ? prev : { ...prev, [name]: [selfNickname] };
       });
 
@@ -281,20 +279,21 @@ export function useChat(nickname: string | null, onResumeFail?: () => void): Cha
             activeRoomRef.current = prevActiveRoom;
             setActiveRoomState(prevActiveRoom);
           }
-          // D2: 시도 전부터 값이 있었으면(예: 'global') 그 값으로 복원하고,
-          // 없었을 때만(신규 키) 제거한다.
+          // D5: 낙관적 갱신은 키가 이미 있으면(예: 'global') 아무것도 하지 않는
+          // no-op이었다(:255,:262) — 그 역연산도 no-op이어야 한다. 스냅샷 값으로
+          // "복원"하면 ack 대기 중 도착한 message/participants(:187,:195)가
+          // 지워진다(부모 191847f와 같은 손실 — D2 잔여). 낙관적 갱신이 새로
+          // 키를 만든 경우에만 그 키를 제거한다.
           setMessagesByRoom((prev) => {
-            if (!(name in prev)) return prev;
+            if (hadMessages || !(name in prev)) return prev;
             const next = { ...prev };
-            if (hadMessages) next[name] = prevMessages as ClientMessage[];
-            else delete next[name];
+            delete next[name];
             return next;
           });
           setParticipantsByRoom((prev) => {
-            if (!(name in prev)) return prev;
+            if (hadParticipants || !(name in prev)) return prev;
             const next = { ...prev };
-            if (hadParticipants) next[name] = prevParticipants as string[];
-            else delete next[name];
+            delete next[name];
             return next;
           });
           // D4: 낙관적 unread 0 처리를 애초에 성공 분기로 미뤘으므로(아래) 거부
