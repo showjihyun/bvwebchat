@@ -591,7 +591,7 @@ def cmd_enter(root: Path, ctx: dict, args) -> int:
         for line in stale.splitlines():
             _out(f"  {line}")
         _out("")
-        _out(f"  python harness/phase.py session --goal \"…\" --did \"…\" --next \"…\"")
+        _out(f"  python harness/phase.py session --goal \"…\" --done \"…\" --next \"…\"")
         _out(f"  python harness/phase.py enter {target}")
         return 1
 

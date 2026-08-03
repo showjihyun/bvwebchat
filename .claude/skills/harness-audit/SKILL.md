@@ -58,10 +58,16 @@ pathspec 을 좁게 쓸수록 상태 파일이 자동으로 빠진다. 그래서
 | 1 | `node scripts/doc-freshness.mjs --full` | 문서가 코드보다 낡았는가 (C1~C6) | blocking: C1·C2·C4·C5 |
 | 1-1 | `node scripts/doc-freshness.mjs --pr --base origin/main` | **이 PR 이 만든 낡음** — `--full` 에서 C2 는 advisory 라 이 모드가 아니면 **선행 점검이 C2 를 구조적으로 못 본다** | blocking (CI 에도 배선됨) |
 | 2 | `node scripts/policy-lint.mjs` | 정책이 자기모순인가 (P1~P11 — 도달 불가 단계·빈 allow-set·끊긴 전이 그래프·매칭 불가 패턴·`enforced_by` 대조·**반복 대장 미처방**) | blocking |
-| 2-1 | `node scripts/policy-lint.mjs --self-test` | **P11 파서 · P9 줄바꿈 · P12 바깥 라벨** (음성 39건) | blocking |
-| 2-2 | `node scripts/eval-b.mjs --self-test` | **평가 준비 게이트 · 체크포인트 신선도 · 캐시 무효화 · 최신 정렬** (음성 34건) | blocking |
-| 2-3 | `python harness/phase.py self-test` | **전이 게이트(R6 상태 신선도)가 무엇을 차단하는가** (8건) | blocking |
-| 2-4 | `node scripts/check.mjs --self-test` | **RQ ID 파싱·매칭** — 접미사 ID(`RQ-10-a`)를 받는가, 기저 변형이 새어 남의 테스트를 잡지 않는가 (10건) | blocking |
+| 2-1 | `node scripts/policy-lint.mjs --self-test` | **P11 파서 · P9 줄바꿈 · P12 바깥 라벨** | blocking |
+| 2-2 | `node scripts/eval-b.mjs --self-test` | **평가 준비 게이트 · 체크포인트 신선도 · 캐시 무효화 · 최신 정렬** | blocking |
+| 2-3 | `python harness/phase.py self-test` | **전이 게이트(R6 상태 신선도)가 무엇을 차단하는가** | blocking |
+| 2-4 | `node scripts/check.mjs --self-test` | **RQ ID 파싱·매칭** — 접미사 ID(`RQ-10-a`)를 받는가, 기저 변형이 새어 남의 테스트를 잡지 않는가 | blocking |
+
+> **건수를 여기 적지 않는다.** 각 명령이 마지막 줄에 총계와 축별 내역을 찍고, **그
+> 출력이 정본이다.** 한때 이 표에 숫자를 박아 두었다가 두 번 낡았다 — 시험을 추가한
+> 커밋이 이 표를 안 고쳤고, 39 로 맞춘 날 52 가 됐다. 판정은 **전원 PASS 여부**이지
+> 개수가 아니므로 숫자는 애초에 판정에 쓰이지 않는다(`recurrence.md` R10 — 값을 두
+> 곳에 적는 한 드리프트는 반드시 다시 온다).
 | 3 | `node scripts/hooks-selftest.mjs` | **게이트가 실제로 작동하는가** | blocking |
 | 4 | `node scripts/eval-b.mjs` | 하네스 회귀 평가 GB-01~07 | auto rubric만 blocking |
 | 5 | 센서 카탈로그 대조 (아래) | 문서의 지도가 실제 배선과 일치하는가 | 보고 |
