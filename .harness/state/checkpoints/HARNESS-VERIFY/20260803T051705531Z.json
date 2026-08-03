@@ -1,0 +1,71 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "fix/harness-artifact-checkpoint",
+  "edge_legal": true,
+  "exit_hint": "APPROVE면 → python harness/phase.py enter RELEASE / REQUEST_CHANGES면 → enter GREEN",
+  "forced": false,
+  "from": "HARNESS",
+  "guards": [
+    {
+      "ms": 233,
+      "name": "track_b_passing",
+      "ok": true
+    },
+    {
+      "ms": 78,
+      "name": "changelog_updated",
+      "ok": true
+    }
+  ],
+  "head_sha": "bb1c95d5c43141f1b7f3048d5ab1175587ea2f2d",
+  "reason": null,
+  "rq": "HARNESS-VERIFY",
+  "schema": 1,
+  "seq": 110,
+  "session": {
+    "acceptance": [
+      "--verify-artifact 가 GB-06 이 채점한 체크포인트를 그 아티팩트 head_sha 시점의 최신 체크포인트와 대조하고 다르면 거부한다",
+      "채점 대상이 교체되면 케이스 캐시가 스스로 무효화된다",
+      "새 판정마다 음성 시험이 붙는다 — 통과값과 부정어 짝을 함께 둔다",
+      "docs/progress.md 에 동결 선언과 보류 항목이 되살릴 조건과 함께 적혀 있다",
+      "reviewer APPROVE 를 받고 CI 가 초록이다"
+    ],
+    "done": [
+      "하네스 L3 재구성 완료 (PR #31 · 9차 재리뷰 APPROVE) — 3평면 · 9단계 상태 머신 · 전이 가드 11 · 센서 S1~S4 · 상태 계약 · 트랙 B 실행 가능화 · 반복 대장. 회차별 상세는 docs/harness/changelog.md",
+      "tdd-workflow 첫 완주 (PR #34 · 새로고침 시 닉네임 재입력). 게이트가 세 번 막았고 셋 다 실재 문제였다 — 상세는 docs/progress.md 작업 원장",
+      "이 PR 의 본 작업: judgeCheckpointFreshness 로 --verify-artifact 가 채점 대상 체크포인트를 아티팩트 head_sha 시점 최신과 대조한다. cacheIsStale 로 캐시 축을 같은 축에 맞췄다. P9 를 sameIgnoringEol 로 고쳐 Windows 에서만 빨갛던 환경 의존을 없앴다",
+      "reviewer 두 차례 — REQUEST_CHANGES 전부 조치 후 APPROVE(blocker 0). 라벨은 drift 에서 없음 으로 뒤집혔다: CLAUDE.md 가 하네스 전용 PR 을 드리프트가 아니라고 명시하며 자신을 유일한 정의처로 선언한다",
+      "harness-audit 완주 — 차단 0건 · 훅 23/23. 센서 카탈로그 대조에서 배선 불일치 3건을 잡았고 C2 의 사각지대를 실증했다: 커밋 시각으로 재므로 한 파일 안에서 어느 행을 고쳤는지는 안 본다. 대장 R1 을 13회차로 등재",
+      "하네스 엔지니어링 동결 선언 — 감사 제안(HASH_GLOBS 에 scripts/ 추가)을 비용 근거로 기각하고 보류 항목을 되살릴 조건과 함께 원장에 명시했다",
+      "재리뷰 지적 조치 — P12 판별식이 실제 바깥 라벨의 3분의 1을 놓쳤다. 회수 12/12 · 거짓 양성 0/27 · 음성 시험 52건. 건수 재서술 5곳을 포인터로. goal 밖 next 를 대장 R13 으로 등재",
+      "잠금 묶음 4건을 한 번에 열었다. 동결 원칙이 스스로 깨진 지점이 교훈이다 — policy-lint.mjs 는 해시 밖인데 그것을 재서술하는 감사 스킬이 해시 안이라 값이 청구됐다. 동결의 경계는 내가 고칠 파일이 아니라 그 파일을 재서술하는 문서까지다",
+      "트랙 B 전수 재실행 결과 5 pass 1 fail. GB-06 만 Q3 에서 2/3 으로 떨어졌고 이 문항만 100% 일치를 요구한다. 나머지 4문항 전원 통과",
+      "R13 의 기전을 좁혔다 — goal 밖 next 가 아니라 goal 을 나중에 넓혔고 체크포인트가 그 틈에 찍힌 것이다. R6 는 낡음만 보고 부정합은 안 본다. 처방이 등재 5분 만에 실패해 상태를 배치 시점 어긋남 으로 바꿨다",
+      "GB-06 재채점 통과 — 새 체크포인트로 cold 5/5 · 파일 5/7 · 2.25분. 트랙 B 6/6. cacheIsStale 이 실전에서 발화했다: 캐시가 채점 대상 체크포인트 교체를 스스로 감지해 무효화했고, 이 PR 의 수정이 없었다면 옛 FAIL 이 재사용돼 재채점 자체가 일어나지 않았다",
+      "CI 초록. C4 가 changelog 의 스킬 경로 접두 누락 2건을 잡아 고쳤다",
+      "재리뷰 REQUEST_CHANGES — blocker 1(R7 3회차 미등재) · major 4 · minor 3. blocker 는 내가 체크포인트 next 에 리뷰 보고서 라벨을 또 쓴 것이고 P12 가 최신 하나만 보는 범위 탓에 통과했다. 방어가 아니라 순서 운이었다",
+      "3차 재리뷰 blocker 를 닫았다 — R7 을 3회차로 등재하고 게이트가 초록이었던 이유를 기록했다. 판별식이 아니라 범위였다: P12 는 최신 체크포인트 하나만 보는데 같은 커밋이 위반본과 정상본을 함께 실었다. 방어가 아니라 순서 운이다",
+      "대장의 쓰는 법에 짝 질문을 규칙으로 넣었다 — 한 칸 올린 뒤 그 처방이 이 실패를 실제로 잡았겠는지 묻는다. 직전 실패 사례를 새 처방에 그대로 먹여 보는 것이 방법이다",
+      "무료 major 를 조치했다 — 동결표 조건을 판정 가능하게 좁히고 발동 검토 이력을 남겼다. doc-map 의 결합 근거를 실측에 맞춰 세 번째로 고쳤다. 해시에 잠긴 5건은 묶음 2차로 보류표에 세웠다",
+      "4차 재리뷰 REQUEST_CHANGES — blocker 1(R11 행이 자기 재발을 안 세운다) · major 2 · minor 3. 앞 회차 blocker 와 major 는 닫혔음이 확인됐다. 종료 조건 규칙 3에 따라 blocker 만 고치고 나머지는 보류로 보낸다",
+      "종료 조건 4개를 원장에 명문화하고 4차 blocker 를 닫았다. R11 횟수 6 · 원인 서술을 재지 않은 근거 로 넓힘. 전칭 수식어를 쓰려면 반증할 rg 한 줄을 같은 자리에 적으라는 규칙이 나왔다",
+      "4차 재리뷰의 나머지 major 2 · minor 3 은 종료 조건 3의 blocker 정의 밖이라 전부 보류표로 보냈다",
+      "C4 가 progress.md 의 스킬 경로 접두 누락을 네 번째로 잡았다. 원인은 커밋 전에 doc-freshness 를 안 돌린 것이고 센서는 매번 작동했다",
+      "경로를 고치고 커밋 전에 doc-freshness · policy-lint · verify-artifact · check 를 전부 돌려 초록을 확인했다"
+    ],
+    "goal": "이 PR 은 두 가지를 한다. (1) --verify-artifact 가 입력 해시만 보고 GB-06 이 실제로 어느 체크포인트를 채점했는지는 안 보던 구멍을 막는다 — 옛 판정이 새 상태의 보증처럼 읽혔고 이것이 다른 모든 측정의 신뢰도를 결정한다. (2) 그 작업을 끝으로 하네스 엔지니어링을 동결한다 — 기능 RQ 는 7/21 에 끝났는데 7/28 이후 83커밋 중 65가 하네스였다. 게이트가 매번 실재 문제를 잡으니 다음 게이트가 항상 정당해 보이는 구조라, 종료 조건을 문서로 못박지 않으면 멈추지 않는다",
+    "next": [
+      "REVIEW 로 전이한다",
+      "머지 경로를 정한다",
+      "머지 뒤 유령 room 을 고친다"
+    ],
+    "open_questions": [
+      "유령 room (src/client/useChat.ts) — 하네스 동결 이후의 첫 작업이고 문제가 둘이다. (b) joinRoom 의 낙관적 갱신이 ack 콜백 밖에 있어 서버가 거부해도 되돌아가지 않는다. 'if (!result.ok) return' 은 롤백이 아니라 침묵이다. (a) selfNickname 초기값 nickname ?? '' 가 빈 문자열을 string 으로 통과시켜 타입 체커가 못 잡고, resume 대기 창에서 그 값으로 join 하면 서버가 거부한다. 순서는 (b) 먼저 (a) 나중 — 사용자 확인됨. 이유: 유령을 실제로 만드는 것은 (b) 이고, (a) 를 먼저 고치면 거부 자체가 사라져 증상이 가려지므로 (b) 의 실패 테스트를 쓸 수 없다. (a) 만 고치면 중복 이름·예약어 같은 다른 거부 경로에서 유령이 그대로 남는다는 것도 실측 근거다"
+    ]
+  },
+  "to": "REVIEW",
+  "ts": "2026-08-03T05:17:05.529Z",
+  "write_allow": [
+    "_workspace/**"
+  ]
+}

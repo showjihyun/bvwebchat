@@ -1,0 +1,67 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "fix/harness-artifact-checkpoint",
+  "edge_legal": true,
+  "exit_hint": "작업을 시작하려면: python harness/phase.py enter PLAN  (또는 SPEC / HARNESS)",
+  "forced": false,
+  "from": "REVIEW",
+  "guards": [],
+  "head_sha": "ac4a2e5cbe5e5d9e5ce42d731e679bc22bb2cb2a",
+  "reason": null,
+  "rq": "HARNESS-VERIFY",
+  "schema": 1,
+  "seq": 97,
+  "session": {
+    "acceptance": [
+      "scripts/eval-b.mjs 의 --verify-artifact 가 GB-06 이 채점한 체크포인트를 그 아티팩트 head_sha 시점의 최신 체크포인트와 대조하고 다르면 거부한다",
+      "채점 대상이 교체되면 케이스 캐시가 스스로 무효화된다 — 게이트가 제시한 처방이 실제로 재채점을 만들어낸다",
+      "새 판정마다 음성 시험이 붙는다 — 통과값과 부정어 짝을 함께 둔다"
+    ],
+    "done": [
+      "하네스 L3 재구성 완료 (PR #31 머지 · 9차 재리뷰 APPROVE) — 3평면 · 9단계 상태 머신 · 전이 가드 11 · 센서 S1~S4 · 상태 계약 · 트랙 B 실행 가능화 · 반복 대장 R1~R11. 회차별 상세는 docs/harness/changelog.md",
+      "tdd-workflow 첫 완주 (PR #34 · RQ-10-a 새로고침 시 닉네임 재입력). 게이트가 세 번 막았고 셋 다 실재 문제였다 — R12 등재. 상세는 docs/progress.md 작업 원장",
+      "scripts/eval-b.mjs 에 judgeCheckpointFreshness 추가 — --verify-artifact 가 GB-06 의 채점 대상 체크포인트를 최신 커밋본과 대조한다. 실측 발화 확인: 옛 판정 HARNESS-L3/20260729T124140 vs 최신 RQ-10/20260730T120315. 음성 시험 10건",
+      "scripts/policy-lint.mjs 의 P9 를 sameIgnoringEol 로 고쳤다 — .gitattributes 의 * text=auto 탓에 Windows 체크아웃에서만 빨갛던 검사였다(블롭 LF, 워킹트리 CRLF 127). 음성 시험 6건",
+      "트랙 B 전수 재평가 5 pass · 1 fail. GB-06 이 Q3 에서 0/2, 1/2 로 두 번 떨어졌다 — next 에 이 세션 goal 범위 밖 작업을 넣으면 재개 세션이 goal 축으로 서사를 복원하며 누락한다. checkpoint-resume 스킬이 이 부류를 작성 규칙으로 메우는 길을 이미 기각했고, Q3 만 100% 일치를 요구하는 것이 후속 이슈로 남아 있다",
+      "checkpoint-resume/SKILL.md 62행이 존재하지 않는 인자 --did 를 가르친다(실제는 --done). 문서로만 검증된 인터페이스가 틀린 사례 — recurrence.md R12 와 같은 발견 방식",
+      "캐시가 체크포인트 교체를 못 봐 --verify-artifact 의 처방(--case GB-06)이 무효였다 — cacheIsStale 로 축을 맞췄다. 자기시험 25건",
+      "트랙 B 6/6 통과. GB-06 은 새 체크포인트에서 cold 5/5 · 파일 6/7 · 1.37분",
+      "reviewer REQUEST_CHANGES (blocker 1 · major 4 · minor 3). 지목한 셋(재채점 정당성·두 함수 비대칭·done 압축)은 전부 근거 실측으로 통과. M-1 이 핵심 — 신선도 기준축을 '지금 최신'으로 잡아 전이 후 상시 빨강이 된다. 아티팩트 22건 전수에서 전부 자기 head_sha 시점의 최신을 채점했음이 확인됐다",
+      "재리뷰 blocker 1 · major 4 · minor 3 을 전부 조치했다. M-1(기준축을 아티팩트 head_sha 로 고정 + 미검증 체크포인트는 센서 등급) · M-3(준비 불가 실패의 영구 캐시) · M-2(progress.md 서술 정정) · m-1(ls-files→ls-tree) · m-2(스탬프 정밀도 정렬) · m-3(원장 배치) · B-1(C4 1건 + C2 4건 → 2차 파급 3건까지 마감). 음성 시험 17→34건",
+      "GB-06 이 세 번째로 떨어졌다(3/5). Q3 은 next 에 리뷰 보고서 라벨을 써서, Q5 는 acceptance 가 낡아서. 둘 다 내 작성 잘못이고 harness/recurrence.md R7 의 2회차다",
+      "R7 의 1차 Guide 처방이 실패해 게이트로 승격했다 — scripts/policy-lint.mjs 의 P12 가 최신 커밋 체크포인트의 next·open 에서 저장소 밖 라벨을 찾으면 차단한다. 음성 시험 15건 중 9건이 통과 케이스다",
+      "harness-audit 2026-08-02 완주 — 차단 0건 · 트랙 B 6/6(7.21달러, GB-06 cold 5/5 회복) · 훅 23/23. 센서 카탈로그 대조에서 배선 불일치 3건을 잡았다: 진입점 예산·정책 정합성·훅 자기 시험 세 행이 CI 에 배선된 검사를 미배선으로 적고 있었다",
+      "C2 의 사각지대를 실증했다 — 커밋 시각으로 재므로 문서와 의존이 같은 커밋이면 통과하고, 한 파일 안에서 어느 행을 고쳤는지는 보지 않는다. recurrence R1 13회차로 등재하고 상세 3절을 붙였다. 처방은 바꾸지 않았다 — 사각지대는 이미 알려져 있었고 감사 절차가 그것을 덮었다",
+      "하네스 엔지니어링을 동결했다. 감사 제안 1건(HASH_GLOBS 에 scripts/ 추가)을 비용 근거로 기각하고, 보류 5건을 docs/progress.md 에 되살릴 조건과 함께 명시했다. 근거는 decisions.jsonl 에 박제",
+      "PR 의 빨간 CI 는 6커밋 전 상태였다 — 로컬이 미푸시였을 뿐이고 차단 5건은 그 뒤 커밋에서 이미 닫혀 있었다",
+      "C2 가 2·3차 파급을 냈고 2차는 진짜였다 — architecture-2026.html 이 doc-freshness --pr 을 미배선으로 적고 있었다(카탈로그 세 행과 같은 R1 인스턴스). 3차는 retro-metrics 의존을 좁힌 doc-map 변경이 changelog 를 움직인 것이고, 상류를 마지막 커밋에 넣으라는 순서 규칙을 내가 어긴 결과다",
+      "retro-metrics 의 recurrence.md 의존을 뺐다 — 대장의 행은 데이터이고 스킬이 지는 계약은 지표의 원천이다. 이 스킬은 HASH_GLOBS 라 갱신 비용이 전수 재실행 7.21달러이고 그 전제가 판단에 들어갔음을 doc-map 에 명시했다. 손실도 적었다: 대장의 규칙이 바뀌면 이제 C2 에 안 걸린다",
+      "푸시 후 CI 초록 확인 — 정책 린트 P1~P12 · 음성 시험 · 훅 자기검사 · 문서 신선도 전원 통과",
+      "리뷰 준비 중 doc-map.json 이 포맷 재직렬화로 99줄 노이즈를 낸 것을 발견했다 — 의미 변경은 2줄이다. 리뷰어가 읽을 diff 를 오염시키므로 IDLE 경유로 HARNESS 에 돌아가 걷어낸다",
+      "--did 오기의 발원지가 스킬이 아니라 harness/phase.py 의 전이 거부 메시지였다. 스킬이 그것을 그대로 베꼈다. 이 메시지는 전이가 막힌 순간에 뜨므로 따라 하면 두 번째 에러를 받는다 — 원장의 보류 항목에 적은 것보다 심각하다. 두 파일 다 HASH_GLOBS 라 수정 비용은 여전히 전수 재실행 1회다",
+      "doc-map.json 포맷 노이즈를 99줄에서 2줄로 줄였다. REVIEW 에서 harness/** 편집을 게이트가 정확히 차단했고, 명시 간선에 REVIEW→IDLE 이 없지만 와일드카드 간선이 있어 review-gate 스킬의 우회로가 유효했다",
+      "--did 오기의 발원지를 phase.py 의 전이 거부 메시지로 정정하고 원장 보류 항목에 반영했다. 동결은 유지하되 동결을 깨야 할 때의 첫 후보로 표시했다",
+      "reviewer APPROVE (blocker 0 · major 4 · minor 3). 라벨은 drift 에서 없음 으로 뒤집혔다 — CLAUDE.md 가 하네스 전용 PR 을 드리프트가 아니라고 명시하고 자신을 유일한 정의처로 선언한다. 검증 요청 5건 전부 통과했고 doc-map 축소는 게이트 회피가 아님이 커밋 순서로 확인됐다",
+      "새 major 4건 중 무료 3건을 고치기로 했다 — N-1 대장의 자기시험 건수 오기, N-2 P12 가 실제 바깥 라벨의 3분의 1을 놓침, N-4 goal 밖 next 2회 미등재. N-3 은 스킬 재서술이라 7.21달러가 붙어 보류로 간다",
+      "재리뷰 무료 major 3건을 조치했다. N-2 가 핵심 — P12 판별식이 라벨의 모양이 아니라 감싸는 문자까지 좁혀 백틱·중점·조사 표기가 샜고, major-1 이 GB-06 채점 대상 체크포인트 4건에 실재하는데 통과했다. 회수 12/12 · 거짓 양성 0/27 · 음성 시험 13건 동봉",
+      "N-1 은 숫자 대신 포인터로 바꿨다 — 39 로 고치자마자 52 가 되어 같은 드리프트가 즉시 재발했다. N-4 는 goal 밖 next 2회를 R13 으로 등재하고 구조·게이트를 코드 수준까지 써 보고 버린 근거를 남겼다",
+      "HASH_GLOBS 에 잠긴 3건을 한 묶음으로 정리했다 — did 오기, 감사 스킬의 자기시험 건수, N-3 재서술. 값이 항목당이 아니라 묶음당이다",
+      "재리뷰 조치가 무료가 아님이 CI 에서 드러났다 — policy-lint.mjs 를 고치자 그것을 재서술하는 harness-audit 스킬이 C2 에 걸렸고 그 스킬은 HASH_GLOBS 안이다. 사용자가 지불을 택해 잠긴 4건을 한꺼번에 연다"
+    ],
+    "goal": "scripts/eval-b.mjs 의 --verify-artifact 가 입력 해시만 보고 GB-06 이 실제로 어느 체크포인트를 채점했는지는 안 본다. .harness/state 는 HASH_GLOBS 밖이라 체크포인트가 교체돼도 해시가 그대로다 — 즉 옛 체크포인트에서 난 초록이 새 체크포인트에 대한 보증처럼 읽힌다. 8차 재리뷰가 추정으로 남기고 9차가 관측했다. 이것이 다른 모든 측정의 신뢰도를 결정하므로 후속 1순위다",
+    "next": [
+      "잠긴 4건을 고치고 트랙 B 를 전수 재실행한다",
+      "CI 초록 확인 후 REVIEW 로 전이해 재리뷰를 받는다",
+      "APPROVE 면 머지하고 제품 결함 유령 room 으로 넘어간다"
+    ],
+    "open_questions": [
+      "useChat.ts 의 nickname ?? '' 가 타입 체커 사각지대다. resume 대기 창에서 room 참여를 누르면 서버가 거부하는데 낙관적 갱신은 그대로 실행돼 유령 room 이 남는다"
+    ]
+  },
+  "to": "IDLE",
+  "ts": "2026-08-03T00:15:20.045Z",
+  "write_allow": [
+    "_workspace/**",
+    "docs/progress.md"
+  ]
+}

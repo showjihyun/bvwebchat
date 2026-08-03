@@ -59,7 +59,7 @@ matcher의 도구가 전부 막힌 상태이므로 그것부터 고친다.
 이미 쓰였고 커밋까지 됐다. 검사는 옳았고 **자리가 틀렸다**(`harness/recurrence.md` R6, 2회).
 
 ```
-python harness/phase.py session --goal "…" --did "…" --next "…"
+python harness/phase.py session --goal "…" --done "…" --next "…"
 python harness/phase.py enter <PHASE>
 git commit -- .harness/state
 ```

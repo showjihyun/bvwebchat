@@ -793,8 +793,177 @@ function selfTest() {
     console.log(`  ${pass ? 'PASS' : 'FAIL'}  ${name.padEnd(22)} 기대 ${mustFail ? '차단' : '통과'} · 실측 ${didFail ? '차단' : '통과'}` +
       (didFail ? `  (${[...problems, ...open][0]?.slice(0, 70)})` : ''));
   }
-  console.log(bad ? `\nP11 자기시험 실패 ${bad}건 — 파서가 뚫린다.` : '\nP11 자기시험 18건 통과.');
+  // P9 — 줄바꿈 정규화. **통과값 + 부정어** 짝을 넣는다(`recurrence.md` R2):
+  // 'CRLF 만 다르다'(통과)와 '내용도 다르다'(차단)를 함께 두지 않으면, 정규화가
+  // 실제 드리프트까지 지워버리는 것을 이 시험이 못 본다.
+  const eolCases = [
+    ['E3 완전히 같다',        'a\nb\n',        'a\nb\n',        false],
+    ['E4 CRLF 만 다르다',     'a\r\nb\r\n',    'a\nb\n',        false],
+    ['E5 내용이 다르다',      'a\r\nc\r\n',    'a\nb\n',        true],
+    ['E6 줄 하나가 빠졌다',   'a\r\n',         'a\nb\n',        true],
+    ['E7 CR 단독은 다르다',   'a\rb\r',        'a\nb\n',        true],
+    ['E8 끝 개행 유무',       'a\r\nb',        'a\nb\n',        true],
+  ];
+  for (const [name, disk, rendered, mustFail] of eolCases) {
+    const didFail = !sameIgnoringEol(disk, rendered);
+    const pass = didFail === mustFail;
+    if (!pass) bad++;
+    console.log(`  ${pass ? 'PASS' : 'FAIL'}  ${name.padEnd(22)} 기대 ${mustFail ? '차단' : '통과'} · 실측 ${didFail ? '차단' : '통과'}`);
+  }
+
+  // P12 — 저장소 밖 라벨. **거짓 양성이 이 검사의 진짜 위험이다**: 7차 재리뷰가
+  // 앵커(파일명·규칙 ID)를 지운 것이 GB-06 을 3/5 까지 떨어뜨렸음을 실측했다.
+  // 그래서 통과 쪽 케이스를 차단 쪽보다 많이 둔다 — 넓게 잡는 게이트는 규칙을 뒤집는다.
+  const labelCases = [
+    ['리뷰 라벨 M-1',        ['M-1: 기준축을 고정한다'],                                  1],
+    ['소문자 m-2',           ['m-2 정렬을 고친다'],                                       1],
+    ['알파벳 꼬리 B-j',      ['B-j 처방을 이행한다'],                                     1],
+    ['회차 라벨 N9-2',       ['N9-2 를 반영한다'],                                        1],
+    ['괄호 안 (B-1)',        ['재리뷰 지적 (B-1) 을 닫는다'],                             1],
+    ['한 줄에 둘',           ['M-1 과 M-3 을 함께'],                                      2],
+    ['RQ-10 은 통과',        ['RQ-10 의 폴백 경로를 확인한다'],                           0],
+    ['GB-06 은 통과',        ['GB-06 재개 시험을 다시 채점한다'],                         0],
+    ['ADR-0005 는 통과',     ['ADR-0005 결정3 을 갱신한다'],                              0],
+    ['R12·P11 은 통과',      ['recurrence.md R12 와 policy-lint P11 을 본다'],            0],
+    ['파일명·경로는 통과',   ['scripts/eval-b.mjs 의 verify-artifact 를 고친다'],         0],
+    ['하이픈 단어는 통과',   ['fail-open 을 막고 auto-1 같은 이름은 그대로 둔다'],        0],
+    ['숫자 시작은 통과',     ['3-1 절의 표를 갱신한다'],                                  0],
+    ['빈 목록',              [],                                                          0],
+    ['null 항목',            [null, undefined, ''],                                       0],
+    // 2차(2026-08-02 재리뷰 N-2) — 1차는 라벨의 **모양**만 좁힌 게 아니라 **감싸는
+    // 문자**까지 좁혀, 이 저장소의 지배적 표기(백틱·중점·조사)가 통째로 샜다.
+    // 재리뷰가 커밋된 체크포인트 전수에 돌려 실측한 놓침을 그대로 케이스로 박는다.
+    ['백틱 감싼 `M-1`',      ['`M-1` 을 조치했다'],                                       1],
+    ['볼드 **M-1**',         ['**M-1** 과 **M-3** 을 닫는다'],                            2],
+    ['중점 나열 M-1·M-3',    ['M-1·M-3 정렬을 맞춘다'],                                   2],
+    ['슬래시 B-e/B-f',       ['4차 재리뷰 blocker B-e/B-f 조치분'],                       2],
+    ['조사 붙은 M-1의',      ['M-1의 기준축을 아티팩트로 고정한다'],                      1],
+    ['reviewer 어휘 major-1', ['major-1: useChat.ts 의 센티널을 고친다'],                  1],
+    ['여는 괄호 major-1(',   ['major-1(빈 문자열 센티널) 을 먼저'],                       1],
+    ['두 자리 꼬리 M-10',    ['M-10 을 확인한다'],                                        1],
+    // ↓ 넓힌 뒤에도 통과해야 하는 것 — 조사·괄호가 붙은 정당한 식별자 (R2: 통과값+부정어 짝)
+    ['조사 붙은 RQ-10을',    ['RQ-10을 고치고 GB-06을 다시 채점한다'],                    0],
+    ['조사 붙은 ADR-0005의', ['ADR-0005의 근거와 R12를 함께 본다'],                       0],
+    ['괄호 붙은 RQ-10(',     ['RQ-10(닉네임 유지) 과 GB-06[필수] 를 본다'],               0],
+    ['하이픈 단어+조사',     ['fail-open을 막고 x-axis(축) 정렬을 유지한다'],             0],
+    ['접미사 RQ-10-a',       ['RQ-10-a 새로고침 경로를 재확인한다'],                      0],
+  ];
+  for (const [name, items, want] of labelCases) {
+    const got = judgeOutsideLabels(items).length;
+    const ok = got === want;
+    if (!ok) bad++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(22)} 기대 ${want ? `차단 ${want}건` : '통과'} · 실측 ${got ? `차단 ${got}건` : '통과'}`);
+  }
+
+  const total = cases.length + eolCases.length + labelCases.length;
+  console.log(bad ? `\n정책 린트 자기시험 실패 ${bad}건 / ${total}건 — 파서가 뚫린다.` : `\n정책 린트 자기시험 ${total}건 통과 (P11 파서 ${cases.length} · P9 줄바꿈 ${eolCases.length} · P12 바깥 라벨 ${labelCases.length}).`);
   process.exit(bad ? 1 : 0);
+}
+
+/**
+ * 줄바꿈을 빼고 같은가. **순수 함수다** (`--self-test`).
+ *
+ * P9 는 "생성물이 정책 JSON 과 동기화돼 있는가"를 묻는다. 줄바꿈 종류는 그 물음의
+ * 일부가 아닌데, 바이트 비교는 그것까지 센다. 이 저장소의 `.gitattributes` 는
+ * `* text=auto` 라서 **Windows 체크아웃에서 README 가 CRLF 로 깔리고**, 생성기는
+ * `\n` 으로 쓴다 — 커밋된 블롭은 LF 라 `git diff` 는 비었는데 P9 만 빨갛다.
+ * 즉 이 게이트는 **저장소 상태가 아니라 체크아웃 환경을 재고 있었다.**
+ * (`recurrence.md` R9 와 같은 부류다. 그때는 CI 의 gitignore 산출물이었고 이번엔
+ * 개발기의 줄바꿈이다 — 공통 원인은 '센서가 저장소 밖 변수를 읽는다'.)
+ *
+ * 한 파일만 `eol=lf` 로 카브아웃하지 않는 이유: 그건 이 파일에서만 증상을 지우고
+ * 다음 생성물에서 같은 실패가 다시 난다. 게다가 `* text=auto` 는 이 저장소가 이미
+ * 내린 결정이고, 센서 하나를 위해 그 결정을 조각내는 것은 방향이 반대다.
+ */
+export function sameIgnoringEol(a, b) {
+  const norm = (s) => String(s).replace(/\r\n/g, '\n');
+  return norm(a) === norm(b);
+}
+
+/**
+ * P12 — 최신 체크포인트의 `next`·`open_questions` 에 **저장소 밖 라벨**이 있는가.
+ * **순수 함수다** (`--self-test`).
+ *
+ * `recurrence.md` R7 의 **재처방**이다. 1차 처방은 `checkpoint-resume` 스킬의 Guide 였고
+ * 2026-08-02 에 **내가 그 규칙을 쓴 뒤에 내가 어겼다** — `next` 에 `M-1`·`M-3`·`B-1`
+ * (리뷰 보고서 라벨)을 넣었고 `_workspace/` 는 gitignore 라 신선한 워크트리에 없어
+ * 재개 세션이 복원할 것을 못 찾았다. GB-06 Q3 가 1/3 으로 떨어졌다.
+ * 위계대로 Guide 가 실패하면 게이트로 올린다(R4 선례).
+ *
+ * **왜 최신 하나만 보는가**: 재개 시험이 읽는 것은 최신 체크포인트 하나다. 이력 전체를
+ * 걸면 과거의 모든 체크포인트가 영구히 빨갛고, 그런 게이트는 그날로 무시된다.
+ *
+ * **판별**: 저장소에 실재하는 식별자(`RQ-10`·`GB-06`·`ADR-0005`·`R12`·`P11`)는 통과시키고
+ * 리뷰 보고서 라벨(`M-1`·`B-1`·`m-2`·`B-j`·`N9-2`)만 잡는다. 전자는 글자 2개 이상으로
+ * 시작하거나 하이픈이 없고, 후자는 **한 글자 + (숫자) + 하이픈 + 한 자리**다.
+ * 스킬이 *"저장소에 실재하는 식별자는 반드시 남긴다"* 고 못박았으므로 넓게 잡으면 안 된다 —
+ * 7차 재리뷰가 앵커를 지운 것이 점수를 3/5 까지 떨어뜨렸음을 실측했다.
+ */
+/**
+ * 바깥 라벨 판별 — **좁힌 축은 라벨의 '모양'이지 '감싸는 문자'가 아니다.**
+ *
+ * 1차(2026-08-02)는 경계 문자류를 공백·괄호·따옴표로만 잡았다. 그런데 이 저장소의
+ * 산문은 식별자를 백틱으로 감싸고 `·` 로 나열하는 것이 지배적 표기라, 실제 데이터의
+ * **3분의 1이 샜다** — 재리뷰가 커밋된 체크포인트 전수에 돌려 실측했다:
+ * `major-1`(reviewer 에이전트가 RQ-10 리뷰에서 실제로 생산한 라벨)이 **GB-06 이
+ * 채점한 체크포인트 4건에 들어 있었는데 통과**했다. 검사 이름은 "바깥 라벨"인데
+ * 실제로는 "공백으로 둘러싸인 한 글자 라벨"이었다 — R1(넓게 약속하고 좁게 집행).
+ *
+ * 2차는 **모양은 그대로 두고** 감싸는 문자와 접두사 어휘만 넓힌다:
+ *  - 경계에 백틱·별표·중점·슬래시·여는 괄호·**한글**을 추가 (`M-1의`·`M-1·M-3`)
+ *  - 접두사에 `major`/`minor`/`blocker` 리터럴 추가 (reviewer 가 쓰는 어휘)
+ *  - 꼬리를 1~2자로 (`M-10`)
+ *
+ * 실측: 놓침 8종 회수 · **거짓 양성 증가 0** (`RQ-10을`·`GB-06[필수]`·`ADR-0005의`·
+ * `x-axis(축)`·`fail-open을`·`3-1`·`24-a` 전부 통과 유지). 넓히면 거짓 양성이
+ * 는다는 것이 1차의 근거였는데, **거짓 양성을 만든 것은 넓이가 아니라 축이었다.**
+ */
+const OUTSIDE_LABEL =
+  /(^|[\s([{"'`*·、,/])((?:[A-Za-z]\d?|major|minor|blocker)-[0-9a-z]{1,2})(?=[\s:.,)\]}([{"'`*·/가-힣]|$)/gu;
+export function judgeOutsideLabels(items) {
+  const hits = [];
+  for (const raw of items || []) {
+    const text = String(raw == null ? '' : raw);
+    for (const m of text.matchAll(OUTSIDE_LABEL)) hits.push({ label: m[2], text: text.slice(0, 60) });
+  }
+  return hits;
+}
+
+function checkCheckpointNarrative() {
+  const ls = spawnSync('git', ['ls-tree', '-r', '--name-only', 'HEAD', '--', '.harness/state/checkpoints'],
+    { cwd: ROOT, encoding: 'utf8' });
+  if (ls.status !== 0 || !ls.stdout.trim()) return; // 체크포인트가 없으면 이 검사의 관할이 아니다
+  const rows = ls.stdout.split('\n').map((s) => s.trim()).filter((f) => f.endsWith('.json'))
+    .map((rel) => {
+      const base = rel.slice(rel.lastIndexOf('/') + 1);
+      const mm = /^(.+?)(?:-(\d+))?\.json$/.exec(base);
+      const raw = mm ? mm[1] : base;
+      const t = /^(\d{8}T\d{6})(\d*)Z?$/.exec(raw);
+      return { rel, stamp: t ? `${t[1]}${(t[2] || '').padEnd(3, '0').slice(0, 3)}` : raw, seq: mm && mm[2] ? Number(mm[2]) : 0 };
+    })
+    .sort((a, b) => (a.stamp < b.stamp ? -1 : a.stamp > b.stamp ? 1 : a.seq - b.seq));
+  if (!rows.length) return;
+  const rel = rows[rows.length - 1].rel;
+  const show = spawnSync('git', ['show', `HEAD:${rel}`], { cwd: ROOT, encoding: 'utf8' });
+  if (show.status !== 0) return;
+  let ck;
+  try {
+    ck = JSON.parse(show.stdout);
+  } catch {
+    return; // 깨진 체크포인트는 P12 의 관할이 아니다 — 재개 시험이 그것을 잡는다
+  }
+  const s = ck.session || {};
+  const hits = judgeOutsideLabels([...(s.next || []), ...(s.open_questions || [])]);
+  if (!hits.length) return;
+  fail(
+    'P12',
+    `최신 체크포인트(${rel})의 next·open 에 저장소 밖 라벨 ${hits.length}건: ${[...new Set(hits.map((h) => h.label))].join(' ')}`,
+    '리뷰 보고서·이슈 번호·회차 약칭은 `_workspace/` 에 살고 그건 gitignore 라 신선한 워크트리에 없다. ' +
+      '재개하는 쪽은 복원할 것이 없어 자기 서사로 대체한다. 라벨을 지우고 **그 라벨이 가리키던 내용**을 쓰라 — ' +
+      '파일명·스크립트명·단계명·규칙 ID 같은 저장소에 실재하는 식별자는 그대로 남긴다. ' +
+      '`python harness/phase.py session --next "…"` 로 다시 선언한 뒤 전이를 한 번 거쳐야 체크포인트에 반영된다. ' +
+      '(recurrence R7 재처방 — 1차 Guide 가 실패해 게이트로 올라왔다.)'
+  );
 }
 
 function checkGenerated(m, r) {
@@ -803,7 +972,7 @@ function checkGenerated(m, r) {
     fail('P9', 'harness/policy/README.md가 없다 — 정책의 사람용 표가 생성되지 않았다', 'node scripts/policy-lint.mjs --print 로 생성하고 커밋하라.');
     return;
   }
-  if (readFileSync(README, 'utf8') !== rendered) {
+  if (!sameIgnoringEol(readFileSync(README, 'utf8'), rendered)) {
     fail(
       'P9',
       'harness/policy/README.md가 정책 JSON과 어긋났다 — 생성물이 낡았다',
@@ -955,6 +1124,7 @@ if (matrix) {
   checkShadowing(matrix);
 }
 checkRecurrence();
+checkCheckpointNarrative();
 if (matrix) checkPatterns(matrix);
 if (risk) checkRisk(risk);
 if (matrix && risk && !args.includes('--print')) checkGenerated(matrix, risk);
@@ -984,6 +1154,8 @@ const checks = [
   ['P8', '매칭 불가능한 패턴 없음'],
   ['P9', '생성물(README) 동기화'],
   ['P10', 'enforced_by 대조 (settings.json 실집행)'],
+  ['P11', '반복 대장 — 2회 이상 미처방 없음'],
+  ['P12', '최신 체크포인트 서사에 저장소 밖 라벨 없음 (R7 재처방)'],
 ];
 for (const [id, label] of checks) {
   const n = problems.filter((p) => p.id === id).length;
