@@ -387,13 +387,29 @@ export function useChat(nickname: string | null, onResumeFail?: () => void): Cha
     [selfNickname, selectRoom, emitWhenIdentified],
   );
 
-  const sendMessage = useCallback((body: string) => {
-    const text = body.trim();
-    const room = activeRoomRef.current;
-    const socket = socketRef.current;
-    if (!text || !room || !socket) return;
-    socket.emit('message', { room, body: text });
-  }, []);
+  const sendMessage = useCallback(
+    (body: string) => {
+      const text = body.trim();
+      const room = activeRoomRef.current;
+      if (!text || !room) return;
+      // RQ-18-a 리뷰 blocker B-1: join(:325)·activeRoom(:267)과 같은 관례로 wire emit을
+      // identify/resume ack 이후로 미룬다 — 그렇지 않으면 connect 직후 sendBuffer가
+      // message를 join/activeRoom보다 먼저 flush할 수 있고, 서버(room.ts:91)는
+      // socket.data.nickname이 아직 채워지지 않은 message를 조용히 폐기한다
+      // (nickname은 identify/resume/join에서만 채워진다 — 폐기 지점은 항상 :91이고,
+      // :97의 socket.rooms.has는 global에 대해선 connection.ts:28의 자동 join 때문에
+      // 항상 참이라 폐기와 무관하다; tests/integration/rq-18-a-emit-order.test.ts
+      // 상단 주석 참고). room은 호출 시점 값을 캡처한다 — 사용자가 그 room에서
+      // 입력한 메시지이므로, 큐 대기 중 activeRoom이 바뀌어도 원래 room으로
+      // 보낸다. socketRef.current는 실행 시점(emit 시)에 읽는다 — 재연결로
+      // 소켓이 갱신돼도 최신 소켓을 쓰도록(selectRoom·join ack의 activeRoom emit과
+      // 같은 관례).
+      emitWhenIdentified(() => {
+        socketRef.current?.emit('message', { room, body: text });
+      });
+    },
+    [emitWhenIdentified],
+  );
 
   return useMemo(
     () => ({
