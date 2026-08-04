@@ -26,7 +26,8 @@ const DAY = 86400000;
 // ── 인자 ────────────────────────────────────────────────────────────────────
 const argv = process.argv.slice(2);
 if (argv.includes('--help') || argv.includes('-h')) {
-  console.log('사용법: node scripts/doc-freshness.mjs [--digest | --pr [--base <ref>] | --full] [--strict]');
+  console.log('사용법: node scripts/doc-freshness.mjs [--digest | --pr [--base <ref>] | --full] [--strict | --self-test]');
+  console.log('  --self-test  C2 면제 판정 음성 시험 (git·LLM 불요)');
   process.exit(0);
 }
 const MODE = argv.includes('--digest') ? 'digest' : argv.includes('--pr') ? 'pr' : 'full';
@@ -200,8 +201,91 @@ function checkC1() {
   }
 }
 
+/**
+ * C2 면제 판정 — **"검토했고 안 낡았다"를 근거와 함께 기록한 것만** 통과시킨다.
+ *
+ * C2 는 커밋 시각으로만 재므로 **문서가 그 의존을 가리키기만 할 때도** 발화한다.
+ * 지금까지는 의존을 빼서(narrowing) 풀었고 그렇게 여섯 번 했다. 그런데 2026-08-04 에
+ * 그 처방이 안 듣는 형상이 나왔다: `phase-matrix.json` 에 가드 필드 하나를 더하자
+ * **그 매트릭스의 값을 실제로 재서술하는 문서 다섯이 동시에 발화**했다 —
+ * `CLAUDE.md`(9단계 이름·가드 이름) · `coder.md`·`test-writer.md`(단계별 쓰기 규칙) ·
+ * `checkpoint-resume`(`phase.py` 명령 출력 계약) · `policy/README.md`(생성물).
+ * **다섯 다 의존이 옳고 다섯 다 안 낡았다** — 좁히면 진짜 드리프트 탐지를 지운다.
+ * 그리고 손댈 내용이 없으니 `doc.time` 을 뒤로 보낼 수도 없다(무변경 터치는 금지).
+ *
+ * 즉 **검토 결과를 남길 자리가 없어서** 막히는 것이지 문서가 낡아서가 아니다.
+ * 이 함수가 그 자리다. 억제가 아니라 **판단의 박제**이고, 두 가지로 그것을 보장한다:
+ *
+ *  1. `sha` 가 **현재 의존 커밋과 다르면 무시**한다 → 다음 변경에 자동 재무장된다.
+ *     면제는 "이 변경까지 검토했다"는 뜻이지 "이 의존을 앞으로 안 본다"가 아니다.
+ *  2. `sha` 나 `why` 가 **없거나 비면 무시**한다 → fail-closed.
+ *     판정할 수 없는 면제는 없는 면제다(`recurrence.md` R2).
+ */
+export function judgeC2Ack(ack, depFile, depSha) {
+  if (!ack || typeof ack !== 'object') return { exempt: false, why: '면제 기록 없음' };
+  const entries = Array.isArray(ack) ? ack : [ack];
+  for (const e of entries) {
+    if (!e || typeof e !== 'object') continue;
+    const sha = typeof e.sha === 'string' ? e.sha.trim() : '';
+    const why = typeof e.why === 'string' ? e.why.trim() : '';
+    if (!sha || !why) continue; // fail-closed — 근거 없는 면제는 면제가 아니다
+    // 길이 하한 (2026-08-04 리뷰 M-1). 일치 판정이 접두 비교라 `sha:"e"` 는 다음 커밋
+    // 16분의 1을, `"e8"` 은 256분의 1을 계속 면제한다. 이 설계의 안전성 주장 전체가
+    // *"의존이 바뀌면 자동 재무장"* 하나에 걸려 있는데, 하한이 없으면 그 주장이
+    // *"작성자가 충분히 긴 sha 를 적을 때만"* 으로 약해진다. 면제를 적는 주체와
+    // 면제로 이득을 보는 주체가 같은 자리다 — fail-closed 로 막는다.
+    if (sha.length < 7) continue;
+    if (e.dep !== depFile) continue;
+    if (!depSha || !(depSha.startsWith(sha) || sha.startsWith(depSha))) {
+      return { exempt: false, why: `면제가 ${sha} 까지만 검토했는데 의존은 ${depSha || '(불명)'} 다 — 재검토가 필요하다` };
+    }
+    return { exempt: true, why };
+  }
+  return { exempt: false, why: '이 의존에 대한 면제 기록 없음' };
+}
+
+if (argv.includes('--self-test')) {
+  const D = 'harness/policy/phase-matrix.json';
+  const ACK = { dep: D, sha: 'e8c47dd', why: '가드 필드 추가이고 이 문서가 옮겨 적는 값은 안 바뀌었다' };
+  // 차단 쪽에 **`통과값 + 부정어` 짝**을 넣는다(R2): 면제가 억제로 변질되는 형상이
+  // 이 판정의 본체다. 통과 케이스만 시험하면 그 계열은 영원히 안 잡힌다.
+  const cases = [
+    ['정상 면제',                 ACK,                                   D, 'e8c47dd1234', true],
+    ['sha 접두 일치(짧은쪽)',      { ...ACK, sha: 'e8c47dd1234' },        D, 'e8c47dd',     true],
+    ['배열 형태',                 [ACK],                                 D, 'e8c47dd',     true],
+    ['의존이 바뀌었다 → 재무장',   ACK,                                   D, 'ffffffff',    false],
+    ['다른 의존은 면제 안 됨',     ACK,                                   'harness/phase.py', 'e8c47dd', false],
+    ['sha 없음 (fail-closed)',    { dep: D, why: '괜찮다' },              D, 'e8c47dd',     false],
+    ['sha 빈 문자열',             { ...ACK, sha: '   ' },                D, 'e8c47dd',     false],
+    ['why 없음 (근거 없는 면제)',  { dep: D, sha: 'e8c47dd' },            D, 'e8c47dd',     false],
+    ['why 빈 문자열',             { ...ACK, why: '  ' },                 D, 'e8c47dd',     false],
+    ['면제 기록 자체가 없음',      undefined,                             D, 'e8c47dd',     false],
+    ['null',                     null,                                   D, 'e8c47dd',     false],
+    ['문자열 (형식 오류)',         'ok',                                  D, 'e8c47dd',     false],
+    ['빈 배열',                   [],                                    D, 'e8c47dd',     false],
+    ['의존 sha 불명',             ACK,                                   D, '',            false],
+    // M-1 (2026-08-04 리뷰) — **형식은 맞고 판별력만 없는 값**. 위 차단 케이스들은
+    // 없음·빈 문자열·불일치라 전부 '틀린 값'인데, 이 계열은 '맞는 값처럼 보이는데
+    // 검사를 끄는 값'이다. R2 가 인용한 두 우회와 같은 부류이고 하한 없이는 통과했다.
+    ['sha 1글자 (판별력 없음)',    { ...ACK, sha: 'e' },                  D, 'e0000000',    false],
+    ['sha 6글자 (하한 미달)',      { ...ACK, sha: 'e8c47d' },             D, 'e8c47dd1234', false],
+    ['sha 7글자 (하한 경계·통과)',  { ...ACK, sha: 'e8c47dd' },            D, 'e8c47dd1234', true],
+  ];
+  let bad = 0;
+  for (const [name, ack, dep, sha, want] of cases) {
+    const got = judgeC2Ack(ack, dep, sha).exempt;
+    const ok = got === want;
+    if (!ok) bad++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(26)} 기대 ${want ? '면제' : '차단'} · 실측 ${got ? '면제' : '차단'}`);
+  }
+  console.log(bad ? `\n문서 신선도 자기시험 실패 ${bad}건 / ${cases.length}건.` : `\n문서 신선도 자기시험 ${cases.length}건 통과 (C2 면제 판정).`);
+  process.exit(bad ? 1 : 0);
+}
+
 // ── C2 결합 낡음 ────────────────────────────────────────────────────────────
 const uncommittedDeps = [];
+/** 면제로 통과한 것. **조용한 면제는 억제와 구별되지 않는다** — 반드시 출력한다. */
+const c2Exempt = [];
 /** C4 가 생성물이라 판정에서 뺀 참조. **조용한 제외는 범위를 숨긴다.** */
 const excluded = [];
 function checkC2() {
@@ -238,7 +322,14 @@ function checkC2() {
             continue;
           }
           if (Date.parse(dc.time) > Date.parse(docCommit.time)) {
-            if (!worst || Date.parse(dc.time) > Date.parse(worst.time)) worst = { ...dc, file: depFile, pattern: dep };
+            const ack = judgeC2Ack(d._c2_reviewed, depFile, dc.sha);
+            if (ack.exempt) {
+              c2Exempt.push({ doc: docPath, dep: depFile, sha: dc.sha, why: ack.why });
+              continue;
+            }
+            if (!worst || Date.parse(dc.time) > Date.parse(worst.time)) {
+              worst = { ...dc, file: depFile, pattern: dep, ackWhy: ack.why };
+            }
           }
         }
       }
@@ -472,6 +563,14 @@ console.log('');
 if (excluded.length) {
   console.log(`  C4 판정 제외 (gitignore 대상 = 생성물) — ${excluded.length}개 문서:`);
   for (const e of excluded) console.log(`    ${e}`);
+  console.log('');
+}
+
+// 같은 이유로 C2 면제도 반드시 찍는다. **조용한 면제는 억제와 구별되지 않는다** —
+// 읽는 사람이 "검사가 통과했다"와 "검사를 껐다"를 가려낼 수 있어야 한다.
+if (c2Exempt.length) {
+  console.log(`  C2 면제 (검토 기록 있음 — sha 가 바뀌면 자동 재무장) — ${c2Exempt.length}건:`);
+  for (const e of c2Exempt) console.log(`    ${e.doc} ← ${e.dep} @${e.sha}\n      사유: ${e.why}`);
   console.log('');
 }
 

@@ -2940,7 +2940,7 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
             <code>harness/recurrence.md</code> R8(배선 부재)의 처방이 R9(환경 의존)를 낳았고,
             같은 배선이 감사 스킬의 낡은 <i>"미배선"</i> 블록까지 잡았다 —
             <b>센서를 자동으로 돌리는 것은 실패를 잡기 위해서만이 아니라 센서 자신을 재기 위해서다.</b></p>
-            <p><b>이 게이트에는 이제 음성 시험이 있다</b> — <code>eval-b --self-test</code>(34건) ·
+            <p><b>이 게이트에는 이제 음성 시험이 있다</b> — <code>eval-b --self-test</code> ·
             <code>policy-lint --self-test</code> · <code>phase.py self-test</code>
             (<b>건수는 각 명령의 출력이 정본</b> — 여기 적었다가 두 번 낡았다).
             신설 게이트 셋 중 둘에 시험을 안 붙였다는 지적을 두 회차 연속 받고 붙였다.
@@ -3193,6 +3193,55 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
               <code>check_full_green</code> · <code>golden_coverage</code> · <code>evaluator_pass</code> ·
               <code>reviewer_approve</code> · <code>track_b_passing</code> · <code>changelog_updated</code>.
               <b>하필 §04가 "직전 단계만 만들 수 있는 산출물을 요구한다"며 설계의 핵심이라 부른 가드들이 전부 여기 있다.</b>
+            </p>
+            <p>
+              <b>후속 (2026-08-04) — 8종이 실전에서 돌자 그중 둘이 fail-open 이었다.</b>
+              RQ-13-a 파이프라인이 <code>tests_committed</code>·<code>red_evidence</code>·
+              <code>check_full_green</code>·<code>golden_coverage</code>·<code>evaluator_pass</code>·
+              <code>track_b_passing</code>·<code>changelog_updated</code> 를 모두 실제로 평가시켰고,
+              <b>그 순간 <code>evaluator_pass</code> 가 FAIL 보고서를 통과시키는 것이 드러났다</b> —
+              보고서가 회차를 append 하는 규약이라 <code>re.search</code> 로 파일 전체를 보면
+              옛 <code>판정: PASS</code> 가 최신 <code>판정: FAIL</code> 을 덮었다(실측: 856행 PASS · 1239행 FAIL 공존에 통과).
+              같은 실행에서 <code>no_force</code> rubric 도 저장소 <b>전 이력</b>을 세어,
+              사람이 승인한 <code>force</code> 1건이 트랙 B 를 <b>영구히</b> 실패시켰다.
+            </p>
+            <p>
+              <b>둘은 같은 오류다: "이번 실행이 무엇을 했나"를 묻는 판정이 "여태 무엇이 있었나"를 쟀다.</b>
+              처방도 같은 모양이다 — <code>latest_of</code>(판정 줄 중 마지막만 대조) ·
+              <code>sliceRunPhaseLog</code>(시드 직후를 기준선으로 절단). 둘 다 매칭이 0건이면
+              실패한다(<i>판정할 수 없는 가드는 없는 가드다</i>).
+              <b>이 절의 원래 교훈이 한 겹 깊어진다</b>: 실행되지 않은 가드는 작동 여부를 모를 뿐 아니라
+              <b>무엇을 재는지도 검증되지 않은 상태</b>다. 배선의 값어치는 실패를 잡는 것보다
+              <b>센서 자신의 판정 축을 드러내는 것</b>에 있다(§R9 와 같은 줄기).
+              <b>그리고 그 처방 자신이 한 번 더 같은 병에 걸렸다 (2026-08-04 리뷰 B-1).</b>
+              <code>latest_of</code> 가 판정 줄을 <code>\S+$</code> 로 정의해 <b>토큰 하나짜리 줄만</b>
+              판정으로 인정했고, 마지막 회차가 꾸밈을 한 글자라도 달면(<code>판정: FAIL — D1 회귀</code>)
+              그 줄이 안 세어져 <b>앞의 맨몸 옛 PASS</b> 가 다시 이겼다. 형식을 맨몸으로 쓰라고
+              강제받는 쪽은 <code>PASS</code> 뿐이라 <b>FAIL 쪽의 자연스러운 작문이 곧 우회</b>였다 —
+              즉 게이트가 <i>"판정 줄은 꾸밈 없이 쓴다"</i>는 <b>관례</b>에 기대고 있었고, 그것은
+              이 처방 자신이 <code>reviewer_approve</code> 선배선을 정당화하며 쓴 논거
+              (<i>"관례는 게이트가 아니다"</i>)와 정면으로 어긋난다. 정의를 <code>.*$</code> 로 넓혀
+              닫았다(통과 조건은 그대로라 fail-closed — 꾸밈 붙은 <code>PASS</code> 도 막힌다).
+              <b>음성 시험이 이 계열을 하나도 안 덮고 있었다는 것이 요점이다</b> —
+              붙인 11건은 <i>산문 속 PASS</i>·<i>헤딩·볼드</i> 를 덮으면서 <b>판정 줄 자체의 꾸밈</b>을
+              빠뜨렸고, 그것은 R2 가 이미 이름 붙인 <code>미완료</code>·<code>완료 예정</code> 계열이다.
+              대장에 <code>R15</code> 로 등재했고, 일반형은 <code>evals/README.md</code> 의
+              rubric <b>3조</b>(<i>기질의 범위도 명시한다</i>)다 — R5 의 1조가 <i>"무엇을 읽는가"</i>만
+              요구해 이 형상을 못 막았다.
+            </p>
+            <p>
+              <b>세 번째 축도 같은 날 드러났다 — 이번엔 센서가 아니라 그 센서를 막는 쪽이다.</b>
+              위 수정이 <code>phase-matrix.json</code> 을 건드리자 <b>그 값을 재서술하는 문서 다섯</b>이
+              <code>doc-freshness</code> C2 로 동시에 발화했다. 그런데 저장소의 판별 규칙
+              (<i>재서술하면 의존, 포인터로만 참조하면 비의존</i>)으로 대조하니 <b>다섯 다 의존이 옳고
+              다섯 다 안 낡았다</b> — 좁히면 진짜 드리프트 탐지를 지운다. 손댈 내용도 없으니
+              시각을 뒤로 보낼 수도 없다. <code>harness/policy/README.md</code> 가 그 극단이다:
+              <b>생성물이라 내용이 안 바뀌면 커밋될 수 없어 원리적으로 소스보다 낡는다</b>
+              (P9 는 PASS). 즉 <b>검토 결과를 남길 자리가 없어서</b> 막히는 것이지 문서가 낡아서가 아니다.
+              <code>_c2_reviewed {dep, sha, why}</code> 가 그 자리이고, <b><code>sha</code> 가 현재 의존
+              커밋과 일치할 때만</b> 면제되므로 다음 변경에 자동 재무장된다 —
+              <b>억제가 아니라 판단의 박제</b>다. 면제는 반드시 출력한다(조용한 면제는 억제와 구별되지 않는다).
+              센서 목록은 <code>harness/sensor-catalog.md</code> 의 문서 신선도 행이 갖는다.
             </p>
             <p>
               <b>왜 그랬는지가 더 불편하다.</b> 기록된 전이의 절반 이상이 <code>HARNESS ↔ IDLE</code> 왕복이고,
