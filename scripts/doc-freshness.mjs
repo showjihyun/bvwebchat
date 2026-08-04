@@ -229,6 +229,12 @@ export function judgeC2Ack(ack, depFile, depSha) {
     const sha = typeof e.sha === 'string' ? e.sha.trim() : '';
     const why = typeof e.why === 'string' ? e.why.trim() : '';
     if (!sha || !why) continue; // fail-closed — 근거 없는 면제는 면제가 아니다
+    // 길이 하한 (2026-08-04 리뷰 M-1). 일치 판정이 접두 비교라 `sha:"e"` 는 다음 커밋
+    // 16분의 1을, `"e8"` 은 256분의 1을 계속 면제한다. 이 설계의 안전성 주장 전체가
+    // *"의존이 바뀌면 자동 재무장"* 하나에 걸려 있는데, 하한이 없으면 그 주장이
+    // *"작성자가 충분히 긴 sha 를 적을 때만"* 으로 약해진다. 면제를 적는 주체와
+    // 면제로 이득을 보는 주체가 같은 자리다 — fail-closed 로 막는다.
+    if (sha.length < 7) continue;
     if (e.dep !== depFile) continue;
     if (!depSha || !(depSha.startsWith(sha) || sha.startsWith(depSha))) {
       return { exempt: false, why: `면제가 ${sha} 까지만 검토했는데 의존은 ${depSha || '(불명)'} 다 — 재검토가 필요하다` };
@@ -258,6 +264,12 @@ if (argv.includes('--self-test')) {
     ['문자열 (형식 오류)',         'ok',                                  D, 'e8c47dd',     false],
     ['빈 배열',                   [],                                    D, 'e8c47dd',     false],
     ['의존 sha 불명',             ACK,                                   D, '',            false],
+    // M-1 (2026-08-04 리뷰) — **형식은 맞고 판별력만 없는 값**. 위 차단 케이스들은
+    // 없음·빈 문자열·불일치라 전부 '틀린 값'인데, 이 계열은 '맞는 값처럼 보이는데
+    // 검사를 끄는 값'이다. R2 가 인용한 두 우회와 같은 부류이고 하한 없이는 통과했다.
+    ['sha 1글자 (판별력 없음)',    { ...ACK, sha: 'e' },                  D, 'e0000000',    false],
+    ['sha 6글자 (하한 미달)',      { ...ACK, sha: 'e8c47d' },             D, 'e8c47dd1234', false],
+    ['sha 7글자 (하한 경계·통과)',  { ...ACK, sha: 'e8c47dd' },            D, 'e8c47dd1234', true],
   ];
   let bad = 0;
   for (const [name, ack, dep, sha, want] of cases) {

@@ -560,9 +560,25 @@ def cmd_self_test() -> int:
     # 최신 판정 축 — append 보고서에서 옛 판정이 최신을 덮던 fail-open (2026-08-03).
     # R2 요구대로 차단 쪽에 **통과값 + 부정어** 짝을 넣는다: 기대값 문자열이 파일 안에
     # 있는데도 차단돼야 하는 형상이 이 결함의 본체이기 때문이다.
-    LATEST = r"(?m)^\s*판정\s*:\s*\S+\s*$"
-    WANT_PASS = r"(?m)^\s*판정\s*:\s*PASS\s*$"
+    # 패턴을 여기 옮겨 적지 않는다 — **배선된 값 자체**를 시험한다. 하드코딩하면
+    # 매트릭스와 두 곳이 되어 드리프트하고, 그때 이 시험은 아무도 안 쓰는 정규식을
+    # 검증하게 된다 (R10). 2026-08-04 리뷰 B-1 이 정확히 이 자리에서 났다.
+    _guards = (st.load_policy(st.project_root())[0].get("guards") or {})
+    _ev = _guards.get("evaluator_pass") or {}
+    LATEST = _ev.get("latest_of") or ""
+    WANT_PASS = _ev.get("pattern") or ""
     verdict_cases = [
+        # ── B-1 (2026-08-04 리뷰) — 판정 줄 자체에 꾸밈이 붙는 계열.
+        # 좁은 정의(`\S+$`)에서는 이 줄들이 판정으로 세어지지 않아 hits[-1] 이
+        # **앞의 맨몸 옛 PASS** 를 집었다. 형식을 맨몸으로 쓰라고 강제받는 쪽은
+        # PASS 뿐이라, FAIL 을 쓰는 평가자의 자연스러운 작문이 곧 우회였다.
+        ("꾸밈 붙은 최신 FAIL",    "판정: PASS\n…3차…\n판정: FAIL — D1 회귀\n",             False),
+        ("괄호 붙은 최신 FAIL",    "판정: PASS\n판정: FAIL (재평가)\n",                     False),
+        ("수식어 붙은 FAIL",       "판정: PASS\n판정: 조건부 FAIL\n",                       False),
+        ("주석 붙은 FAIL",         "판정: PASS\n판정: FAIL   # 4차\n",                      False),
+        # 대조군 — 통과값(PASS)에 꾸밈이 붙어도 차단이어야 한다(fail-closed).
+        # 이것이 R2 가 요구하는 '통과값 + 부정어' 짝의 이 판정 함수용 대응물이다.
+        ("꾸밈 붙은 PASS 도 차단",  "판정: FAIL\n판정: PASS — 조건부\n",                     False),
         ("PASS 하나",              "판정: PASS\n",                                          True),
         ("FAIL 하나",              "판정: FAIL\n",                                          False),
         ("PASS→FAIL (실형상)",     "판정: PASS\n…3차…\n판정: FAIL\n",                       False),
@@ -582,11 +598,19 @@ def cmd_self_test() -> int:
             bad += 1
         _out(f"  {'PASS' if ok else 'FAIL'}  {name:<22} 기대 {'통과' if want else '차단'} · "
              f"실측 {'통과' if got else '차단'}")
-    total = len(cases) + len(verdict_cases)
+    # 축 일치 — 두 가드가 같은 판정 줄 정의를 쓰는지. 한쪽만 고치면 다음 사람이 왜
+    # 다른지 알아내야 하고, reviewer_approve 가 막는 것은 '머지'다.
+    rv_latest = (_guards.get("reviewer_approve") or {}).get("latest_of")
+    axis_ok = bool(LATEST) and rv_latest == LATEST
+    if not axis_ok:
+        bad += 1
+    _out(f"  {'PASS' if axis_ok else 'FAIL'}  {'두 가드 축 일치':<22} "
+         f"evaluator_pass={LATEST!r} · reviewer_approve={rv_latest!r}")
+    total = len(cases) + len(verdict_cases) + 1
     _out("")
     _out(f"전이 게이트 자기시험 실패 {bad}건 / {total}건."
          if bad else f"전이 게이트 자기시험 {total}건 통과 (R6 상태 신선도 {len(cases)} · "
-                     f"최신 판정 {len(verdict_cases)}).")
+                     f"최신 판정 {len(verdict_cases)} · 축 일치 1).")
     return 1 if bad else 0
 
 
