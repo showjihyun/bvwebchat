@@ -144,7 +144,6 @@
         "harness/sensor-catalog.md"
       ],
       "_c2_reviewed": [
-        { "dep": "harness/sensor-catalog.md", "sha": "fafef5e", "why": "카탈로그의 evaluator·reviewer 행에 더한 문장은 이 문서 §R15 절의 B-1 문단과 같은 내용을 카탈로그 어휘로 옮긴 것이고, 이 문서가 카탈로그에서 옮겨 적는 값은 센서 이름과 배선 여부뿐인데 둘 다 안 바뀌었다(가드도 스크립트도 신설되지 않았다). 두 문서는 같은 PR 에서 함께 갱신됐고 커밋 순서만 뒤였다." },
         { "dep": "harness/policy/**", "sha": "24c68fa", "why": "판정 줄 정의 확장은 이 문서 §R15 절에 2026-08-04 문단으로 직접 반영돼 있다 — 낡음이 아니라 이미 동행한 변경이다." }
       ],
       "review_every_days": 90
