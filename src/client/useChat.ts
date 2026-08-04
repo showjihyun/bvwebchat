@@ -98,6 +98,37 @@ export function useChat(nickname: string | null, onResumeFail?: () => void): Cha
   // activeRoom을 ref로 미러링 — sendMessage가 상태 업데이터(순수해야 함) 밖에서
   // 현재 room을 읽어 emit하기 위함. StrictMode 이중 호출로 인한 중복 전송 방지.
   const activeRoomRef = useRef<string | null>(null);
+  // RQ-18-a 결함 수정: socket.io-client는 connect 이전에 emit된 패킷을
+  // sendBuffer에 쌓아 뒀다가 연결되는 즉시(사용자 'connect' 리스너가 실행되기
+  // *전*, 내부 emitBuffered()에서) 큐에 쌓인 순서대로 flush한다. 마운트 직후
+  // (실 connect 전) 사용자가 room에 참여하거나 room을 선택하면 그 join/
+  // activeRoom emit이 connect 핸들러 안에서 보내는 identify/resume보다
+  // 서버에 먼저 도달한다 — attachRoomToSession(server/chat/session.ts)이
+  // 세션 없는 소켓에 조용히 no-op하고, 이후 activeRoom이 "참여하지 않은
+  // room"으로 거부된다(GA-31/32/33 재현 지점 — global도 예외 없음: 세션이
+  // 아예 없으면 session.rooms에 처음부터 들어있는 GLOBAL_ROOM 시드조차 못
+  // 본다). identify/resume의 ack이 실제로 처리된 뒤에만 join/activeRoom을
+  // 내보내도록 로컬 큐로 순서를 강제한다 — 낙관적 로컬 상태 갱신(GA-30)은
+  // 그대로 즉시 실행하고, 서버로 나가는 emit만 지연시킨다.
+  const identifiedRef = useRef(false);
+  const pendingEmitsRef = useRef<Array<() => void>>([]);
+  const runPendingEmits = useCallback(() => {
+    identifiedRef.current = true;
+    const queued = pendingEmitsRef.current;
+    pendingEmitsRef.current = [];
+    for (const fn of queued) fn();
+  }, []);
+  const emitWhenIdentified = useCallback((fn: () => void) => {
+    if (identifiedRef.current) fn();
+    else pendingEmitsRef.current.push(fn);
+  }, []);
+  // 이 소켓이 이미 한 번 이상 connect된 적이 있는지 — rejoinAll(재연결 시
+  // 이전 room 재등록)을 최초 연결과 구분하는 데 쓴다(위 identifiedRef
+  // 주석과 같은 결함의 다른 절반: joinRoom의 낙관적 갱신이 identify 완료
+  // 전에도 roomsRef.current를 채울 수 있게 되면서, 최초 연결에서도
+  // rejoinAll이 그 room을 "복원 대상"으로 오인해 중복 join을 내보낼 수
+  // 있다 — 재연결에서만 rejoinAll을 실행해 막는다).
+  const hasConnectedOnceRef = useRef(false);
   // RQ-10-a: 본인 닉네임. App이 넘긴 초기값(닉네임 미확정이면 '')에서 시작해
   // resume 성공 시 서버 ack 값으로 교체된다 — 화면 표시(ChatPane/ParticipantList의
   // "나" 배지)는 항상 이 상태를 본다, App이 넘긴 원래 prop이 아니라.
@@ -128,19 +159,27 @@ export function useChat(nickname: string | null, onResumeFail?: () => void): Cha
     // 뜻함) 빈 값으로 identify를 시도하지 않는다 — 대신 onResumeFail로 App에 알려
     // 진입 화면을 띄우게 한다(팀리드 지시: 임의 identify는 폴백 경로를 없애 사실상
     // 영구 로그인이 된다).
-    const identifyFresh = () => {
+    const identifyFresh = (isReconnect: boolean) => {
       if (nickname === null) {
         onResumeFail?.();
+        // 세션 자체를 발급받지 않는 경로 — 대기 중이던 요청(있었다면)은 서버가
+        // 스스로 거부하게 둔다(GA-29와 동일 관례: 클라이언트가 미리 판단하지
+        // 않고 ok:false만 본다). 큐에 영구히 쌓이지 않도록 비운다.
+        runPendingEmits();
         return;
       }
       socket.emit('identify', { nickname }, (res) => {
         if (res.ok) localStorage.setItem(TOKEN_KEY, res.token);
-        rejoinAll(nickname); // 최초 연결은 no-op, 재연결/토큰만료 폴백 시 참여 room 재등록
+        // 최초 연결은 no-op(위 주석) — 재연결/토큰만료 폴백 시에만 참여 room 재등록.
+        if (isReconnect) rejoinAll(nickname);
+        runPendingEmits();
       });
     };
 
     socket.on('connect', () => {
       setStatus('connected');
+      const isReconnect = hasConnectedOnceRef.current;
+      hasConnectedOnceRef.current = true;
       const token = localStorage.getItem(TOKEN_KEY);
       if (token) {
         // 유예(30초) 내 재연결·새로고침: 토큰으로 세션(참여 room·활성·안읽음) 복원.
@@ -149,7 +188,7 @@ export function useChat(nickname: string | null, onResumeFail?: () => void): Cha
             // 유예 만료·무효 토큰 → 새 세션 발급으로 폴백(닉네임 미확정이면 identifyFresh가
             // 대신 onResumeFail을 호출한다).
             localStorage.removeItem(TOKEN_KEY);
-            identifyFresh();
+            identifyFresh(isReconnect);
             return;
           }
           // resume이 서버측 room 재합류를 수행하므로 rejoinAll을 다시 하지 않는다.
@@ -167,12 +206,18 @@ export function useChat(nickname: string | null, onResumeFail?: () => void): Cha
           }
           // RQ-10-a: 서버가 확정한 본인 닉네임을 채택 — App이 넘긴 초기값과 다를 수 있다.
           setSelfNickname(res.nickname);
+          runPendingEmits();
         });
       } else {
-        identifyFresh();
+        identifyFresh(isReconnect);
       }
     });
-    socket.on('disconnect', () => setStatus('reconnecting'));
+    socket.on('disconnect', () => {
+      setStatus('reconnecting');
+      // 재연결 시 새 identify/resume 왕복이 다시 필요하다 — 그 전에 나가는
+      // join/activeRoom이 또 앞지르지 않도록 대기 상태로 되돌린다.
+      identifiedRef.current = false;
+    });
     socket.io.on('reconnect_attempt', () => setStatus('reconnecting'));
 
     socket.on('message', (payload) => {
@@ -211,14 +256,21 @@ export function useChat(nickname: string | null, onResumeFail?: () => void): Cha
     };
   }, [nickname]);
 
-  const selectRoom = useCallback((room: string) => {
-    activeRoomRef.current = room;
-    setActiveRoomState(room);
-    // RQ-18: 열람 중인 room을 서버에 통지 → 그 room 안읽음 0 초기화(서버가 unread로 회신).
-    // 낙관적으로 로컬도 0 처리(서버 회신 전 배지 즉시 제거).
-    socketRef.current?.emit('activeRoom', { room }, () => undefined);
-    setUnreadByRoom((prev) => (prev[room] ? { ...prev, [room]: 0 } : prev));
-  }, []);
+  const selectRoom = useCallback(
+    (room: string) => {
+      activeRoomRef.current = room;
+      setActiveRoomState(room);
+      // RQ-18: 열람 중인 room을 서버에 통지 → 그 room 안읽음 0 초기화(서버가 unread로 회신).
+      // 낙관적으로 로컬도 0 처리(서버 회신 전 배지 즉시 제거). RQ-18-a: emit 자체는
+      // identify/resume이 실제로 끝난 뒤로 미룬다(위 emitWhenIdentified 주석 — global
+      // 선택도 세션이 있어야 서버가 수락한다, GA-31).
+      emitWhenIdentified(() => {
+        socketRef.current?.emit('activeRoom', { room }, () => undefined);
+      });
+      setUnreadByRoom((prev) => (prev[room] ? { ...prev, [room]: 0 } : prev));
+    },
+    [emitWhenIdentified],
+  );
 
   const joinRoom = useCallback(
     (room: string) => {
@@ -266,76 +318,98 @@ export function useChat(nickname: string | null, onResumeFail?: () => void): Cha
       // nickname(App prop, resume 중이면 null)이 아니라 selfNickname(서버 확정값)을
       // 쓴다 — RQ-10-a: resume 성공 직후 사용자가 새 room에 참여해도 올바른 본인
       // 닉네임으로 join되어야 한다.
-      socket?.emit('join', { room: name, nickname: selfNickname }, (result) => {
-        if (!result.ok) {
-          // RQ-13-a(GA-28/GA-29): 서버 거부 — 위 낙관적 갱신을 되돌린다.
-          // 거부 사유(예약 이름 vs 빈 nickname)는 구분하지 않는다 — ok:false만 본다.
-          roomsRef.current = roomsRef.current.filter((r) => r !== name);
-          setRooms(roomsRef.current);
-          // D3: 그 사이 사용자가 다른 room으로 옮겼으면 activeRoom을 되돌리지
-          // 않는다 — 먼저 보낸 join의 늦은 거부가 지금 보고 있는 room을 빼앗지
-          // 않도록.
-          if (activeRoomRef.current === name) {
-            // M-2: prevActiveRoom을 무조건 복원하면, 동시에 진행 중이던 다른 join이
-            // 먼저 거부되어 prevActiveRoom 자신이 이미 rooms에서 빠진 뒤일 수 있다
-            // (예: room-A join 도중 room-B join이 활성화 → A 거부(활성은 이미 B라
-            // 안 건드림, rooms에서 A만 제거) → B도 거부 → prevActiveRoom_B='room-A'를
-            // 무조건 복원하면 rooms=[]인데 activeRoom='room-A'를 가리키는 유령 상태가
-            // 된다). 위 filter로 최신 상태가 반영된 roomsRef.current에 prevActiveRoom이
-            // 여전히 있을 때만 복원하고, 없으면(또는 애초에 null이면) null로 떨어뜨린다.
-            const restoreTo =
-              prevActiveRoom !== null && roomsRef.current.includes(prevActiveRoom) ? prevActiveRoom : null;
-            activeRoomRef.current = restoreTo;
-            setActiveRoomState(restoreTo);
+      // RQ-18-a: emit 자체는 identify/resume이 실제로 끝난 뒤로 미룬다(위
+      // emitWhenIdentified 주석) — 그렇지 않으면 이 join이 connect 핸들러의
+      // identify/resume보다 서버에 먼저 도달해 attachRoomToSession이 세션 없이
+      // no-op하고, 뒤이은 activeRoom이 "참여하지 않은 room"으로 거부된다.
+      emitWhenIdentified(() => {
+        socket?.emit('join', { room: name, nickname: selfNickname }, (result) => {
+          if (!result.ok) {
+            // RQ-13-a(GA-28/GA-29): 서버 거부 — 위 낙관적 갱신을 되돌린다.
+            // 거부 사유(예약 이름 vs 빈 nickname)는 구분하지 않는다 — ok:false만 본다.
+            roomsRef.current = roomsRef.current.filter((r) => r !== name);
+            setRooms(roomsRef.current);
+            // D3: 그 사이 사용자가 다른 room으로 옮겼으면 activeRoom을 되돌리지
+            // 않는다 — 먼저 보낸 join의 늦은 거부가 지금 보고 있는 room을 빼앗지
+            // 않도록.
+            if (activeRoomRef.current === name) {
+              // M-2: prevActiveRoom을 무조건 복원하면, 동시에 진행 중이던 다른 join이
+              // 먼저 거부되어 prevActiveRoom 자신이 이미 rooms에서 빠진 뒤일 수 있다
+              // (예: room-A join 도중 room-B join이 활성화 → A 거부(활성은 이미 B라
+              // 안 건드림, rooms에서 A만 제거) → B도 거부 → prevActiveRoom_B='room-A'를
+              // 무조건 복원하면 rooms=[]인데 activeRoom='room-A'를 가리키는 유령 상태가
+              // 된다). 위 filter로 최신 상태가 반영된 roomsRef.current에 prevActiveRoom이
+              // 여전히 있을 때만 복원하고, 없으면(또는 애초에 null이면) null로 떨어뜨린다.
+              const restoreTo =
+                prevActiveRoom !== null && roomsRef.current.includes(prevActiveRoom) ? prevActiveRoom : null;
+              activeRoomRef.current = restoreTo;
+              setActiveRoomState(restoreTo);
+            }
+            // D5: 낙관적 갱신은 키가 이미 있으면(예: 'global') 아무것도 하지 않는
+            // no-op이었다(:255,:262) — 그 역연산도 no-op이어야 한다. 스냅샷 값으로
+            // "복원"하면 ack 대기 중 도착한 message/participants(:187,:195)가
+            // 지워진다(부모 191847f와 같은 손실 — D2 잔여). 낙관적 갱신이 새로
+            // 키를 만든 경우에만 그 키를 제거한다.
+            setMessagesByRoom((prev) => {
+              if (hadMessages || !(name in prev)) return prev;
+              const next = { ...prev };
+              delete next[name];
+              return next;
+            });
+            setParticipantsByRoom((prev) => {
+              if (hadParticipants || !(name in prev)) return prev;
+              const next = { ...prev };
+              delete next[name];
+              return next;
+            });
+            // D4: 낙관적 unread 0 처리를 애초에 성공 분기로 미뤘으므로(아래) 거부
+            // 시 되돌릴 unread 변경 자체가 없다.
+            return;
           }
-          // D5: 낙관적 갱신은 키가 이미 있으면(예: 'global') 아무것도 하지 않는
-          // no-op이었다(:255,:262) — 그 역연산도 no-op이어야 한다. 스냅샷 값으로
-          // "복원"하면 ack 대기 중 도착한 message/participants(:187,:195)가
-          // 지워진다(부모 191847f와 같은 손실 — D2 잔여). 낙관적 갱신이 새로
-          // 키를 만든 경우에만 그 키를 제거한다.
-          setMessagesByRoom((prev) => {
-            if (hadMessages || !(name in prev)) return prev;
-            const next = { ...prev };
-            delete next[name];
-            return next;
+          // 최초 join 성공: ack의 히스토리(RQ-11)를 기존 앞에 prepend. 서버가 히스토리와
+          // 라이브의 무중복을 보장하므로(한 메시지는 둘 중 하나에만), ack 전 도착한
+          // 라이브가 있어도 prepend로 순서(과거→현재) 유지하며 잃지 않는다.
+          const historyMsgs: ClientMessage[] = result.history.map((m) => {
+            msgSeq += 1;
+            return { id: `h${msgSeq}`, room: m.room, nickname: m.nickname, body: m.body, at: Date.now() };
           });
-          setParticipantsByRoom((prev) => {
-            if (hadParticipants || !(name in prev)) return prev;
-            const next = { ...prev };
-            delete next[name];
-            return next;
-          });
-          // D4: 낙관적 unread 0 처리를 애초에 성공 분기로 미뤘으므로(아래) 거부
-          // 시 되돌릴 unread 변경 자체가 없다.
-          return;
-        }
-        // 최초 join 성공: ack의 히스토리(RQ-11)를 기존 앞에 prepend. 서버가 히스토리와
-        // 라이브의 무중복을 보장하므로(한 메시지는 둘 중 하나에만), ack 전 도착한
-        // 라이브가 있어도 prepend로 순서(과거→현재) 유지하며 잃지 않는다.
-        const historyMsgs: ClientMessage[] = result.history.map((m) => {
-          msgSeq += 1;
-          return { id: `h${msgSeq}`, room: m.room, nickname: m.nickname, body: m.body, at: Date.now() };
+          setMessagesByRoom((prev) => ({ ...prev, [name]: [...historyMsgs, ...(prev[name] ?? [])] }));
+          // RQ-18/D1·D4: join이 서버에서 확정된 뒤에야 활성 room을 통지하고
+          // 안읽음을 0 처리한다 — 그 사이 사용자가 다른 room으로 옮겼으면 건드리지
+          // 않는다(D3과 동일 원칙).
+          if (activeRoomRef.current === name) {
+            socketRef.current?.emit('activeRoom', { room: name }, () => undefined);
+            setUnreadByRoom((prev) => (prev[name] ? { ...prev, [name]: 0 } : prev));
+          }
         });
-        setMessagesByRoom((prev) => ({ ...prev, [name]: [...historyMsgs, ...(prev[name] ?? [])] }));
-        // RQ-18/D1·D4: join이 서버에서 확정된 뒤에야 활성 room을 통지하고
-        // 안읽음을 0 처리한다 — 그 사이 사용자가 다른 room으로 옮겼으면 건드리지
-        // 않는다(D3과 동일 원칙).
-        if (activeRoomRef.current === name) {
-          socketRef.current?.emit('activeRoom', { room: name }, () => undefined);
-          setUnreadByRoom((prev) => (prev[name] ? { ...prev, [name]: 0 } : prev));
-        }
       });
     },
-    [selfNickname, selectRoom],
+    [selfNickname, selectRoom, emitWhenIdentified],
   );
 
-  const sendMessage = useCallback((body: string) => {
-    const text = body.trim();
-    const room = activeRoomRef.current;
-    const socket = socketRef.current;
-    if (!text || !room || !socket) return;
-    socket.emit('message', { room, body: text });
-  }, []);
+  const sendMessage = useCallback(
+    (body: string) => {
+      const text = body.trim();
+      const room = activeRoomRef.current;
+      if (!text || !room) return;
+      // RQ-18-a 리뷰 blocker B-1: join(:325)·activeRoom(:267)과 같은 관례로 wire emit을
+      // identify/resume ack 이후로 미룬다 — 그렇지 않으면 connect 직후 sendBuffer가
+      // message를 join/activeRoom보다 먼저 flush할 수 있고, 서버(room.ts:91)는
+      // socket.data.nickname이 아직 채워지지 않은 message를 조용히 폐기한다
+      // (nickname은 identify/resume/join에서만 채워진다 — 폐기 지점은 항상 :91이고,
+      // :97의 socket.rooms.has는 global에 대해선 connection.ts:28의 자동 join 때문에
+      // 항상 참이라 폐기와 무관하다; tests/integration/rq-18-a-emit-order.test.ts
+      // 상단 주석 참고). room은 호출 시점 값을 캡처한다 — 사용자가 그 room에서
+      // 입력한 메시지이므로, 큐 대기 중 activeRoom이 바뀌어도 원래 room으로
+      // 보낸다. socketRef.current는 실행 시점(emit 시)에 읽는다 — 재연결로
+      // 소켓이 갱신돼도 최신 소켓을 쓰도록(selectRoom·join ack의 activeRoom emit과
+      // 같은 관례).
+      emitWhenIdentified(() => {
+        socketRef.current?.emit('message', { room, body: text });
+      });
+    },
+    [emitWhenIdentified],
+  );
 
   return useMemo(
     () => ({

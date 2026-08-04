@@ -5,6 +5,7 @@
 
 | 날짜 | 변경 내용 | 대상 | 사유 |
 |------|----------|------|------|
+| 2026-08-04 | **사고 기록 (변경 아님)** — `node_modules` 파괴 **2회차**. RQ-18-a 3차 평가 중 evaluator 가 검증용 detached 워크트리에 `node_modules` 를 정션으로 연결했고 정리가 정션을 따라가 원본을 파괴했다. `npm ci` 복구 · 소스·git 이력 무사 · `check.mjs` 63/63 확인. **1회차(2026-07-27 `eval-b.mjs`)와 벡터가 다르다** — 그때는 커밋된 스크립트의 `spawnSync`, 이번엔 **에이전트의 즉석 Bash 호출**이고 둘 다 `tool-risk.json` 등급이 닿지 않는다(분류는 도구 표면에 걸린다). 회피 절차는 `sensor-catalog.md:68-72` 에 **이미 있고 지켜지지 않았다** — 미정인 것은 처방 내용이 아니라 **관할**이다 | 기록만 — 코드 변경 없음. `harness/recurrence.md` 등재 + 처방은 **다음 하네스 PR** (`P11` 이 처방을 요구해 처방 없는 등재는 CI 를 차단한다) | `REVIEW→HARNESS` 간선이 없고 `IDLE→HARNESS` 우회는 `track_b_passing` 전수 재실행을 부른다 — 제품 PR 안에서 처리할 수 없어 이연했다. 상세·이연 노출은 `docs/progress.md` 보류표 |
 | 2026-07-16 | 인터뷰 G(테스트)·H(디자인) 섹션, ADR-0005 예약, GB-04/05, CI M3 검사 추가 | specs, docs/adr, evals, ci.yml | TDD 도입 준비 |
 | 2026-07-16 | TDD 파이프라인 하네스 구성 — test-writer·coder(Sonnet 5), evaluator(Opus) | .claude/agents, .claude/skills | 평가·테스트 세션 분리 + 모델 지정 (사용자 지시) |
 | 2026-07-16 | git 저장소 초기화 + hook 인터프리터 수정 (python3→python, bash→Git Bash 절대경로) | .git, .claude/settings.json | Windows에서 hook 무음 실패 (하네스 점검 결함 ②③) |

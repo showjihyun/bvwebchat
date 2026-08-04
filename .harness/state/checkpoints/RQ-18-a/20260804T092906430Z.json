@@ -1,0 +1,56 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "feat/RQ-18-a-global-render",
+  "edge_legal": true,
+  "exit_hint": "전체 검증이 초록이면 → python harness/phase.py enter EVAL  (가드: check 전체 초록, 골든 커버리지)",
+  "forced": false,
+  "from": "RED",
+  "guards": [
+    {
+      "ms": 63,
+      "name": "tests_committed",
+      "ok": true
+    },
+    {
+      "ms": 9030,
+      "name": "red_evidence",
+      "ok": true
+    }
+  ],
+  "head_sha": "1fa71d35fe6a0cc61ed13c128fd159af10b33e36",
+  "reason": null,
+  "rq": "RQ-18-a",
+  "schema": 1,
+  "seq": 174,
+  "session": {
+    "acceptance": [
+      "global 이 room 목록 최상단에 고정 표시되고 선택해 열 수 있다 (DESIGN.md :64 :84)",
+      "global 안 읽음 개수가 배지로 보이고 열면 0 이 된다 — 서버가 이미 보내는 unread 이벤트를 소비한다 (RQ-18 · D13-r2)",
+      "global 에 나가기·삭제 UI 가 없다 (ADR-0004 leave 거부 · DESIGN.md :84)",
+      "global 을 목록에 넣어도 RQ-12 자동 삭제·RQ-13 목록의 global 예외 게이팅이 깨지지 않는다 (기존 47건 회귀 0)"
+    ],
+    "done": [
+      "원장에 RQ-18-a 등재 + 브랜치 feat/RQ-18-a-global-render 생성 (18012d2). 최초 RQ-04-a 로 올렸다가 인터뷰 D14 주(전달과 표시의 분리)를 읽고 개명했다",
+      "PLAN 조사 완료 — GA-16(서버 축)이 이미 done 이고 클라 축 골든이 없다는 것을 확인. ADR-0005 결정4 실증의 판별 질문(\"이 단언이 참이 되려면 서버가 무엇을 답해야 하는가\")으로 테스트 배치를 확정했다: 목록 표시·배지·활성 전환은 서버 답이 있어 tests/integration/ 실서버, 나가기 UI 부재만 순수 렌더라 tests/client/",
+      "SPEC — 클라 축 골든 GA-31·32·33 신설(status:todo). GA-28 의 given 이 '참여 room 목록에 global 이 들어가지 않는다' 를 현행 동작으로 적고 있어 신설 케이스는 관찰 가능한 표면만 말하고 내부 상태 형태는 단언하지 않는다 — 상태 배치를 rooms 배열로 고르면 GA-28 개정이 동행해야 한다",
+      "RED — tests/integration/rq-18-a-global-render.test.ts 커밋. GA-31·32·33 + 회귀 축 3건. 독립 검증: check.mjs --red --rq RQ-18-a exit 0, 실패 3건 전부 '현재 사이드바: []' 로 useChat.ts:156 을 가리킴. vi.mock 이 importOriginal 로 실 클라 위임 + activeRoom ack 관측만 — B-1 형상 아님을 직접 읽어 확인했다"
+    ],
+    "goal": "RQ-18 조문이 '참여 중인 room(global 포함)' 의 안 읽음을 요구하고 서버가 실제로 그 값을 유니캐스트하는데, 클라가 global 을 목록에서 걸러내 표시할 자리가 없다. 스펙이 요구한 상태가 서버에 다 있으면서 사용자에게 도달하지 않는 구간을 닫는다 — 새 기능이 아니라 확정 스펙의 미이행분이다",
+    "next": [
+      "RED — test-writer 가 GA-31·32·33 을 tests/integration/rq-18-a-global-render.test.ts 로 옮긴다 (실서버 + socket.io-client, 전송 목 금지)",
+      "회귀 축 고정: RQ-12 자동 삭제·RQ-13 목록의 global 예외 게이팅",
+      "GREEN 에서 useChat.ts:156 필터 제거 시 GA-28 given 과의 정합을 판정한다"
+    ],
+    "open_questions": [
+      "global 을 useChat 의 rooms 배열에 포함시키면 RQ-12 의 '멤버 0 이면 삭제' 경로와 RQ-13 의 목록 구성에 어떤 영향이 있는가 — 서버는 이미 global 을 예외 게이팅하지만 클라 상태 모델은 rooms 를 '참여 중 user room' 으로 전제한다 (useChat.ts:233 주석)",
+      "새로고침 후 메시지 패널이 비는 별건(resume ack 가 히스토리를 안 준다)이 남아 있다 — 이 RQ 범위 밖이고 별도 등재 대상이다"
+    ]
+  },
+  "to": "GREEN",
+  "ts": "2026-08-04T09:29:06.428Z",
+  "write_allow": [
+    "src/**",
+    "_workspace/**",
+    "docs/progress.md"
+  ]
+}
