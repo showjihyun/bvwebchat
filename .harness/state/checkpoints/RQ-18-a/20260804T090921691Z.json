@@ -1,0 +1,46 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "feat/RQ-18-a-global-render",
+  "edge_legal": true,
+  "exit_hint": "스펙이 확정되면(🟡 0건) → python harness/phase.py enter PLAN",
+  "forced": false,
+  "from": "PLAN",
+  "guards": [],
+  "head_sha": "724a4d7b93e258289549e0b9aaa4fffe119af865",
+  "reason": null,
+  "rq": "RQ-18-a",
+  "schema": 1,
+  "seq": 171,
+  "session": {
+    "acceptance": [
+      "global 이 room 목록 최상단에 고정 표시되고 선택해 열 수 있다 (DESIGN.md :64 :84)",
+      "global 안 읽음 개수가 배지로 보이고 열면 0 이 된다 — 서버가 이미 보내는 unread 이벤트를 소비한다 (RQ-18 · D13-r2)",
+      "global 에 나가기·삭제 UI 가 없다 (ADR-0004 leave 거부 · DESIGN.md :84)",
+      "global 을 목록에 넣어도 RQ-12 자동 삭제·RQ-13 목록의 global 예외 게이팅이 깨지지 않는다 (기존 47건 회귀 0)"
+    ],
+    "done": [
+      "원장에 RQ-18-a 등재 + 브랜치 feat/RQ-18-a-global-render 생성 (18012d2). 최초 RQ-04-a 로 올렸다가 인터뷰 D14 주(전달과 표시의 분리)를 읽고 개명했다",
+      "PLAN 조사 완료 — GA-16(서버 축)이 이미 done 이고 클라 축 골든이 없다는 것을 확인. ADR-0005 결정4 실증의 판별 질문(\"이 단언이 참이 되려면 서버가 무엇을 답해야 하는가\")으로 테스트 배치를 확정했다: 목록 표시·배지·활성 전환은 서버 답이 있어 tests/integration/ 실서버, 나가기 UI 부재만 순수 렌더라 tests/client/"
+    ],
+    "goal": "RQ-18 조문이 '참여 중인 room(global 포함)' 의 안 읽음을 요구하고 서버가 실제로 그 값을 유니캐스트하는데, 클라가 global 을 목록에서 걸러내 표시할 자리가 없다. 스펙이 요구한 상태가 서버에 다 있으면서 사용자에게 도달하지 않는 구간을 닫는다 — 새 기능이 아니라 확정 스펙의 미이행분이다",
+    "next": [
+      "SPEC 에서 GA-31·32·33 을 track-a-product.jsonl 에 신설 (status:todo, verify:tests/integration/rq-18-a-global-render.test.ts)",
+      "PLAN 복귀 후 RED 진입 — test-writer 에 GA-31~33 전문 + ADR-0005 결정4 실증 + RQ-13-a B-1 전말을 전달한다",
+      "회귀 축: RQ-12 자동 삭제와 RQ-13 목록의 global 예외 게이팅을 테스트로 고정한다"
+    ],
+    "open_questions": [
+      "global 을 useChat 의 rooms 배열에 포함시키면 RQ-12 의 '멤버 0 이면 삭제' 경로와 RQ-13 의 목록 구성에 어떤 영향이 있는가 — 서버는 이미 global 을 예외 게이팅하지만 클라 상태 모델은 rooms 를 '참여 중 user room' 으로 전제한다 (useChat.ts:233 주석)",
+      "새로고침 후 메시지 패널이 비는 별건(resume ack 가 히스토리를 안 준다)이 남아 있다 — 이 RQ 범위 밖이고 별도 등재 대상이다"
+    ]
+  },
+  "to": "SPEC",
+  "ts": "2026-08-04T09:09:21.690Z",
+  "write_allow": [
+    "specs/**",
+    "docs/adr/**",
+    "docs/design/DESIGN.md",
+    "docs/progress.md",
+    "evals/golden/**",
+    "_workspace/**"
+  ]
+}
