@@ -1,0 +1,63 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "feat/RQ-18-a-global-render",
+  "edge_legal": true,
+  "exit_hint": "PASS면 → python harness/phase.py enter REVIEW / FAIL이면 → enter GREEN",
+  "forced": false,
+  "from": "GREEN",
+  "guards": [
+    {
+      "ms": 5500,
+      "name": "check_full_green",
+      "ok": true
+    },
+    {
+      "ms": 61,
+      "name": "golden_coverage",
+      "ok": true
+    }
+  ],
+  "head_sha": "37c7e38ad61f71b19a1b8b21f8807563c617c878",
+  "reason": null,
+  "rq": "RQ-18",
+  "schema": 1,
+  "seq": 183,
+  "session": {
+    "acceptance": [
+      "global 이 room 목록 최상단에 고정 표시되고 선택해 열 수 있다 (DESIGN.md :64 :84)",
+      "global 안 읽음 개수가 배지로 보이고 열면 0 이 된다 — 서버가 이미 보내는 unread 이벤트를 소비한다 (RQ-18 · D13-r2)",
+      "global 에 나가기·삭제 UI 가 없다 (ADR-0004 leave 거부 · DESIGN.md :84)",
+      "global 을 목록에 넣어도 RQ-12 자동 삭제·RQ-13 목록의 global 예외 게이팅이 깨지지 않는다 (기존 47건 회귀 0)"
+    ],
+    "done": [
+      "원장에 RQ-18-a 등재 + 브랜치 feat/RQ-18-a-global-render 생성 (18012d2). 최초 RQ-04-a 로 올렸다가 인터뷰 D14 주(전달과 표시의 분리)를 읽고 개명했다",
+      "PLAN 조사 완료 — GA-16(서버 축)이 이미 done 이고 클라 축 골든이 없다는 것을 확인. ADR-0005 결정4 실증의 판별 질문(\"이 단언이 참이 되려면 서버가 무엇을 답해야 하는가\")으로 테스트 배치를 확정했다: 목록 표시·배지·활성 전환은 서버 답이 있어 tests/integration/ 실서버, 나가기 UI 부재만 순수 렌더라 tests/client/",
+      "SPEC — 클라 축 골든 GA-31·32·33 신설(status:todo). GA-28 의 given 이 '참여 room 목록에 global 이 들어가지 않는다' 를 현행 동작으로 적고 있어 신설 케이스는 관찰 가능한 표면만 말하고 내부 상태 형태는 단언하지 않는다 — 상태 배치를 rooms 배열로 고르면 GA-28 개정이 동행해야 한다",
+      "RED — tests/integration/rq-18-a-global-render.test.ts 커밋. GA-31·32·33 + 회귀 축 3건. 독립 검증: check.mjs --red --rq RQ-18-a exit 0, 실패 3건 전부 '현재 사이드바: []' 로 useChat.ts:156 을 가리킴. vi.mock 이 importOriginal 로 실 클라 위임 + activeRoom ack 관측만 — B-1 형상 아님을 직접 읽어 확인했다",
+      "GREEN — RoomList 렌더 합성 + useChat 순서 수정 2건. check.mjs exit 0 (61/61). 오케스트레이터 사전 관찰 3건을 _workspace/_orchestrator/RQ-18-a-preeval.md 에 봉인했다(평가자 미전달): 빈 상태 문구 모순 · global 참여자 패널 공백 · useChat 196줄 스코프",
+      "EVAL — evaluator 판정 PASS (FAIL 0건). 골든 커버리지 10/10, 경계면 대조 불일치 0, tests/** 변경 0, forced 0. flake 는 assert 0건·crash 만이고 metrics-baseline.md:124 가 부하 의존으로 이미 문서화한 것",
+      "사전 관찰 대조: 내가 봉인한 3건 중 빈 상태 문구 모순은 평가자가 O-5 로 잡았고, 스코프 의문은 평가자가 더 깊이 가 큐 메커니즘 자체의 불완전성(O-1 major)을 냈다. global 참여자 패널 공백은 평가자가 못 잡았고 서버 실측으로 실재를 확인했다 — 서버가 global 에 participants 를 아예 방송하지 않는다(bob 합류해도 빈 배열)",
+      "REVIEW 진입 후 사용자 지시로 O-1(sendMessage 미큐잉)을 먼저 닫기로 결정 — GREEN 복귀",
+      "GREEN 2차 — O-1 조치: sendMessage 를 emitWhenIdentified 로 감쌌다. 세 emit(join·activeRoom·message)이 모두 같은 FIFO 큐를 통과한다. check.mjs exit 0 (61/61). ChatPane 은 지시대로 미변경",
+      "EVAL 2차 — 재평가 판정 PASS. 회차 1 보존 + 회차 2 append(732행), 판정 줄 2건 모두 PASS 이고 latest_of 가 마지막 것을 본다. check exit 0 · --repeat 3 도 3/3",
+      "평가자가 내 커밋 메시지의 사실 오류를 잡았다(O-6): 폐기 지점을 room.ts:97(rooms.has)로 적었는데 global 은 connection.ts:28 이 접속 즉시 join 하므로 그 검사는 참이고, 실제 폐기는 :91 nickname 가드다. 직접 코드로 확인했다",
+      "REVIEW 1차 REQUEST_CHANGES (blocker 1 · major 3 · minor 4). blocker B-1: sendMessage 큐잉 조치에 테스트 0건 — ADR-0005 결정3 위반. 리뷰어가 평가자 회차1의 '별도 RQ' 권고를 뒤집었다: PR 이전에는 join·message 가 둘 다 sendBuffer 라 FIFO 로 join 이 먼저였는데, 이 PR 이 join 만 로컬 큐로 옮겨 message 가 추월하게 만들었다 — user room 에도 유실 회귀다",
+      "sendMessage hunk 되돌림(a20c2cc) — 결함을 되살려 정직한 Red 를 성립시킨다. 큐 통과 emit 이 3에서 2로 돌아갔다",
+      "RED 2차 — tests/integration/rq-18-a-emit-order.test.ts 커밋. 독립 검증: 정당한 Red, 신규 2건(global·user room) 실패, 기존 61건 회귀 0. 폐기 지점을 :91 로 정정해 적었다(O-6 정정 반영)",
+      "GREEN 3차 — B-1 조치 재적용 + O-6 주석 정정. 세 emit 모두 큐 통과. check.mjs exit 0 (17파일 63/63) 직접 확인"
+    ],
+    "goal": "RQ-18 조문이 '참여 중인 room(global 포함)' 의 안 읽음을 요구하고 서버가 실제로 그 값을 유니캐스트하는데, 클라가 global 을 목록에서 걸러내 표시할 자리가 없다. 스펙이 요구한 상태가 서버에 다 있으면서 사용자에게 도달하지 않는 구간을 닫는다 — 새 기능이 아니라 확정 스펙의 미이행분이다",
+    "next": [
+      "GREEN 에서 sendMessage hunk 를 되돌리고(정직한 Red 를 위해) RED 에서 순서 역전을 잡는 실패 테스트를 쓴 뒤 재적용한다 (GREEN→RED 가드 0건, force 불요)"
+    ],
+    "open_questions": [
+      "S-1: O-1 조치는 이 PR 의 RQ·골든·테스트 어느 것도 요구하지 않고 스위트가 그 코드를 실행하지 않는다(되돌려도 61/61). 평가자 회차 1 은 :292 에서 '별도 RQ 가 스코프 규율에 맞다' 고 썼고 나는 사용자 지시로 반대를 택했다. 다만 이 PR 이 global 을 원클릭 도달로 만들어 회차 1 의 '도달 불가' 근거를 스스로 약화시켰다는 반대 사실도 평가자가 기록했다 — 리뷰어 판정 대상",
+      "O-6: useChat.ts 새 주석과 커밋 메시지가 폐기 지점을 room.ts:97 로 인용하는데 global 경로에서는 :91 nickname 가드다. 커밋은 푸시 전이지만 rebase 가 R3 deny 라 메시지 수정 경로가 없다 — 주석 수정은 GREEN 복귀 + 3차 평가를 요구한다"
+    ]
+  },
+  "to": "EVAL",
+  "ts": "2026-08-04T11:25:49.515Z",
+  "write_allow": [
+    "_workspace/**"
+  ]
+}
