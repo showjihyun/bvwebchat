@@ -3085,6 +3085,10 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
               <code>tool-risk.json</code>은 <code>git worktree remove</code>를 R2로 <b>올바르게 분류했다</b>.
               그런데 <code>settings.json</code>의 <code>Bash(node scripts/:*)</code> 접두사 allow가
               R2로 분류된 <code>eval-b.mjs</code>·<code>resume-test.mjs</code>까지 삼켜 <b>집행이 0</b>이었고,
+              <!-- 2026-08-05: resume-test.mjs 는 R1 로 강등됐다(사용자 결정) — 보통 eval-b 가
+                   spawnSync 로 부르므로 도구 표면을 안 거치고, 직접 호출 시의 프롬프트는 사실상
+                   중복이었다. eval-b.mjs 는 R2 로 남는다(실행당 $3~7 · 워크트리 생성). 위 문장은
+                   2026-07-27 당시의 분류를 서술한 것이므로 그대로 둔다. -->
               그 스크립트가 <code>spawnSync</code>로 같은 명령을 직접 호출해 Windows 정션을 따라가며
               저장소의 <code>node_modules</code>를 파괴했다. <b>정책은 맞았고, 닿지 않았다.</b>
             </p>
