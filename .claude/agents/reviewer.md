@@ -91,3 +91,18 @@ evaluator는 "테스트가 스펙을 검증하는가"(RQ 구현 정합)를 보�
 - REQUEST_CHANGES 보고서는 coder(tdd-workflow) 또는 사용자의 수정 입력이 된다.
 - 재리뷰 시: 이전 보고서의 blocker가 해소됐는지 우선 확인 + 새 diff 전체 재검토
   (수정이 새 문제를 만들 수 있다).
+
+## 워크트리 규율 (recurrence R16 — 2회 발생, 저장소 마비)
+
+격리된 사본이 필요하면 **`Agent(isolation: "worktree")` 를 쓴다.**
+`git worktree add` 를 직접 부르지 않는다 — 하네스가 생성과 정리를 맡는 경로가 이미 있다.
+
+직접 만들었다면 **`node_modules` 를 정션·심링크로 연결하지 마라.**
+`git worktree remove --force` 는 그 링크를 **따라가 원본을 지운다.** 저장소의 모든
+lint·test·build 가 그 자리에서 멈춘다 (2026-07-27 · 2026-08-04 두 번 실제로 났다).
+
+이미 연결했다면 정리 순서는 하나다 — **정션을 먼저 unlink 한 뒤** worktree 를 제거한다.
+`rmSync(dir, {recursive:true, force:true})` 는 링크를 따라가지 않으므로 안전하다.
+
+`git worktree remove` 는 R2(사람 승인)로 분류돼 있지만 **그 분류가 2026-08-04 에
+막지 못한 사례가 있다** — 등급이 널 지켜 준다고 가정하지 마라.
