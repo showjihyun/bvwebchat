@@ -173,7 +173,7 @@
       "_c2_reviewed": [
         { "dep": "harness/policy/phase-matrix.json", "sha": "24c68fa", "why": "이 스킬이 매트릭스에서 옮겨 적는 것은 Phase 3.5 의 형식 계약(맨몸 '판정: PASS' 단독 줄)이고, 판정 줄 정의를 넓혀도 그 요구는 동일하다 — 맨몸 줄은 확장 전후 모두 통과이며 바뀐 것은 꾸밈 붙은 줄이 이제 '최신 판정'으로 인정되면서 차단된다는 것뿐이다. 단계 전이 표는 2026-08-03 압축에서 이미 포인터(phase.py show)로 바꿔 매트릭스 값이 남아 있지 않다." },
         { "dep": ".claude/agents/test-writer.md", "sha": "f0002c7", "why": "R16(정션 파괴) 어포던스 절을 에이전트 정의 4개에 넣은 변경이다. 이 스킬이 test-writer 에서 옮겨 적는 것은 model 정책(sonnet)과 산출 경로뿐이고 워크트리 규율은 재서술하지 않는다 — 실측: rg 'worktree|정션|isolation' 이 이 파일에서 0건이다. 에이전트가 워크트리를 어떻게 다루는지는 이 스킬의 계약이 아니라 에이전트 자신의 계약이다." },
-        { "dep": ".claude/agents/coder.md", "sha": "f0002c7", "why": "같은 R16 어포던스 절이 coder.md 에도 들어갔다. 이 스킬이 coder 에서 옮겨 적는 것은 model 정책(sonnet)과 "테스트 파일 수정 금지는 단계가 막으므로 프롬프트에 다시 적지 않아도 된다" 는 계약뿐이고, 워크트리 규율은 재서술하지 않는다 — 실측 0건." }
+        { "dep": ".claude/agents/coder.md", "sha": "f0002c7", "why": "같은 R16 어포던스 절이 coder.md 에도 들어갔다. 이 스킬이 coder 에서 옮겨 적는 것은 model 정책(sonnet)과 '테스트 파일 수정 금지는 단계가 막으므로 프롬프트에 다시 적지 않아도 된다' 는 계약뿐이고, 워크트리 규율은 재서술하지 않는다 — 실측 0건." }
       ],
       "review_every_days": 60
     },
