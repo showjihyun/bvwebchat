@@ -1,0 +1,59 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "fix/harness-junction-r16",
+  "edge_legal": true,
+  "exit_hint": "작업을 시작하려면: python harness/phase.py enter PLAN  (또는 SPEC / HARNESS)",
+  "forced": false,
+  "from": "HARNESS",
+  "guards": [],
+  "head_sha": "6eb04f1a46c9f383f4120215057c723b6307f495",
+  "reason": null,
+  "rq": "HARNESS-JUNCTION",
+  "schema": 1,
+  "seq": 188,
+  "session": {
+    "acceptance": [
+      "감사 Phase 1 의 검사 전부 실행하고 출력을 증거로 보고서에 남긴다",
+      "센서 카탈로그를 양방향 대조해 불일치를 전부 보고한다 (조용히 고치지 않는다)",
+      "변경 제안을 정확히 1건으로 좁힌다 — 둘 이상이면 각각이 독립적으로 게이트를 통과할 수 없음을 가드 이름으로 보인다"
+    ],
+    "done": [
+      "원장에 RQ-18-a 등재 + 브랜치 feat/RQ-18-a-global-render 생성 (18012d2). 최초 RQ-04-a 로 올렸다가 인터뷰 D14 주(전달과 표시의 분리)를 읽고 개명했다",
+      "PLAN 조사 완료 — GA-16(서버 축)이 이미 done 이고 클라 축 골든이 없다는 것을 확인. ADR-0005 결정4 실증의 판별 질문(\"이 단언이 참이 되려면 서버가 무엇을 답해야 하는가\")으로 테스트 배치를 확정했다: 목록 표시·배지·활성 전환은 서버 답이 있어 tests/integration/ 실서버, 나가기 UI 부재만 순수 렌더라 tests/client/",
+      "SPEC — 클라 축 골든 GA-31·32·33 신설(status:todo). GA-28 의 given 이 '참여 room 목록에 global 이 들어가지 않는다' 를 현행 동작으로 적고 있어 신설 케이스는 관찰 가능한 표면만 말하고 내부 상태 형태는 단언하지 않는다 — 상태 배치를 rooms 배열로 고르면 GA-28 개정이 동행해야 한다",
+      "RED — tests/integration/rq-18-a-global-render.test.ts 커밋. GA-31·32·33 + 회귀 축 3건. 독립 검증: check.mjs --red --rq RQ-18-a exit 0, 실패 3건 전부 '현재 사이드바: []' 로 useChat.ts:156 을 가리킴. vi.mock 이 importOriginal 로 실 클라 위임 + activeRoom ack 관측만 — B-1 형상 아님을 직접 읽어 확인했다",
+      "GREEN — RoomList 렌더 합성 + useChat 순서 수정 2건. check.mjs exit 0 (61/61). 오케스트레이터 사전 관찰 3건을 _workspace/_orchestrator/RQ-18-a-preeval.md 에 봉인했다(평가자 미전달): 빈 상태 문구 모순 · global 참여자 패널 공백 · useChat 196줄 스코프",
+      "EVAL — evaluator 판정 PASS (FAIL 0건). 골든 커버리지 10/10, 경계면 대조 불일치 0, tests/** 변경 0, forced 0. flake 는 assert 0건·crash 만이고 metrics-baseline.md:124 가 부하 의존으로 이미 문서화한 것",
+      "사전 관찰 대조: 내가 봉인한 3건 중 빈 상태 문구 모순은 평가자가 O-5 로 잡았고, 스코프 의문은 평가자가 더 깊이 가 큐 메커니즘 자체의 불완전성(O-1 major)을 냈다. global 참여자 패널 공백은 평가자가 못 잡았고 서버 실측으로 실재를 확인했다 — 서버가 global 에 participants 를 아예 방송하지 않는다(bob 합류해도 빈 배열)",
+      "REVIEW 진입 후 사용자 지시로 O-1(sendMessage 미큐잉)을 먼저 닫기로 결정 — GREEN 복귀",
+      "GREEN 2차 — O-1 조치: sendMessage 를 emitWhenIdentified 로 감쌌다. 세 emit(join·activeRoom·message)이 모두 같은 FIFO 큐를 통과한다. check.mjs exit 0 (61/61). ChatPane 은 지시대로 미변경",
+      "EVAL 2차 — 재평가 판정 PASS. 회차 1 보존 + 회차 2 append(732행), 판정 줄 2건 모두 PASS 이고 latest_of 가 마지막 것을 본다. check exit 0 · --repeat 3 도 3/3",
+      "평가자가 내 커밋 메시지의 사실 오류를 잡았다(O-6): 폐기 지점을 room.ts:97(rooms.has)로 적었는데 global 은 connection.ts:28 이 접속 즉시 join 하므로 그 검사는 참이고, 실제 폐기는 :91 nickname 가드다. 직접 코드로 확인했다",
+      "REVIEW 1차 REQUEST_CHANGES (blocker 1 · major 3 · minor 4). blocker B-1: sendMessage 큐잉 조치에 테스트 0건 — ADR-0005 결정3 위반. 리뷰어가 평가자 회차1의 '별도 RQ' 권고를 뒤집었다: PR 이전에는 join·message 가 둘 다 sendBuffer 라 FIFO 로 join 이 먼저였는데, 이 PR 이 join 만 로컬 큐로 옮겨 message 가 추월하게 만들었다 — user room 에도 유실 회귀다",
+      "sendMessage hunk 되돌림(a20c2cc) — 결함을 되살려 정직한 Red 를 성립시킨다. 큐 통과 emit 이 3에서 2로 돌아갔다",
+      "RED 2차 — tests/integration/rq-18-a-emit-order.test.ts 커밋. 독립 검증: 정당한 Red, 신규 2건(global·user room) 실패, 기존 61건 회귀 0. 폐기 지점을 :91 로 정정해 적었다(O-6 정정 반영)",
+      "GREEN 3차 — B-1 조치 재적용 + O-6 주석 정정. 세 emit 모두 큐 통과. check.mjs exit 0 (17파일 63/63) 직접 확인",
+      "EVAL 3차 PASS — 평가자가 결함 커밋을 별도 트리에 체크아웃해 신규 테스트를 직접 돌려 결합을 확정했다(결함 트리 2건 실패 · HEAD 63/63). 회차 1·2 가 남긴 U-1(뮤테이션 불가)이 닫혔다",
+      "사고: 그 검증 중 워크트리 node_modules 정션 정리가 원본을 파괴했다. sensor-catalog.md 가 기록한 2026-07-27 사고의 재발이고 recurrence.md 에는 미등재다. 소스·테스트·git 이력은 무사했고 npm ci 로 복구, check.mjs exit 0 63/63 확인",
+      "REVIEW 2차 APPROVE (blocker 0). 리뷰어가 evaluator 3차의 워크트리 주장을 근거로 쓰지 않고 세 갈래로 독립 확인했다 — revert 가 초록 커밋과 src 바이트 동일 · phase.jsonl seq 182 의 red_evidence 기계 기록 · socket.js:610 의 emitBuffered 가 connect 리스너보다 먼저 도는 결정론",
+      "RELEASE — 원장 마감(RQ-18-a ✅) + 보류표 3건 등재 + changelog 사고 한 줄. 리뷰어가 항목화한 4항목 전부 이행",
+      "HARNESS — R16 등재 + 어포던스 4파일 + 카탈로그 F-1·F-2 정정 + CI 게이트 행 신설. policy-lint·self-test·doc-freshness·hooks-selftest 전부 exit 0"
+    ],
+    "goal": "워크트리 정리가 node_modules 정션을 따라가 원본을 파괴하는 사고가 2회 났는데 harness/recurrence.md 에 등재돼 있지 않다. 회피 절차는 harness/sensor-catalog.md 에 이미 표로 있으나 지켜지지 않았고, 두 회차의 벡터가 다르다(커밋된 스크립트의 spawnSync 대 에이전트의 즉석 Bash) — 즉 미정인 것은 처방 내용이 아니라 관할이다. 등재하지 않으면 회차 수가 유실되고, 처방 없이 등재하면 P11 이 CI 를 차단한다",
+    "next": [
+      "GB-06 재응시 — node scripts/eval-b.mjs --case GB-06 --force 로 새 체크포인트를 채점받는다. 통과하면 아티팩트에 carried_from 이 붙은 케이스를 감사 보고서에 적는다",
+      "evals/results/track-b 아티팩트를 커밋하고 python harness/phase.py enter REVIEW — 가드는 track_b_passing 과 changelog_updated 다",
+      "review-gate 스킬로 독립 리뷰를 받는다. 리뷰어에게 올릴 판정 재료는 처방을 Guide 층에 둔 근거(R2 가 막지 않은 원인이 미실증이라 게이트를 못 쓴다)와 HARNESS→IDLE 왕복을 재응시에 쓴 사실이다"
+    ],
+    "open_questions": [
+      "scripts/policy-lint.mjs 의 P10 이 이름 붙인 축 — settings.json 의 deny > ask > allow 우선순위가 이 저장소에서 실증되지 않았다. .claude/settings.json allow 의 61번째 항목이 맨몸 Bash 이고, 그것이 좁은 ask 를 삼켰는지 프롬프트가 떴다 승인됐는지 가르지 못했다. 실증 수단이 저장소 안에 없다 — hooks-selftest.mjs 는 .claude/hooks/gate_phase.py 를 재지 settings.json 을 재지 않는다",
+      "harness-audit 스킬에 브랜치 생성 단계가 없어 이번에 main 에 직접 커밋했다. git switch -c 와 git branch -f 로 되돌렸으나 스킬 Phase 0 에 브랜치 단계를 넣는 것이 다음 하네스 PR 감이다"
+    ]
+  },
+  "to": "IDLE",
+  "ts": "2026-08-05T04:07:47.614Z",
+  "write_allow": [
+    "_workspace/**",
+    "docs/progress.md"
+  ]
+}
