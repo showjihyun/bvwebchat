@@ -92,6 +92,9 @@
       "path": "harness/sensor-catalog.md",
       "tier": 2,
       "purpose": "가드레일 지도 — 어떤 센서가 어디서 무엇을 잡는가. Guides / Boundary / S1~S4 4계열.",
+      "_c2_reviewed": [
+        { "dep": ".claude/settings.json", "sha": "e336a0c", "why": "resume-test.mjs 를 R2 에서 R1 로 강등한 변경이다. 이 문서가 settings.json 에서 옮겨 적는 것은 등급 체계의 존재와 강제 주체(:33 'R0/R2/R3 정적 권한 → settings.json permissions')이고 개별 명령의 등급을 나열하지 않는다 — 그 나열은 harness/policy/README.md 가 생성물로 갖고, 이 변경에서 재생성했다. resume-test 언급은 :160 의 S4 재개 시험 행 하나뿐이고 거기서 말하는 것은 --cold 의 채점 방식이지 위험 등급이 아니다. :94 의 'settings.json ask 에도 있는데 막지 않았다' 는 git worktree remove 에 대한 서술이고 그 명령은 R2 로 남아 있어 여전히 참이다." }
+      ],
       "edit_policy": {
         "fact_update": "agent",
         "doctrine_change": "escalate",
