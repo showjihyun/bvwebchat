@@ -97,7 +97,7 @@ evaluator는 "테스트가 스펙을 검증하는가"(RQ 구현 정합)를 보�
 격리된 사본이 필요하면 **`Agent(isolation: "worktree")` 를 쓴다.**
 `git worktree add` 를 직접 부르지 않는다 — 하네스가 생성과 정리를 맡는 경로가 이미 있다.
 
-직접 만들었다면 **`node_modules` 를 정션·심링크로 연결하지 마라.**
+**어느 경로든 `node_modules` 를 정션·심링크로 연결하지 마라** — 직접 만든 워크트리든 `isolation: "worktree"` 가 만든 것이든 같다. 후자는 정리를 하네스가 하지만 링크를 건 것은 너다.
 `git worktree remove --force` 는 그 링크를 **따라가 원본을 지운다.** 저장소의 모든
 lint·test·build 가 그 자리에서 멈춘다 (2026-07-27 · 2026-08-04 두 번 실제로 났다).
 

@@ -3097,6 +3097,24 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
               둘째, 이것은 <b>D4와 같은 형태의 실패</b>다 — 분류는 옳고, 집행이 없고, 아무도 검사하지 않았다.
               §00이 관측한 비대칭이 경계면에서 한 번 더 나타난 셈이다:
               <b>적대적 우회를 걱정하는 동안 성실한 코드가 그 피해를 냈다.</b>
+
+              <p><b>2026-08-05 갱신 — 2회차가 났고, 이 절의 설명으로는 안 덮인다
+              (<code>recurrence.md</code> R16).</b> RQ-18-a 3차 평가에서 evaluator 가 같은 파괴를
+              냈는데 <b>벡터가 다르다</b> — 커밋된 스크립트의 <code>spawnSync</code> 가 아니라
+              <b>에이전트의 즉석 Bash 호출</b>이다. 즉 <b>도구 표면 안</b>에서 일어났고
+              <code>git worktree remove</code> 는 R2 로 분류돼 <code>settings.json</code> 의
+              <code>ask</code> 에도 있는데 <b>막지 않았다</b>(<code>tools.jsonl</code> 67건 중
+              worktree 차단 0건 — <code>post_observe.py</code> 는 실패·차단만 기록한다).</p>
+
+              <p>위 문단은 구멍을 <i>"스크립트는 등급 체계 밖"</i> 으로 설명한다. 그 설명은
+              1회차에 대해 옳고 <b>2회차에는 닿지 않는다</b> — 등급이 걸리는 자리에서 났기
+              때문이다. 남은 가설은 <code>allow</code> 의 맨몸 <code>Bash</code> 항목이 좁은
+              <code>ask</code> 를 삼켰다는 것인데, <b><code>policy-lint</code> P10 이 이미
+              그 축을 이름 붙여 두었다</b>: <i>"deny &gt; ask &gt; allow 우선순위 가정은 이
+              저장소에서 실증되지 않았다."</i> <b>이 사고가 그 가정의 첫 후보 반례다.</b>
+              실증 수단이 저장소 안에 없어(<code>hooks-selftest</code> 는 <code>gate_phase.py</code>
+              를 재지 <code>settings.json</code> 을 재지 않는다) R16 의 처방은 게이트가 아니라
+              <b>제약을 에이전트가 읽는 자리로 옮기는 것</b>이다.</p>
               그래서 이 표를 읽고 "R2니까 사람이 본다"고 믿으면 안 된다 —
               <b>없는 보장을 믿게 하는 것이 보장이 없는 것보다 나쁘다.</b>
             </p>

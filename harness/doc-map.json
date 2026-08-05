@@ -170,7 +170,10 @@
         ".claude/agents/evaluator.md",
         "harness/policy/phase-matrix.json"
       ],
-      "_c2_reviewed": { "dep": "harness/policy/phase-matrix.json", "sha": "24c68fa", "why": "이 스킬이 매트릭스에서 옮겨 적는 것은 Phase 3.5 의 형식 계약(맨몸 '판정: PASS' 단독 줄)이고, 판정 줄 정의를 넓혀도 그 요구는 동일하다 — 맨몸 줄은 확장 전후 모두 통과이며 바뀐 것은 꾸밈 붙은 줄이 이제 '최신 판정'으로 인정되면서 차단된다는 것뿐이다. 단계 전이 표는 2026-08-03 압축에서 이미 포인터(phase.py show)로 바꿔 매트릭스 값이 남아 있지 않다." },
+      "_c2_reviewed": [
+        { "dep": "harness/policy/phase-matrix.json", "sha": "24c68fa", "why": "이 스킬이 매트릭스에서 옮겨 적는 것은 Phase 3.5 의 형식 계약(맨몸 '판정: PASS' 단독 줄)이고, 판정 줄 정의를 넓혀도 그 요구는 동일하다 — 맨몸 줄은 확장 전후 모두 통과이며 바뀐 것은 꾸밈 붙은 줄이 이제 '최신 판정'으로 인정되면서 차단된다는 것뿐이다. 단계 전이 표는 2026-08-03 압축에서 이미 포인터(phase.py show)로 바꿔 매트릭스 값이 남아 있지 않다." },
+        { "dep": ".claude/agents/test-writer.md", "sha": "6eb04f1", "why": "R16(정션 파괴) 어포던스 절을 에이전트 정의 4개에 넣은 변경이다. 이 스킬이 test-writer 에서 옮겨 적는 것은 model 정책(sonnet)과 산출 경로뿐이고 워크트리 규율은 재서술하지 않는다 — 실측: rg 'worktree|정션|isolation' 이 이 파일에서 0건이다. 에이전트가 워크트리를 어떻게 다루는지는 이 스킬의 계약이 아니라 에이전트 자신의 계약이다." }
+      ],
       "review_every_days": 60
     },
     {
@@ -178,7 +181,10 @@
       "tier": 2,
       "purpose": "머지 전 독립 리뷰 게이트 — reviewer APPROVE가 머지의 필요조건.",
       "depends_on": [".claude/agents/reviewer.md", "harness/policy/phase-matrix.json"],
-      "_c2_reviewed": { "dep": "harness/policy/phase-matrix.json", "sha": "24c68fa", "why": "이 스킬이 매트릭스에서 옮겨 적는 것은 Phase 2.5 의 형식 계약(맨몸 '판정: APPROVE' 단독 줄)과 :72-75 의 '판정이 여러 개면 마지막 것만 본다' 이고, 판정 줄 정의를 넓혀도 둘 다 그대로 참이다. 맨몸 줄은 확장 전후 모두 통과이고 꾸밈 붙은 줄은 전에도 가드를 열지 못했다(그때는 판정으로 안 세어져서, 지금은 pattern 에 걸려서) — 리뷰어에게 요구하는 것이 동일하다." },
+      "_c2_reviewed": [
+        { "dep": "harness/policy/phase-matrix.json", "sha": "24c68fa", "why": "이 스킬이 매트릭스에서 옮겨 적는 것은 Phase 2.5 의 형식 계약(맨몸 '판정: APPROVE' 단독 줄)과 :72-75 의 '판정이 여러 개면 마지막 것만 본다' 이고, 판정 줄 정의를 넓혀도 둘 다 그대로 참이다. 맨몸 줄은 확장 전후 모두 통과이고 꾸밈 붙은 줄은 전에도 가드를 열지 못했다(그때는 판정으로 안 세어져서, 지금은 pattern 에 걸려서) — 리뷰어에게 요구하는 것이 동일하다." },
+        { "dep": ".claude/agents/reviewer.md", "sha": "6eb04f1", "why": "R16(정션 파괴) 어포던스 절 추가. 이 스킬이 reviewer 에서 옮겨 적는 것은 판정·라벨 줄 형식 계약뿐이고 워크트리 규율은 재서술하지 않는다 — 실측: rg 'worktree|정션|isolation' 이 이 파일에서 0건이다." }
+      ],
       "review_every_days": 60
     },
     {
