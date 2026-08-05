@@ -39,7 +39,7 @@ export function registerSocketHandlers(io: ChatServer, state: ChatState, socket:
   // RQ-18: 활성 room 통지(ADR-0003 결정4)·세션 복원(결정1-2·5) — 세션이
   // 없는 소켓(identify 미호출)에서 호출되면 각 핸들러가 ok:false로 거부한다.
   socket.on('activeRoom', (payload, ack) => handleActiveRoom(state, socket, payload, ack));
-  socket.on('resume', (payload, ack) => handleResume(state, socket, payload, ack));
+  socket.on('resume', (payload, ack) => handleResume(io, state, socket, payload, ack));
 
   // RQ-10/RQ-15(기존) + RQ-18/ADR-0003 결정5(신설): 연결 종료 시 기존 즉시
   // 퇴장 처리(nickname 해제·participants/rooms 갱신·RQ-12 빈 room 삭제)를
