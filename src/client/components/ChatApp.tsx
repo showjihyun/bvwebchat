@@ -4,7 +4,6 @@ import { RoomList } from './RoomList';
 import { ChatPane } from './ChatPane';
 import { ParticipantList } from './ParticipantList';
 import { JoinRoomModal } from './JoinRoomModal';
-import { GLOBAL_ROOM } from '../../shared/types';
 
 interface Props {
   // RQ-10-a: null이면 "닉네임 미확정, 유효한 세션 토큰으로 resume해서 확정해야 한다"
@@ -23,7 +22,6 @@ export function ChatApp({ nickname, onResumeFail }: Props) {
 
   const activeMessages = chat.activeRoom ? (chat.messagesByRoom[chat.activeRoom] ?? []) : [];
   const activeParticipants = chat.activeRoom ? (chat.participantsByRoom[chat.activeRoom] ?? []) : [];
-  const isGlobal = chat.activeRoom === GLOBAL_ROOM;
 
   return (
     <div className="app-shell">
@@ -45,7 +43,6 @@ export function ChatApp({ nickname, onResumeFail }: Props) {
       <ParticipantList
         nickname={chat.nickname}
         hasRoom={chat.activeRoom !== null}
-        isGlobal={isGlobal}
         participants={activeParticipants}
       />
       {modalOpen && (
