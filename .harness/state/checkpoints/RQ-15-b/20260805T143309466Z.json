@@ -1,0 +1,54 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "feat/RQ-15-b-resume-participants",
+  "edge_legal": true,
+  "exit_hint": "스펙이 확정되면(🟡 0건) → python harness/phase.py enter PLAN",
+  "forced": false,
+  "from": "PLAN",
+  "guards": [],
+  "head_sha": "4edd6be722f632dd26821a703781302d9c0e346f",
+  "reason": null,
+  "rq": "RQ-15-b",
+  "schema": 1,
+  "seq": 200,
+  "session": {
+    "acceptance": [
+      "새로고침 직후 user room 참여자 패널이 다른 사용자의 join·leave 를 기다리지 않고 채워진다 — 본인 포함",
+      "resume × 참여자 축 골든이 evals/golden/track-a-product.jsonl 에 있고, 그 when 절을 실제로 지나가는 실서버 통합 테스트가 있다",
+      "RQ-15-a 가 세운 global 예외(ADR-0008)를 깨지 않는다 — resume 이 global 참여자를 방송하게 만들지 않는다",
+      "리뷰어 APPROVE 로 REVIEW→RELEASE 가드를 연다"
+    ],
+    "done": [
+      "정적 축 확정 — session.ts:255 handleResume 이 :293-297 에서 socket.join + replaceMember 까지만 하고 broadcastParticipants 를 호출하지 않으며 ack(:304)에도 participants 가 없다. :35 의 ./broadcast import 가 emitUnreadToSocket·emitUnreadToSocketId 둘뿐이라 그 심볼이 파일에 아예 없다",
+      "클라 축 확정 — resume 핸들러(useChat.ts:186-201)가 rooms·unread·messagesByRoom(:200)만 seed 하고 participantsByRoom 을 건너뛴다. 본인 seed 는 join 경로(:313)에만 있고 resume 은 그 경로를 타지 않는다. ChatApp.tsx:25 의 ?? [] 가 빈 패널이 된다",
+      "global 무관 확인 — resume 핸들러가 :195 에서 GLOBAL_ROOM 을 걸러낸다. global 의 영구 공백은 RQ-15-a 가 ADR-0008 로 이미 닫았다",
+      "골든 공백 확정 — GA-14 는 새로고침 후 메시지 축, GA-19/20 은 join·leave 축. resume × 참여자 축은 0건이라 SPEC 선행이 필요하다",
+      "원장 등재 + 보류표 행에 착수 표시 (0e0d413). 브랜치 feat/RQ-15-b-resume-participants 를 main(5dbefdd)에서 땄다",
+      "PLAN 실행 재현 완료 — _workspace/RQ-15-b/repro-resume-participants.ts (실서버 + raw socket). resume ack 에 participants 가 없고, 재접속한 alice 도 남아 있던 bob 도 1200ms 안에 participants 를 0건 받는다. 대조군 carol 이 join 하자 그제야 도착 — 배선은 멀쩡하고 resume 이 방송을 안 일으키는 것이 유일한 원인이며 아무도 안 움직이면 영구 공백이다",
+      "축 결정(사용자) — 서버 방송 재사용. bob 도 못 받았다는 것이 결정적이었다: 방송 자체가 없으니 클라에 seed 할 데이터가 없어 서버 변경이 불가피하다. ResumeAck 확장안은 io 의존이 같은데 세 곳이 움직여 버렸다",
+      "내 실수 1건 — git commit -- .harness/state 로 IDLE→PLAN 체크포인트를 커밋했다고 여겼으나 pathspec 커밋은 untracked 신규 디렉터리를 싣지 않는다. 같은 시각 돌던 eval-b 의 GB-06 이 checkpoint_uncommitted 로 실패해 드러났다. git add 후 재커밋했고 보류표에 등재했다",
+      "PLAN 산출물 커밋 (4edd6be) — 원장에 재현 관측값과 축 결정을 인라인으로 적었다. _workspace 는 gitignore 라 재현 스크립트 자체는 신선한 워크트리에 없고, 그래서 관측값을 원장 본문에 넣었다"
+    ],
+    "goal": "RQ-15 는 '각 room 의 현재 참여자 목록을 표시해야 한다' 인데 새로고침한 사용자에게는 그 목록이 없다. 그리고 아무도 들어오거나 나가지 않으면 영영 채워지지 않는다 — 사용자가 스스로 회복할 수단이 없는 결함이고, RQ-15 의 인수 기준이 resume 경로에서만 미이행 상태로 남아 있다는 뜻이다",
+    "next": [
+      "SPEC — resume × 참여자 축 골든 1건을 evals/golden/track-a-product.jsonl 에 신설한다. verify 는 tests/integration/rq-15-b-resume-participants.test.ts 를 가리킨다 (GA-34 는 verify 가 when 절을 지나는 파일을 안 가리켜 보류표에 올라 있다 — 같은 실수를 반복하지 않는다)",
+      "RED — tests/integration/rq-15-b-resume-participants.test.ts. 서버 축은 raw socket 으로 resume 직후 participants 방송을 단언하고, 사용자 표면 축은 실서버 + <App/> 렌더 + localStorage 토큰 유지 + 리마운트로 새로고침을 실제로 지나가게 한다",
+      "GREEN — session.ts handleResume 이 io 를 받아 재합류 루프 뒤 non-global room 마다 broadcastParticipants 를 부른다. connection.ts:42 동반, :35 import 에 심볼 추가. 클라 변경 0"
+    ],
+    "open_questions": [
+      "GA-34 verify 정정과 ADR-0008 과장 서술 정정을 이 PR 의 SPEC 에 태울 것인가 — 보류표가 다음 제품 PR 의 SPEC 묶음을 처방했고(SPEC 전용 PR 은 REVIEW 간선이 없어 무리뷰로 착지한다) 이 PR 이 그 첫 기회다. 태우면 RQ-15-b 스코프가 넓어진다",
+      "R16 정션 처방(.claude/agents 의 워크트리 규율)이 이 브랜치에 없다. EVAL 이 노출 지점이다 — 평가자에게 워크트리 금지 · vite 트랜스폼 메모리 치환을 명시한다",
+      "하네스 후속 2건을 보류표에 등재했다 — pathspec 커밋이 신규 체크포인트 디렉터리를 빠뜨리는 것(CLAUDE.md 규율 문장이 이 경우 틀렸다)과, 트랙 B 아티팩트가 실행 중 브랜치 전환을 감지하지 못하는 것. 둘 다 HARNESS 단계에서만 고칠 수 있다"
+    ]
+  },
+  "to": "SPEC",
+  "ts": "2026-08-05T14:33:09.465Z",
+  "write_allow": [
+    "specs/**",
+    "docs/adr/**",
+    "docs/design/DESIGN.md",
+    "docs/progress.md",
+    "evals/golden/**",
+    "_workspace/**"
+  ]
+}
