@@ -57,8 +57,8 @@ pathspec 을 좁게 쓸수록 상태 파일이 자동으로 빠진다. 그래서
 |---|---|---|---|
 | 1 | `node scripts/doc-freshness.mjs --full` | 문서가 코드보다 낡았는가 (C1~C6) | blocking: C1·C2·C4·C5 |
 | 1-1 | `node scripts/doc-freshness.mjs --pr --base origin/main` | **이 PR 이 만든 낡음** — `--full` 에서 C2 는 advisory 라 이 모드가 아니면 **선행 점검이 C2 를 구조적으로 못 본다** | blocking (CI 에도 배선됨) |
-| 2 | `node scripts/policy-lint.mjs` | 정책이 자기모순인가 (P1~P11 — 도달 불가 단계·빈 allow-set·끊긴 전이 그래프·매칭 불가 패턴·`enforced_by` 대조·**반복 대장 미처방**) | blocking |
-| 2-1 | `node scripts/policy-lint.mjs --self-test` | **P11 파서 · P9 줄바꿈 · P12 바깥 라벨** | blocking |
+| 2 | `node scripts/policy-lint.mjs` | 정책이 자기모순인가 (P1~P13 — 도달 불가 단계·빈 allow-set·끊긴 전이 그래프·매칭 불가 패턴·`enforced_by` 대조·**반복 대장 미처방**·**바깥 라벨**·**가드 커버리지**) | blocking |
+| 2-1 | `node scripts/policy-lint.mjs --self-test` | **P11 파서 · P9 줄바꿈 · P12 바깥 라벨 · P13 가드 커버리지** | blocking |
 | 2-2 | `node scripts/eval-b.mjs --self-test` | **평가 준비 게이트 · 체크포인트 신선도 · 캐시 무효화 · 최신 정렬** | blocking |
 | 2-3 | `python harness/phase.py self-test` | **전이 게이트(R6 상태 신선도)가 무엇을 차단하는가** | blocking |
 | 2-4 | `node scripts/check.mjs --self-test` | **RQ ID 파싱·매칭** — 접미사 ID(`RQ-10-a`)를 받는가, 기저 변형이 새어 남의 테스트를 잡지 않는가 | blocking |
@@ -89,6 +89,10 @@ Write/Edit이 죽었다. 정책 거부가 아니라 훅 파손이었고, 둘은 
    `.github/workflows/`의 스텝, `phase-matrix.json`의 guards, `scripts/`의 파일)
 2. 실재하는 강제 수단 → 카탈로그에 행이 있는가? (없으면 **문서화되지 않은 게이트**다.
    에이전트가 이유를 모른 채 차단당한다.)
+   - **전이 가드 축은 손으로 하지 않는다** — `policy-lint` **P13** 이 기계로 대조한다
+     (`phase-matrix.json` 의 모든 `guards` 가 카탈로그에 언급되는가).
+     Phase 1 의 검사 2가 이미 그것을 돌리므로 여기서 반복하면 같은 값을 두 곳에서 재는 것이다.
+   - **남는 것은 CI 스텝 축과 훅 축이다** — P13 은 이 둘을 덮지 않는다. 이 자리는 그 둘을 본다.
 3. 🔄·⬜ 행 → 아직도 그 상태가 맞는가?
 
 불일치는 전부 보고서에 적는다. 카탈로그를 조용히 고치지 않는다 — 불일치 자체가
@@ -199,6 +203,28 @@ Write/Edit이 죽었다. 정책 거부가 아니라 훅 파손이었고, 둘은 
 선례는 판별식을 대체하지 못한다.
 
 ## Phase 4: 종료
+
+0. **검사를 다시 돌린다 — 변경을 커밋한 뒤에.** Phase 1 의 값은 **변경 전**이라
+   *"이 감사가 만든 낡음"* 을 원리적으로 못 본다.
+
+   ```
+   git commit -- <바꾼 경로들>            ← 먼저 커밋한다 (아래 이유)
+   node scripts/policy-lint.mjs           ← P12 는 최신 **커밋된** 체크포인트를 본다
+   node scripts/doc-freshness.mjs --pr --base origin/main
+   node scripts/check.mjs
+   ```
+
+   **커밋이 먼저인 이유가 두 가지이고 둘 다 실전에서 비용을 물렸다:**
+   - `doc-freshness` C2 는 **커밋 시각**을 비교한다. 워킹트리 상태로는 판정이 나오지 않는다 —
+     감사가 `scripts/**` 를 고치면 그것에 의존하는 문서들이 **커밋된 뒤에야** 낡는다.
+   - `policy-lint` P12 는 `git ls-tree HEAD` 로 체크포인트를 찾는다. 전이만 하고
+     커밋하지 않으면 **옛 체크포인트를 계속 본다.**
+
+   > **이 단계가 없어서 세 번 비용을 물렸다.** 2026-08-04 감사가 만든 C2 3건이 리뷰 blocker 로
+   > 나왔고, 그때 처방은 **인스턴스만 고치는 것**이었다. `ci.yml` 이 이미 문장으로
+   > *"`--full` 에서 C2 는 advisory 라 선행 점검 스킬이 이것을 구조적으로 못 본다"* 라고
+   > 적어 두었는데도 절차에 단계가 없었다. 2026-08-06 감사에서 **같은 blocker 가 또 났다** —
+   > 개별 대응이라 재발했고, 그것은 이 감사가 P13 으로 주장한 바로 그 형상이다.
 
 1. `docs/harness/changelog.md`에 기록 — `HARNESS→REVIEW` 전이의
    `changelog_updated` 가드가 이 파일의 변경을 요구한다.
