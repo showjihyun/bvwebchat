@@ -34,8 +34,8 @@
       "_doc_depends2": "docs/adr/*.md 를 뺐다(2026-08-03). 위 판별 규칙(재서술하면 의존, 포인터로만 참조하면 비의존)을 ADR 에 적용했다 — 이 파일의 ADR 참조 네 곳은 전부 포인터다: L10 디렉토리와 '변경은 새 ADR 먼저' 절차 · L13 DESIGN 과의 관할 관계 · L65 PR 범위 카브아웃 · L82 'ADR 없는 변경 금지'. 어느 것도 특정 ADR 의 결정 내용을 옮겨 적지 않으므로 ADR 이 개정돼도 이 파일의 문장이 거짓이 되지 않는다. 발화 계기: ADR-0005 에 결정4 실증 블록을 덧붙이자 C2 가 이 파일을 지목했고 확인해 보니 낡은 문장이 하나도 없었다. 남는 노출: 새 ADR 이 진실 공급원 순서나 카브아웃 자체를 바꾸면 이 파일이 낡는데 C2 가 안 잡는다 — 그런 ADR 은 이 파일을 함께 고치는 것이 자명한 부류다. 주의: 이 판별을 적용한 문서가 이로써 6건이 됐다(스킬 2 · 골든 2 · ADR 1 · 이 파일 1). 매번 C2 가 먼저 막고 그때 하나씩 좁혔다 — depends_on 전수를 이 기준으로 한 번에 훑는 것이 옳고 docs/progress.md 보류표에 있다.",
       "_c2_reviewed": {
         "dep": "harness/policy/phase-matrix.json",
-        "sha": "0747b68",
-        "why": "SPEC·HARNESS 의 write_allow 를 넓힌 변경이다(docs/design/** · docs/architecture.html · README.md · docs/deploy.md). 이 파일이 매트릭스에서 옮겨 적는 것은 9단계 이름(L18-19)과 가드 이름 no_pending_spec(L81) 둘이고 어느 쪽도 안 움직였다 — 단계도 가드도 그대로다. L17 은 \"단계가 쓰기 가능한 경로를 정한다\" 는 포인터 문장이고 경로를 열거하지 않는다. L12·L49 의 docs/design/DESIGN.md 는 진실 공급원·참조 맵 항목이지 write_allow 값이 아니며, 그 문서가 UI 진실 공급원이라는 사실은 관할이 넓어져도 참이다."
+        "sha": "544703f",
+        "why": "2026-08-06 재검토(리뷰 NB-1). 조치 커밋 544703f 가 SPEC.write_allow 에서 docs/architecture.html 을 **빼고** harness/policy/README.md 를 재생성했다 — 그 파일이 한 번도 추적된 적 없어 생성물이 죽은 경로를 렌더링했기 때문이다(리뷰 B-1). 이 문서가 재서술하는 값은 여전히 움직이지 않았다: 이 파일이 매트릭스에서 옮겨 적는 것은 9단계 이름(L18-19)과 가드 이름 no_pending_spec(L81) 둘이고 어느 쪽도 안 움직였다. 항목을 더한 변경이든 뺀 변경이든 이 문서가 옮겨 적지 않는 값이라는 사실은 같다."
       },
       "depends_on": [
         "specs/requirements.md",
@@ -100,11 +100,6 @@
           "why": "같은 강등이 이 파일의 R2/R1 배열을 옮겼다. 이 문서가 옮겨 적는 것은 등급의 정의와 강제 주체이지 어느 명령이 어느 등급인가의 목록이 아니다 — 그 목록은 policy/README.md 가 생성물로 갖는다. 주의: judgeC2Ack 은 dep 을 정확 일치로 본다(doc-freshness.mjs:238) — 글롭 harness/policy/** 로 적으면 면제되지 않는다."
         },
         {
-          "dep": "harness/policy/README.md",
-          "sha": "e336a0c",
-          "why": "같은 강등이 tool-risk.json 의 R2/R1 배열을 옮기고 policy/README.md 를 재생성했다. 이 문서가 policy 에서 옮겨 적는 것은 등급의 정의와 강제 주체이지 어느 명령이 어느 등급인가의 목록이 아니다 — 그 목록은 README.md 가 생성물로 갖고 policy-lint --print 가 JSON 에서 유도한다. 값을 두 곳에 적지 않는 것이 그 생성물의 존재 이유이므로, 이 문서에 그 값이 없는 것이 정상이다."
-        },
-        {
           "dep": "scripts/policy-lint.mjs",
           "sha": "0747b68",
           "why": "policy-lint 에 P14 를 더하고 doc-freshness 에서 죽은 exclude_globs 참조를 뺀 변경이다. 카탈로그의 정책 정합성 행을 같은 커밋에서 P1~P14 로 고치고 P13·P14 설명을 넣었으므로 낡은 문장이 없다. doc-freshness 행은 C1~C6 체계를 서술하고 exclude_globs 를 근거로 쓰지 않는다(grep 확인). 주의: 이 항목을 처음엔 scripts/** 글롭으로 적었는데 judgeC2Ack 은 움직인 파일과 정확 일치만 보므로 발화하지 않았다 — 리뷰 M-1."
@@ -113,6 +108,16 @@
           "dep": "scripts/doc-freshness.mjs",
           "sha": "0747b68",
           "why": "policy-lint 에 P14 를 더하고 doc-freshness 에서 죽은 exclude_globs 참조를 뺀 변경이다. 카탈로그의 정책 정합성 행을 같은 커밋에서 P1~P14 로 고치고 P13·P14 설명을 넣었으므로 낡은 문장이 없다. doc-freshness 행은 C1~C6 체계를 서술하고 exclude_globs 를 근거로 쓰지 않는다(grep 확인). 주의: 이 항목을 처음엔 scripts/** 글롭으로 적었는데 judgeC2Ack 은 움직인 파일과 정확 일치만 보므로 발화하지 않았다 — 리뷰 M-1."
+        },
+        {
+          "dep": "harness/policy/README.md",
+          "sha": "544703f",
+          "why": "2026-08-06 재검토(리뷰 NB-1). 조치 커밋 544703f 가 SPEC.write_allow 에서 docs/architecture.html 을 **빼고** harness/policy/README.md 를 재생성했다 — 그 파일이 한 번도 추적된 적 없어 생성물이 죽은 경로를 렌더링했기 때문이다(리뷰 B-1). 이 문서가 재서술하는 값은 여전히 움직이지 않았다: 이 문서가 policy 에서 옮겨 적는 것은 등급의 정의와 강제 주체이지 어느 명령이 어느 등급인가의 목록이 아니다 — 그 목록은 policy/README.md 가 생성물로 갖는다. 항목을 더한 변경이든 뺀 변경이든 이 문서가 옮겨 적지 않는 값이라는 사실은 같다."
+        },
+        {
+          "dep": "harness/policy/phase-matrix.json",
+          "sha": "544703f",
+          "why": "SPEC·HARNESS 의 write_allow 를 넓히고(P14 를 통과시키는 관할 배정) 이후 docs/architecture.html 항목을 다시 뺀 변경이다. 이 카탈로그가 매트릭스에서 옮겨 적는 것은 단계 이름·가드 이름·게이트의 강제 주체이지 단계별 쓰기 경로 목록이 아니다 — 그 목록은 policy/README.md 가 생성물로 갖고 policy-lint --print 가 JSON 에서 유도한다. 값을 두 곳에 적지 않는 것이 그 생성물의 존재 이유이므로 이 문서에 그 값이 없는 것이 정상이다(R10). P14 신설은 같은 커밋에서 이 문서의 정책 정합성 행에 반영했다(P1~P13 → P1~P14 + P14 설명)."
         }
       ],
       "edit_policy": {
@@ -173,19 +178,19 @@
       ],
       "_c2_reviewed": [
         {
-          "dep": "harness/policy/README.md",
-          "sha": "0747b68",
-          "why": "policy/README.md 는 policy-lint --print 가 JSON 에서 재생성하는 생성물이고, 이번 재생성의 입력 변화는 SPEC·HARNESS 의 write_allow 확장이다. 이 설계서가 옮겨 적는 것은 3층 모델의 구조와 \"가드 11종\" 이라는 개수인데, P14 는 policy-lint 의 검사이지 전이 가드가 아니므로 11 이 움직이지 않았다(실측 확인)."
-        },
-        {
           "dep": "harness/sensor-catalog.md",
           "sha": "0747b68",
           "why": "카탈로그의 정책 정합성 행을 P1~P13 → P1~P14 로 넓히고 축 열거를 지운 변경이다. 이 설계서는 P 번호 범위를 단언하지 않고(grep: P1~P1x 일치 0건) 카탈로그에서 옮겨 적는 것은 3층 모델과 가드 개수뿐이다."
         },
         {
+          "dep": "harness/policy/README.md",
+          "sha": "544703f",
+          "why": "2026-08-06 재검토(리뷰 NB-1). 조치 커밋 544703f 가 SPEC.write_allow 에서 docs/architecture.html 을 **빼고** harness/policy/README.md 를 재생성했다 — 그 파일이 한 번도 추적된 적 없어 생성물이 죽은 경로를 렌더링했기 때문이다(리뷰 B-1). 이 문서가 재서술하는 값은 여전히 움직이지 않았다: 이 설계서는 단계별 쓰기 경로 목록을 싣지 않고 3층 모델의 구조와 \"가드 11종\" 이라는 개수만 옮겨 적는다 — P14 는 policy-lint 의 검사이지 전이 가드가 아니라 11 이 그대로다. 항목을 더한 변경이든 뺀 변경이든 이 문서가 옮겨 적지 않는 값이라는 사실은 같다."
+        },
+        {
           "dep": "harness/policy/phase-matrix.json",
-          "sha": "0747b68",
-          "why": "SPEC·HARNESS 의 write_allow 를 넓힌 변경이다. 이 설계서는 단계별 쓰기 경로 목록을 싣지 않고 3층 모델의 구조와 \"가드 11종\" 이라는 개수만 옮겨 적는다 — P14 는 policy-lint 의 검사이지 전이 가드가 아니므로 11 이 그대로다. (주의: 면제의 dep 은 글롭이 아니라 움직인 파일과 정확 일치여야 한다 — harness/policy/** 로 적었더니 면제되지 않았다, doc-freshness.mjs judgeC2Ack.)"
+          "sha": "544703f",
+          "why": "2026-08-06 재검토(리뷰 NB-1). 조치 커밋 544703f 가 SPEC.write_allow 에서 docs/architecture.html 을 **빼고** harness/policy/README.md 를 재생성했다 — 그 파일이 한 번도 추적된 적 없어 생성물이 죽은 경로를 렌더링했기 때문이다(리뷰 B-1). 이 문서가 재서술하는 값은 여전히 움직이지 않았다: 이 설계서는 단계별 쓰기 경로 목록을 싣지 않고 3층 모델의 구조와 \"가드 11종\" 이라는 개수만 옮겨 적는다 — P14 는 policy-lint 의 검사이지 전이 가드가 아니라 11 이 그대로다. 항목을 더한 변경이든 뺀 변경이든 이 문서가 옮겨 적지 않는 값이라는 사실은 같다."
         }
       ],
       "review_every_days": 90
@@ -230,8 +235,8 @@
         },
         {
           "dep": "harness/policy/phase-matrix.json",
-          "sha": "0747b68",
-          "why": "이 스킬은 \"각 전이의 가드와 쓰기 허용을 여기 옮겨 적지 않는다\" 를 본문에 선언하고 실제로 열거하지 않는다(한때 있던 표를 R10 으로 지운 이력이 문서에 남아 있다). 이번 변경은 write_allow 만 넓혔고 전이·가드는 무변경이다."
+          "sha": "544703f",
+          "why": "2026-08-06 재검토(리뷰 NB-1). 조치 커밋 544703f 가 SPEC.write_allow 에서 docs/architecture.html 을 **빼고** harness/policy/README.md 를 재생성했다 — 그 파일이 한 번도 추적된 적 없어 생성물이 죽은 경로를 렌더링했기 때문이다(리뷰 B-1). 이 문서가 재서술하는 값은 여전히 움직이지 않았다: 이 스킬은 \"각 전이의 가드와 쓰기 허용을 여기 옮겨 적지 않는다\" 를 본문에 선언하고 실제로 열거하지 않는다. 항목을 더한 변경이든 뺀 변경이든 이 문서가 옮겨 적지 않는 값이라는 사실은 같다."
         }
       ],
       "review_every_days": 60
@@ -252,8 +257,8 @@
         },
         {
           "dep": "harness/policy/phase-matrix.json",
-          "sha": "0747b68",
-          "why": "이 스킬이 매트릭스 값을 재서술하는 곳은 :43 의 \"GREEN 은 src/** 만 열어 준다\" 하나다(grep 으로 확인). 이번 변경은 SPEC 과 HARNESS 의 write_allow 만 넓혔고 GREEN 은 손대지 않았다 — 그 문장은 여전히 참이다."
+          "sha": "544703f",
+          "why": "2026-08-06 재검토(리뷰 NB-1). 조치 커밋 544703f 가 SPEC.write_allow 에서 docs/architecture.html 을 **빼고** harness/policy/README.md 를 재생성했다 — 그 파일이 한 번도 추적된 적 없어 생성물이 죽은 경로를 렌더링했기 때문이다(리뷰 B-1). 이 문서가 재서술하는 값은 여전히 움직이지 않았다: 이 스킬이 매트릭스 값을 재서술하는 곳은 :43 의 \"GREEN 은 src/** 만 열어 준다\" 하나이고 GREEN 은 손대지 않았다. 항목을 더한 변경이든 뺀 변경이든 이 문서가 옮겨 적지 않는 값이라는 사실은 같다."
         }
       ],
       "review_every_days": 60
@@ -302,8 +307,8 @@
       "purpose": "격리 세션 에이전트 정의. 프롬프트가 구조를 설명하되 대체하지 않는다.",
       "_c2_reviewed": {
         "dep": "harness/policy/phase-matrix.json",
-        "sha": "0747b68",
-        "why": "SPEC·HARNESS 의 write_allow 를 넓힌 변경이다. 네 에이전트 문서는 전부 자기 단계의 금지 하나만 적고 그 뒤에 \"그 외 경로는 python harness/phase.py show 가 답한다 — 목록을 여기 옮겨 적지 않는다\" 를 명시한다(coder:22 · evaluator:20 · reviewer:20 · test-writer:23 — grep 으로 확인). 이번 변경은 SPEC·HARNESS 만 건드렸고 네 에이전트가 재서술하는 단계는 RED·GREEN·EVAL·REVIEW 라 교집합이 0이다. 의존은 유지한다 — 각자 자기 단계의 write_deny 를 실제로 재서술하므로 그 단계가 바뀌면 진짜로 낡는다."
+        "sha": "544703f",
+        "why": "2026-08-06 재검토(리뷰 NB-1). 조치 커밋 544703f 가 SPEC.write_allow 에서 docs/architecture.html 을 **빼고** harness/policy/README.md 를 재생성했다 — 그 파일이 한 번도 추적된 적 없어 생성물이 죽은 경로를 렌더링했기 때문이다(리뷰 B-1). 이 문서가 재서술하는 값은 여전히 움직이지 않았다: 네 에이전트 문서는 전부 \"목록을 여기 옮겨 적지 않는다\" 를 명시하고 자기 단계(RED/GREEN/EVAL/REVIEW)의 금지만 적는다 — SPEC 변경과 교집합이 0이다. 항목을 더한 변경이든 뺀 변경이든 이 문서가 옮겨 적지 않는 값이라는 사실은 같다."
       },
       "depends_on": [
         "harness/policy/phase-matrix.json"
