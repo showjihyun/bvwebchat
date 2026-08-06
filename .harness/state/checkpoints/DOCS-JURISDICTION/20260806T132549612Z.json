@@ -1,0 +1,65 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "fix/harness-docs-jurisdiction",
+  "edge_legal": true,
+  "exit_hint": "완료되면 → python harness/phase.py enter IDLE",
+  "forced": false,
+  "from": "REVIEW",
+  "guards": [
+    {
+      "ms": 0,
+      "name": "reviewer_approve",
+      "ok": true
+    }
+  ],
+  "head_sha": "e7345f5c8abafefcc828ace7d8b15d8873bf4891",
+  "reason": null,
+  "rq": "DOCS-JURISDICTION",
+  "schema": 1,
+  "seq": 249,
+  "session": {
+    "acceptance": [
+      "claudedocs 와 일반 docs 에 쓰기 관할이 생기고 그 근거가 정책 파일에 남는다",
+      "workflow-report 갱신본이 거짓 3건·틀림 3건을 실측값으로 교체한 채 커밋된다",
+      "갱신본이 다시 낡지 않도록 신선도 센서 관할에 들어간다 — 지금은 exclude_globs 라 아무도 안 본다"
+    ],
+    "done": [
+      "P13 가드 커버리지 머지 완료 (PR 44, squash afe42dc). main 에서 실동작 확인 — 전이 가드 11종 전부 등재 판정. 이제 가드를 추가하며 카탈로그에 안 적으면 CI 가 막는다",
+      "감사 발견은 검사 실패가 아니라 검사가 안 보는 자리에서 나왔다 — 점검 9종 전부 초록이었고 방향 2 대조를 기계로 돌려 가드 3종 누락을 실측했다. F-1 의 재발이라 Guide 를 게이트로 한 칸 올렸다",
+      "리뷰 blocker 2건 둘 다 내 것이었고 조치했다. 그 중 하나의 구조 원인을 R17 로 등재하고 감사 스킬 Phase 4 에 커밋 후 재검사 단계를 신설했다",
+      "GB-06 이 세 번 떨어졌고 매번 원인이 달랐다. 두 번째는 재리뷰가 채점기 쪽 원인으로 판정했다 — 내 조치가 폐기된 규칙의 재적용이라 얻은 것이 점수뿐이었다. 트리거와 함께 등재했다",
+      "재스탬프에 세는 규칙을 처음 정의했다 — A→IDLE 직후 IDLE→A 인 같은 단계 복귀 왕복. 전수 19건 · 이 PR 2건. 이전엔 같은 사실이 세 곳에서 달랐다",
+      "우선순위를 실측으로 정했다 — 보류표 36건 중 12건이 오늘 들어왔고 감사는 1회 1건만 뽑는다. 유입이 처리의 12배다",
+      "P14 신설 — doc-map 이 관할하는 문서가 최소 한 단계에서 쓰기 가능한지 검사한다. 두 정책 파일이 서로 반대를 말하던 자리이고 고아 3건(README.md · docs/deploy.md · docs/design/handoff-brief.md)을 실측했다. 순수 함수 judgeDocJurisdiction + 음성 시험 13건",
+      "지운 것 셋 — exclude_globs 5건(governed_globs 가 허용목록이라 실효 0, 교집합 0건 실측) · claudedocs 디렉토리(docs/harness 로 이동) · 좁은 지정 docs/design/DESIGN.md 를 docs/design/** 로 대체",
+      "팀 공유 핸드북을 저장소로 옮겼다 — 스크래치패드에만 있어 사라질 상태였다. 원본 둘을 흡수해 한 문서로 만들었다",
+      "P14 신설 — doc-map 이 관할하는 문서가 최소 한 단계에서 쓰기 가능한지 검사한다. 고아 3건(README.md · docs/deploy.md · docs/design/handoff-brief.md)을 두 정책 JSON 대조로 실측했다. 순수 함수 judgeDocJurisdiction + 음성 시험 13건",
+      "지운 것 셋 — exclude_globs 5건(governed_globs 가 허용목록이라 실효 0, 교집합 0건 실측) · claudedocs 디렉토리(docs/harness 로 이동) · 좁은 지정 DESIGN.md 를 docs/design/** 로 대체",
+      "팀 공유 핸드북을 저장소로 옮겼다 — 스크래치패드에만 있어 사라질 상태였다. 원본 둘을 흡수했다",
+      "제안이 실행 중에 두 번 반증됐다 — workflow-report 등재를 뺐다(낡은 걸 아는 문서를 등재하면 면제가 거짓이 된다) · F-3 진단이 좁았다(저장소에 아예 없는 배포물은 git status 로 안 보인다)",
+      "트랙 B 전수 6 pass / 0 fail · 아티팩트 커밋 완료",
+      "리뷰 REQUEST_CHANGES — blocker 3건 전부 핸드북을 이 PR 에 넣은 데서 나왔다. 리뷰어가 판별식을 재보니 어느 방향으로도 막는 가드가 없어 R11 9회차였고, 그 직접 결과로 핸드북이 이 PR 이 바꾼 write_allow 값을 재서술한 채 거짓 6건을 실었다",
+      "리뷰 blocker 3건 조치 완료 — 핸드북을 PR 에서 분리(diff 2292→870줄) · docs/architecture.html 배정 철회(생성물이 죽은 경로를 렌더링해 C4 로 CI 를 막았다) · 면제 dep 을 글롭에서 정확 경로로",
+      "리뷰 지적을 절차의 구멍으로 옮겨 보류표 3건 등재 — 역추적 대상이 제안서로 고정된 것 · 판별식이 유예에만 걸리고 편입에 안 걸린 것 · C2 가 시각만 봐서 새 문서를 원리적으로 못 잡는 것",
+      "트랙 B 2회차 6 pass / 0 fail · 아티팩트 검증 통과(inputs_hash 일치)",
+      "재리뷰 REQUEST_CHANGES — 1차 blocker 2건은 닫혔고 B-1 자리에서 새 blocker 3건이 났다. 셋 다 내가 감사 보고서에 처방을 적어 놓고 그 커밋에서 안 지킨 데서 나왔다",
+      "재리뷰 blocker 3건 조치 — 면제 sha 를 정책 파일의 현재 마지막 커밋으로 맞추고 이 커밋이 정책 파일을 안 건드리게 배치했다(안 그러면 또 재무장한다) · 죽은 인용 3곳을 서술·경로 분할로 · 원장 두 행의 모순 해소",
+      "CI 체크아웃 조건을 git archive 로 재현해 검증했다 — 로컬 초록은 이 축을 구조적으로 못 본다(checkC4 가 미추적을 살아 있는 것으로 센다). 재현 절차를 감사 보고서 10절에 남겼다",
+      "doc-freshness --as-ci 를 보류표에 등재 — 증상은 원장이 알고 있었는데 재현 명령이 없어 같은 함정에 다시 걸렸다. R9 와 같은 형상이고 답은 배선이다"
+    ],
+    "goal": "저장소에 커밋된 workflow-report.html 이 팀 도입 권고 자리에 거짓 3건을 담고 있고 그중 하나는 발동 0회인 게이트를 1순위로 권한다. 읽는 사람이 그대로 가져간다. 그런데 claudedocs 는 어느 단계의 write_allow 에도 없어 합법적으로 고칠 수가 없다 — 문서가 틀린 것이 아니라 고칠 자리가 없는 것이 진짜 문제다",
+    "next": [
+      "리뷰가 2회 연속 REQUEST_CHANGES 라 스킬이 자동 반복 중단을 요구한다 — 3차 리뷰 여부를 사람이 정한다"
+    ],
+    "open_questions": [
+      "P14 설계 자체는 두 리뷰 모두 통과 판정을 받았다. blocker 는 전부 스코프(핸드북)와 절차 위생(sha·죽은 경로)이었다 — 설계 재검토 신호인지 판단이 필요하다"
+    ]
+  },
+  "to": "RELEASE",
+  "ts": "2026-08-06T13:25:49.609Z",
+  "write_allow": [
+    "docs/progress.md",
+    "docs/harness/changelog.md",
+    "_workspace/**"
+  ]
+}
