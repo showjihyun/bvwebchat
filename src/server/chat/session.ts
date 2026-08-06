@@ -32,7 +32,7 @@ import type {
 } from './protocol';
 import { replaceMember, type ChatState, type SessionState } from './state';
 import { generateUniqueNickname, isNonBlankString, isNonEmptyString } from './validation';
-import { emitUnreadToSocket, emitUnreadToSocketId } from './broadcast';
+import { broadcastParticipants, emitUnreadToSocket, emitUnreadToSocketId } from './broadcast';
 
 /**
  * 이 소켓에 바인딩된 세션을 조회한다 — **세션리스 소켓 회귀 방지의 단일 지점**.
@@ -251,8 +251,21 @@ export function handleActiveRoom(
  *
  * 타이머 취소는 clearTimeout 인라인이다 — departure.ts를 import 하면
  * L4→L5 역방향 간선이 생긴다(ADR-0007 규칙2).
+ *
+ * RQ-15-b / GA-35·GA-36: 재합류 루프가 non-global room마다
+ * `broadcastParticipants`를 호출해, 그 room에 남아 있던 다른 멤버(예: bob)를
+ * 포함해 재접속한 소켓 자신도 최신 참여자 목록을 즉시 받는다(제3자가
+ * 움직이기를 기다리지 않는다). **`room.ts:76`의 "founding join(memberCount>1)
+ * 이면만 방송" 게이트를 여기에 복사하지 않는다** — 그 게이트는 join 경로
+ * 전용 경합 회피이고, 클라이언트가 join 시 본인을 로컬 seed(useChat.ts:313)해
+ * 그 간극을 메우는 것을 전제한다. resume 경로에는 그 로컬 seed가 없으므로
+ * (useChat.ts의 resume 성공 핸들러는 participantsByRoom을 건드리지 않는다),
+ * 게이트를 복사하면 혼자 있는 room에서 참여자 패널이 영구히 빈다 —
+ * GA-36이 정확히 이 함정을 감시한다. 그래서 이 핸들러는 io를 받는다
+ * (handleJoin·fanOutUnread와 같은 관례).
  */
 export function handleResume(
+  io: ChatServer,
   state: ChatState,
   socket: ChatSocket,
   payload: ResumePayload,
@@ -294,6 +307,7 @@ export function handleResume(
     socket.join(room);
     if (room === GLOBAL_ROOM) continue;
     replaceMember(state, room, previousSocketId, socket.id);
+    broadcastParticipants(io, state, room);
   }
 
   const unread: Record<RoomName, number> = {};
