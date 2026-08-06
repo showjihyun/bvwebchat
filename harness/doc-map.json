@@ -34,8 +34,8 @@
       "_doc_depends2": "docs/adr/*.md 를 뺐다(2026-08-03). 위 판별 규칙(재서술하면 의존, 포인터로만 참조하면 비의존)을 ADR 에 적용했다 — 이 파일의 ADR 참조 네 곳은 전부 포인터다: L10 디렉토리와 '변경은 새 ADR 먼저' 절차 · L13 DESIGN 과의 관할 관계 · L65 PR 범위 카브아웃 · L82 'ADR 없는 변경 금지'. 어느 것도 특정 ADR 의 결정 내용을 옮겨 적지 않으므로 ADR 이 개정돼도 이 파일의 문장이 거짓이 되지 않는다. 발화 계기: ADR-0005 에 결정4 실증 블록을 덧붙이자 C2 가 이 파일을 지목했고 확인해 보니 낡은 문장이 하나도 없었다. 남는 노출: 새 ADR 이 진실 공급원 순서나 카브아웃 자체를 바꾸면 이 파일이 낡는데 C2 가 안 잡는다 — 그런 ADR 은 이 파일을 함께 고치는 것이 자명한 부류다. 주의: 이 판별을 적용한 문서가 이로써 6건이 됐다(스킬 2 · 골든 2 · ADR 1 · 이 파일 1). 매번 C2 가 먼저 막고 그때 하나씩 좁혔다 — depends_on 전수를 이 기준으로 한 번에 훑는 것이 옳고 docs/progress.md 보류표에 있다.",
       "_c2_reviewed": {
         "dep": "harness/policy/phase-matrix.json",
-        "sha": "24c68fa",
-        "why": "가드에 latest_of 필드를 더한 변경이다. 이 문서가 매트릭스에서 옮겨 적는 것은 9단계 이름(L18-19)과 가드 이름 no_pending_spec(L81) 둘인데 어느 것도 안 바뀌었다 — 단계 목록도 가드 목록도 그대로다. 2026-08-04 재대조: latest_of 의 판정 줄 정의를 넓힌 변경도 이 문서가 옮겨 적지 않는 값이다 — 단계 이름·가드 이름 어느 쪽도 아니다."
+        "sha": "0747b68",
+        "why": "SPEC·HARNESS 의 write_allow 를 넓힌 변경이다(docs/design/** · docs/architecture.html · README.md · docs/deploy.md). 이 파일이 매트릭스에서 옮겨 적는 것은 9단계 이름(L18-19)과 가드 이름 no_pending_spec(L81) 둘이고 어느 쪽도 안 움직였다 — 단계도 가드도 그대로다. L17 은 \"단계가 쓰기 가능한 경로를 정한다\" 는 포인터 문장이고 경로를 열거하지 않는다. L12·L49 의 docs/design/DESIGN.md 는 진실 공급원·참조 맵 항목이지 write_allow 값이 아니며, 그 문서가 UI 진실 공급원이라는 사실은 관할이 넓어져도 참이다."
       },
       "depends_on": [
         "specs/requirements.md",
@@ -103,6 +103,11 @@
           "dep": "harness/policy/README.md",
           "sha": "e336a0c",
           "why": "같은 강등이 tool-risk.json 의 R2/R1 배열을 옮기고 policy/README.md 를 재생성했다. 이 문서가 policy 에서 옮겨 적는 것은 등급의 정의와 강제 주체이지 어느 명령이 어느 등급인가의 목록이 아니다 — 그 목록은 README.md 가 생성물로 갖고 policy-lint --print 가 JSON 에서 유도한다. 값을 두 곳에 적지 않는 것이 그 생성물의 존재 이유이므로, 이 문서에 그 값이 없는 것이 정상이다."
+        },
+        {
+          "dep": "scripts/**",
+          "sha": "0747b68",
+          "why": "policy-lint 에 P14 를 더하고 doc-freshness 에서 죽은 exclude_globs 참조를 뺀 변경이다. 카탈로그의 정책 정합성 행을 같은 커밋에서 P1~P14 로 고치고 P13·P14 설명을 넣었으므로 이 문서가 이 변경에 대해 낡은 문장을 갖지 않는다. doc-freshness 행은 C1~C6 체계를 서술하고 exclude_globs 를 근거로 쓰지 않는다(grep 확인)."
         }
       ],
       "edit_policy": {
@@ -163,14 +168,19 @@
       ],
       "_c2_reviewed": [
         {
-          "dep": "harness/policy/**",
-          "sha": "24c68fa",
-          "why": "판정 줄 정의 확장은 이 문서 §R15 절에 2026-08-04 문단으로 직접 반영돼 있다 — 낡음이 아니라 이미 동행한 변경이다."
+          "dep": "harness/policy/README.md",
+          "sha": "0747b68",
+          "why": "policy/README.md 는 policy-lint --print 가 JSON 에서 재생성하는 생성물이고, 이번 재생성의 입력 변화는 SPEC·HARNESS 의 write_allow 확장이다. 이 설계서가 옮겨 적는 것은 3층 모델의 구조와 \"가드 11종\" 이라는 개수인데, P14 는 policy-lint 의 검사이지 전이 가드가 아니므로 11 이 움직이지 않았다(실측 확인)."
         },
         {
           "dep": "harness/sensor-catalog.md",
-          "sha": "76fc490",
-          "why": "카탈로그에 전이 가드 3행(session_declared·tree_clean·tests_committed)을 신설하고 policy-lint 검사 범위 표기를 P1~P13 으로 정정한 변경이다. 이 설계서가 카탈로그에서 옮겨 적는 것은 3층 모델의 구조와 '전이 가드 11종'이라는 개수인데, 신설된 셋은 이미 phase-matrix 에 있던 가드를 카탈로그가 뒤늦게 등재한 것이라 개수가 움직이지 않았다(11 그대로 — 실측 확인). 검사 범위도 이 문서는 P8·P9·P10·P11 을 개별 언급할 뿐 범위를 단언하지 않으므로 옮겨 적지 않는 값이다."
+          "sha": "0747b68",
+          "why": "카탈로그의 정책 정합성 행을 P1~P13 → P1~P14 로 넓히고 축 열거를 지운 변경이다. 이 설계서는 P 번호 범위를 단언하지 않고(grep: P1~P1x 일치 0건) 카탈로그에서 옮겨 적는 것은 3층 모델과 가드 개수뿐이다."
+        },
+        {
+          "dep": "harness/policy/phase-matrix.json",
+          "sha": "0747b68",
+          "why": "SPEC·HARNESS 의 write_allow 를 넓힌 변경이다. 이 설계서는 단계별 쓰기 경로 목록을 싣지 않고 3층 모델의 구조와 \"가드 11종\" 이라는 개수만 옮겨 적는다 — P14 는 policy-lint 의 검사이지 전이 가드가 아니므로 11 이 그대로다. (주의: 면제의 dep 은 글롭이 아니라 움직인 파일과 정확 일치여야 한다 — harness/policy/** 로 적었더니 면제되지 않았다, doc-freshness.mjs judgeC2Ack.)"
         }
       ],
       "review_every_days": 90
@@ -224,11 +234,6 @@
       ],
       "_c2_reviewed": [
         {
-          "dep": "harness/policy/phase-matrix.json",
-          "sha": "24c68fa",
-          "why": "이 스킬이 매트릭스에서 옮겨 적는 것은 Phase 3.5 의 형식 계약(맨몸 '판정: PASS' 단독 줄)이고, 판정 줄 정의를 넓혀도 그 요구는 동일하다 — 맨몸 줄은 확장 전후 모두 통과이며 바뀐 것은 꾸밈 붙은 줄이 이제 '최신 판정'으로 인정되면서 차단된다는 것뿐이다. 단계 전이 표는 2026-08-03 압축에서 이미 포인터(phase.py show)로 바꿔 매트릭스 값이 남아 있지 않다."
-        },
-        {
           "dep": ".claude/agents/test-writer.md",
           "sha": "f0002c7",
           "why": "R16(정션 파괴) 어포던스 절을 에이전트 정의 4개에 넣은 변경이다. 이 스킬이 test-writer 에서 옮겨 적는 것은 model 정책(sonnet)과 산출 경로뿐이고 워크트리 규율은 재서술하지 않는다 — 실측: rg 'worktree|정션|isolation' 이 이 파일에서 0건이다. 에이전트가 워크트리를 어떻게 다루는지는 이 스킬의 계약이 아니라 에이전트 자신의 계약이다."
@@ -242,6 +247,11 @@
           "dep": ".claude/agents/evaluator.md",
           "sha": "f0002c7",
           "why": "같은 R16 어포던스 절이 evaluator.md 에도 들어갔다. 이 스킬이 evaluator 에서 옮겨 적는 것은 model 정책(opus)과 Phase 3.5 형식 계약(맨몸 판정 줄)뿐이고, 워크트리 규율은 재서술하지 않는다 — 실측 0건. 세 에이전트 축이 같은 판별을 받는 이유는 R16 절이 네 파일에 동일 문구로 들어갔기 때문이다."
+        },
+        {
+          "dep": "harness/policy/phase-matrix.json",
+          "sha": "0747b68",
+          "why": "이 스킬은 \"각 전이의 가드와 쓰기 허용을 여기 옮겨 적지 않는다\" 를 본문에 선언하고 실제로 열거하지 않는다(한때 있던 표를 R10 으로 지운 이력이 문서에 남아 있다). 이번 변경은 write_allow 만 넓혔고 전이·가드는 무변경이다."
         }
       ],
       "review_every_days": 60
@@ -256,14 +266,14 @@
       ],
       "_c2_reviewed": [
         {
-          "dep": "harness/policy/phase-matrix.json",
-          "sha": "24c68fa",
-          "why": "이 스킬이 매트릭스에서 옮겨 적는 것은 Phase 2.5 의 형식 계약(맨몸 '판정: APPROVE' 단독 줄)과 :72-75 의 '판정이 여러 개면 마지막 것만 본다' 이고, 판정 줄 정의를 넓혀도 둘 다 그대로 참이다. 맨몸 줄은 확장 전후 모두 통과이고 꾸밈 붙은 줄은 전에도 가드를 열지 못했다(그때는 판정으로 안 세어져서, 지금은 pattern 에 걸려서) — 리뷰어에게 요구하는 것이 동일하다."
-        },
-        {
           "dep": ".claude/agents/reviewer.md",
           "sha": "f0002c7",
           "why": "R16(정션 파괴) 어포던스 절 추가. 이 스킬이 reviewer 에서 옮겨 적는 것은 판정·라벨 줄 형식 계약뿐이고 워크트리 규율은 재서술하지 않는다 — 실측: rg 'worktree|정션|isolation' 이 이 파일에서 0건이다."
+        },
+        {
+          "dep": "harness/policy/phase-matrix.json",
+          "sha": "0747b68",
+          "why": "이 스킬이 매트릭스 값을 재서술하는 곳은 :43 의 \"GREEN 은 src/** 만 열어 준다\" 하나다(grep 으로 확인). 이번 변경은 SPEC 과 HARNESS 의 write_allow 만 넓혔고 GREEN 은 손대지 않았다 — 그 문장은 여전히 참이다."
         }
       ],
       "review_every_days": 60
@@ -312,8 +322,8 @@
       "purpose": "격리 세션 에이전트 정의. 프롬프트가 구조를 설명하되 대체하지 않는다.",
       "_c2_reviewed": {
         "dep": "harness/policy/phase-matrix.json",
-        "sha": "24c68fa",
-        "why": "이 글롭이 덮는 넷 중 매트릭스 값을 재서술하는 것은 coder.md('GREEN 은 tests/** 쓰기를 막는다')와 test-writer.md('RED 는 src/** 쓰기를 막는다')이고, latest_of 추가는 write_deny 를 건드리지 않는다. reviewer.md·evaluator.md 는 이번 변경으로 실제로 낡아 같은 PR 에서 갱신했다(최신 판정 규칙) — 즉 이 면제는 '안 낡은 둘'에 대한 것이고 '낡은 둘'은 고쳤다. 2026-08-04 재대조 — 이번엔 넷 다 안 낡았다: 판정 줄 정의를 넓힌 변경이 evaluator.md·reviewer.md 의 계약('맨몸 판정 줄을 쓰라')을 바꾸지 않는다. 실측으로 확인했다 — 꾸밈 붙은 PASS 는 확장 전에도 차단이었고 후에도 차단이며, 맨몸 PASS 는 양쪽 다 통과다. 바뀐 것은 '꾸밈 붙은 최신 FAIL 이 앞의 옛 PASS 에 지던 버그'가 닫힌 것뿐이라 정직한 작성자에게 동작이 동일하다. coder.md·test-writer.md 는 write_deny 를 재서술하고 그것도 안 바뀌었다."
+        "sha": "0747b68",
+        "why": "SPEC·HARNESS 의 write_allow 를 넓힌 변경이다. 네 에이전트 문서는 전부 자기 단계의 금지 하나만 적고 그 뒤에 \"그 외 경로는 python harness/phase.py show 가 답한다 — 목록을 여기 옮겨 적지 않는다\" 를 명시한다(coder:22 · evaluator:20 · reviewer:20 · test-writer:23 — grep 으로 확인). 이번 변경은 SPEC·HARNESS 만 건드렸고 네 에이전트가 재서술하는 단계는 RED·GREEN·EVAL·REVIEW 라 교집합이 0이다. 의존은 유지한다 — 각자 자기 단계의 write_deny 를 실제로 재서술하므로 그 단계가 바뀌면 진짜로 낡는다."
       },
       "depends_on": [
         "harness/policy/phase-matrix.json"
