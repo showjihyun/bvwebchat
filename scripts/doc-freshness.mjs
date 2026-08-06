@@ -174,11 +174,12 @@ if (MODE === 'pr') {
 }
 
 // ── C1 레지스트리 완결성 ────────────────────────────────────────────────────
-const governed = files.filter(
-  (f) =>
-    (map.governed_globs || []).some((g) => matches(g, f)) &&
-    !(map.exclude_globs || []).some((g) => matches(g, f))
-);
+// `exclude_globs` 를 뺐다 (2026-08-06 감사 F-2). governed_globs 는 **허용목록**이라
+// 목록에 없는 경로는 애초에 이 모집단에 안 들어온다 — 제외 목록은 없는 것을 빼고 있었고
+// 5개 항목 전부 교집합 0건이었다(실측). 죽은 설정이 판단의 흔적처럼 읽혀 실제로 오진을
+// 낳았다: "claudedocs 는 exclude_globs 라 센서가 안 본다" — 결론은 맞고 원인은 틀렸다.
+// 아무도 판단한 적이 없었던 것이다. 관리 대상에서 빼려면 governed_globs 에 넣지 않는다.
+const governed = files.filter((f) => (map.governed_globs || []).some((g) => matches(g, f)));
 const registryPatterns = (map.docs || []).map((d) => d.path);
 
 function checkC1() {
@@ -187,7 +188,8 @@ function checkC1() {
       `레지스트리에 없는 관리 대상 문서: ${f}`,
       `  고치는 법: harness/doc-map.json의 docs[]에 항목을 추가하라 —`,
       `    { "path": "${f}", "tier": ${DEFAULTS.tier ?? 2}, "purpose": "...", "depends_on": [], "review_every_days": ${DEFAULTS.review_every_days ?? 90} }`,
-      `  이 문서가 관리 대상이 아니면 exclude_globs에 넣어라. 판단을 미루면 C1은 영원히 빨갛다.`,
+      `  이 문서가 관리 대상이 아니면 governed_globs에서 그 경로를 빼라 (허용목록이다).`,
+      `  등록할 때는 어느 단계가 이 문서를 쓸 수 있는지 함께 정해라 — policy-lint P14가 관할 없는 등록을 거부한다.`,
     ]);
   }
   for (const d of map.docs || []) {

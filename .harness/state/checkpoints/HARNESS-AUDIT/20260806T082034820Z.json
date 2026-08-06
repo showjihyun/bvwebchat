@@ -1,0 +1,44 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "main",
+  "edge_legal": true,
+  "exit_hint": "작업을 시작하려면: python harness/phase.py enter PLAN  (또는 SPEC / HARNESS)",
+  "forced": false,
+  "from": "RELEASE",
+  "guards": [],
+  "head_sha": "afe42dc14e9bd18a2ca53403476b267ad28ac99b",
+  "reason": null,
+  "rq": "HARNESS-AUDIT",
+  "schema": 1,
+  "seq": 240,
+  "session": {
+    "acceptance": [
+      "일괄 점검 9종을 전부 실행하고 각 행에 실행 출력을 증거로 붙인다 — 통과했다는 주장은 증거가 아니다",
+      "센서 카탈로그를 양방향으로 대조한다 — 문서의 지도가 실제 배선과 일치하는가, 실재하는 강제 수단이 카탈로그에 있는가",
+      "변경 제안을 정확히 1건으로 좁히고 무엇을 지울지 · 음성 시험 · 역추적을 함께 적는다"
+    ],
+    "done": [
+      "P13 가드 커버리지 머지 완료 (PR 44, squash afe42dc). main 에서 실동작 확인 — 전이 가드 11종 전부 등재 판정. 이제 가드를 추가하며 카탈로그에 안 적으면 CI 가 막는다",
+      "감사 발견은 검사 실패가 아니라 검사가 안 보는 자리에서 나왔다 — 점검 9종 전부 초록이었고 방향 2 대조를 기계로 돌려 가드 3종 누락을 실측했다. F-1 의 재발이라 Guide 를 게이트로 한 칸 올렸다",
+      "리뷰 blocker 2건 둘 다 내 것이었고 조치했다. 그 중 하나의 구조 원인을 R17 로 등재하고 감사 스킬 Phase 4 에 커밋 후 재검사 단계를 신설했다",
+      "GB-06 이 세 번 떨어졌고 매번 원인이 달랐다. 두 번째는 재리뷰가 채점기 쪽 원인으로 판정했다 — 내 조치가 폐기된 규칙의 재적용이라 얻은 것이 점수뿐이었다. 트리거와 함께 등재했다",
+      "재스탬프에 세는 규칙을 처음 정의했다 — A→IDLE 직후 IDLE→A 인 같은 단계 복귀 왕복. 전수 19건 · 이 PR 2건. 이전엔 같은 사실이 세 곳에서 달랐다"
+    ],
+    "goal": "보류표에 30건 가까이 쌓였고 그중 어느 것을 먼저 닫을지가 사람의 인상으로 정해지고 있다. 감사는 현재 상태를 실측해 그 선택을 근거 있게 만든다 — 하네스 변경은 측정 도구를 바꾸는 일이라, 재보지 않고 바꾸면 그 뒤의 모든 숫자가 무엇을 뜻하는지 알 수 없게 된다",
+    "next": [
+      "크롬 재시작 후 10명 브라우저 동시 접속 테스트 재개 — 서버는 127.0.0.1:3007 에 loadtest 방과 함께 살아 있고 탭은 하나씩 순차로 만든다",
+      "workflow-report.html 전면 갱신본을 별도 브랜치에서 claudedocs 에 적용한다 — 초안은 _workspace/doc-audit 에 있다",
+      "claudedocs 와 _workspace 가 둘 다 doc-map 의 exclude_globs 라 어떤 신선도 센서도 안 본다. 그대로 넣으면 v1 과 똑같이 낡는다 — DOCS-SHARE 와 같은 축이고 정책 변경이라 감사 선행이다"
+    ],
+    "open_questions": [
+      "브랜치 보호에 required_pull_request_reviews 가 없다(실측: reviews null). GitHub 은 승인 0건을 요구하고 리뷰 게이트는 로컬 전이 가드로만 존재한다 — 그건 REVIEW→RELEASE 를 막을 뿐 gh pr merge 를 막지 않는다",
+      "claudedocs 와 _workspace 의 관할 부재 — 쓸 자리가 없고 볼 센서도 없다"
+    ]
+  },
+  "to": "IDLE",
+  "ts": "2026-08-06T08:20:34.819Z",
+  "write_allow": [
+    "_workspace/**",
+    "docs/progress.md"
+  ]
+}

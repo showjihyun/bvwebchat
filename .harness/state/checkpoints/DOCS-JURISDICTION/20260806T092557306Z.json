@@ -1,0 +1,62 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "fix/harness-docs-jurisdiction",
+  "edge_legal": true,
+  "exit_hint": "APPROVE면 → python harness/phase.py enter RELEASE / REQUEST_CHANGES면 → enter GREEN",
+  "forced": false,
+  "from": "HARNESS",
+  "guards": [
+    {
+      "ms": 250,
+      "name": "track_b_passing",
+      "ok": true
+    },
+    {
+      "ms": 78,
+      "name": "changelog_updated",
+      "ok": true
+    }
+  ],
+  "head_sha": "3229430e227bc1a4edd6530ecf2d2949e1607c79",
+  "reason": null,
+  "rq": "DOCS-JURISDICTION",
+  "schema": 1,
+  "seq": 242,
+  "session": {
+    "acceptance": [
+      "claudedocs 와 일반 docs 에 쓰기 관할이 생기고 그 근거가 정책 파일에 남는다",
+      "workflow-report 갱신본이 거짓 3건·틀림 3건을 실측값으로 교체한 채 커밋된다",
+      "갱신본이 다시 낡지 않도록 신선도 센서 관할에 들어간다 — 지금은 exclude_globs 라 아무도 안 본다"
+    ],
+    "done": [
+      "P13 가드 커버리지 머지 완료 (PR 44, squash afe42dc). main 에서 실동작 확인 — 전이 가드 11종 전부 등재 판정. 이제 가드를 추가하며 카탈로그에 안 적으면 CI 가 막는다",
+      "감사 발견은 검사 실패가 아니라 검사가 안 보는 자리에서 나왔다 — 점검 9종 전부 초록이었고 방향 2 대조를 기계로 돌려 가드 3종 누락을 실측했다. F-1 의 재발이라 Guide 를 게이트로 한 칸 올렸다",
+      "리뷰 blocker 2건 둘 다 내 것이었고 조치했다. 그 중 하나의 구조 원인을 R17 로 등재하고 감사 스킬 Phase 4 에 커밋 후 재검사 단계를 신설했다",
+      "GB-06 이 세 번 떨어졌고 매번 원인이 달랐다. 두 번째는 재리뷰가 채점기 쪽 원인으로 판정했다 — 내 조치가 폐기된 규칙의 재적용이라 얻은 것이 점수뿐이었다. 트리거와 함께 등재했다",
+      "재스탬프에 세는 규칙을 처음 정의했다 — A→IDLE 직후 IDLE→A 인 같은 단계 복귀 왕복. 전수 19건 · 이 PR 2건. 이전엔 같은 사실이 세 곳에서 달랐다",
+      "우선순위를 실측으로 정했다 — 보류표 36건 중 12건이 오늘 들어왔고 감사는 1회 1건만 뽑는다. 유입이 처리의 12배다",
+      "P14 신설 — doc-map 이 관할하는 문서가 최소 한 단계에서 쓰기 가능한지 검사한다. 두 정책 파일이 서로 반대를 말하던 자리이고 고아 3건(README.md · docs/deploy.md · docs/design/handoff-brief.md)을 실측했다. 순수 함수 judgeDocJurisdiction + 음성 시험 13건",
+      "지운 것 셋 — exclude_globs 5건(governed_globs 가 허용목록이라 실효 0, 교집합 0건 실측) · claudedocs 디렉토리(docs/harness 로 이동) · 좁은 지정 docs/design/DESIGN.md 를 docs/design/** 로 대체",
+      "팀 공유 핸드북을 저장소로 옮겼다 — 스크래치패드에만 있어 사라질 상태였다. 원본 둘을 흡수해 한 문서로 만들었다",
+      "P14 신설 — doc-map 이 관할하는 문서가 최소 한 단계에서 쓰기 가능한지 검사한다. 고아 3건(README.md · docs/deploy.md · docs/design/handoff-brief.md)을 두 정책 JSON 대조로 실측했다. 순수 함수 judgeDocJurisdiction + 음성 시험 13건",
+      "지운 것 셋 — exclude_globs 5건(governed_globs 가 허용목록이라 실효 0, 교집합 0건 실측) · claudedocs 디렉토리(docs/harness 로 이동) · 좁은 지정 DESIGN.md 를 docs/design/** 로 대체",
+      "팀 공유 핸드북을 저장소로 옮겼다 — 스크래치패드에만 있어 사라질 상태였다. 원본 둘을 흡수했다",
+      "제안이 실행 중에 두 번 반증됐다 — workflow-report 등재를 뺐다(낡은 걸 아는 문서를 등재하면 면제가 거짓이 된다) · F-3 진단이 좁았다(저장소에 아예 없는 배포물은 git status 로 안 보인다)",
+      "트랙 B 전수 6 pass / 0 fail · 아티팩트 커밋 완료"
+    ],
+    "goal": "저장소에 커밋된 workflow-report.html 이 팀 도입 권고 자리에 거짓 3건을 담고 있고 그중 하나는 발동 0회인 게이트를 1순위로 권한다. 읽는 사람이 그대로 가져간다. 그런데 claudedocs 는 어느 단계의 write_allow 에도 없어 합법적으로 고칠 수가 없다 — 문서가 틀린 것이 아니라 고칠 자리가 없는 것이 진짜 문제다",
+    "next": [
+      "review-gate 스킬로 독립 리뷰를 받는다",
+      "workflow-report.html 갱신본을 별도 PR 로 올린다 — 내용과 doc-map 등재를 함께 넣어야 한다",
+      "governed_globs 가 HTML 등재를 요구하지 않는 구멍을 다음 감사의 단일 제안으로 낸다"
+    ],
+    "open_questions": [
+      "harness-engineering-trends-2026.html 이 미등재로 남아 있다 — 위 구멍의 현존 사례다"
+    ]
+  },
+  "to": "REVIEW",
+  "ts": "2026-08-06T09:25:57.305Z",
+  "write_allow": [
+    "_workspace/**"
+  ]
+}
