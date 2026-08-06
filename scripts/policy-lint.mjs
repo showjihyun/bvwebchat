@@ -12,15 +12,16 @@
  * 생성물이면 어긋날 자리가 없다. 생성 결과에 날짜를 넣지 않는 것도 같은 이유다
  * (재생성마다 diff가 나면 아무도 재생성하지 않는다).
  */
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, globSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { resolve, join } from 'node:path';
+import { resolve, join, sep } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const MATRIX = join(ROOT, 'harness/policy/phase-matrix.json');
 const RISK = join(ROOT, 'harness/policy/tool-risk.json');
 const README = join(ROOT, 'harness/policy/README.md');
 const CATALOG = join(ROOT, 'harness/sensor-catalog.md');
+const DOC_MAP = join(ROOT, 'harness/doc-map.json');
 const SETTINGS = join(ROOT, '.claude/settings.json');
 
 const problems = [];
@@ -886,8 +887,37 @@ function selfTest() {
     console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(22)} 기대 ${want ? `누락 ${want}건` : '통과'} · 실측 ${got ? `누락 ${got}건` : '통과'}`);
   }
 
-  const total = cases.length + eolCases.length + labelCases.length + coverCases.length;
-  console.log(bad ? `\n정책 린트 자기시험 실패 ${bad}건 / ${total}건 — 파서가 뚫린다.` : `\n정책 린트 자기시험 ${total}건 통과 (P11 파서 ${cases.length} · P9 줄바꿈 ${eolCases.length} · P12 바깥 라벨 ${labelCases.length} · P13 가드 커버리지 ${coverCases.length}).`);
+  // P14 — 문서 관할. **차단 쪽에 `통과값 + 부정어` 형태를 넣는다**: 여기서 그 형상은
+  // *"허용 패턴의 접두를 그대로 가지면서 경계만 어긋난 경로"* 다. 통과해야 할 값만
+  // 시험하면 `docs/harness/**` 가 `docs/harness-notes.md` 를 삼키는 것을 못 잡는다.
+  console.log('');
+  console.log('── P14 문서 관할 (순수 함수 judgeDocJurisdiction) ──');
+  const P = (allow, deny) => ({ X: { write_allow: allow, ...(deny ? { write_deny: deny } : {}) } });
+  const jurCases = [
+    ['정상 — 정확 일치',    ['docs/progress.md'], P(['docs/progress.md']),               0],
+    ['허용 없음',          ['README.md'],        P(['src/**']),                          1],
+    ['/** 하위',          ['docs/harness/x.md'], P(['docs/harness/**']),                 0],
+    ['/** 깊은 하위',      ['docs/harness/a/b.md'], P(['docs/harness/**']),              0],
+    ['접두는 같고 경계 다름', ['docs/harness-notes.md'], P(['docs/harness/**']),           1],
+    ['* 는 / 를 안 넘는다', ['docs/adr/sub/x.md'], P(['docs/adr/*.md']),                  1],
+    ['* 같은 깊이',        ['docs/adr/0001.md'], P(['docs/adr/*.md']),                    0],
+    ['deny 가 allow 를 덮음', ['specs/requirements.md'], P(['specs/**'], ['specs/**']),   1],
+    ['deny 가 다른 경로',   ['specs/requirements.md'], P(['specs/**'], ['src/**']),       0],
+    ['write_allow 빈 단계',  ['README.md'],        P([]),                                 1],
+    ['문서 0건 — 공허참',   [],                   P(['docs/**']),                         0],
+    ['단계 0개',           ['README.md'],        {},                                     1],
+    ['여러 단계 중 하나가 연다', ['docs/deploy.md'],
+      { A: { write_allow: ['src/**'] }, B: { write_allow: ['docs/deploy.md'] } },         0],
+  ];
+  for (const [name, files, phases, want] of jurCases) {
+    const got = judgeDocJurisdiction(files, phases).length;
+    const ok = got === want;
+    if (!ok) bad++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(22)} 기대 ${want ? `고아 ${want}건` : '통과'} · 실측 ${got ? `고아 ${got}건` : '통과'}`);
+  }
+
+  const total = cases.length + eolCases.length + labelCases.length + coverCases.length + jurCases.length;
+  console.log(bad ? `\n정책 린트 자기시험 실패 ${bad}건 / ${total}건 — 파서가 뚫린다.` : `\n정책 린트 자기시험 ${total}건 통과 (P11 파서 ${cases.length} · P9 줄바꿈 ${eolCases.length} · P12 바깥 라벨 ${labelCases.length} · P13 가드 커버리지 ${coverCases.length} · P14 문서 관할 ${jurCases.length}).`);
   process.exit(bad ? 1 : 0);
 }
 
@@ -1065,6 +1095,78 @@ function checkGuardCoverage(m) {
   );
 }
 
+/**
+ * P14 — `doc-map.json` 이 관할하는 문서가 **최소 한 단계에서 쓰기 가능**한가.
+ * **순수 함수다** (`--self-test`).
+ *
+ * 왜 필요한가: 두 정책 파일이 서로 반대를 말할 수 있고, 실제로 말하고 있었다.
+ * `doc-freshness` C2 는 관할 문서의 갱신을 **요구**하는데 `gate_phase.py` 는 그
+ * 갱신을 **거부**한다 — 남는 통로가 `force` 뿐이고, force 는 주간 리포트 최상단에
+ * 박제된다. **정직하게 일한 대가로 지표가 나빠지는 배치**다.
+ *
+ * 2026-08-06 감사가 두 JSON 을 기계로 대조해 고아 3건을 실측했다:
+ * `README.md`(저장소 정문 · depends_on 2건이라 C2 가 실제로 발화한다) ·
+ * `docs/deploy.md` · `docs/design/handoff-brief.md`. 여태 안 터진 이유는
+ * 이 셋의 수정이 `enforce.warn_only` 단계에서 일어나 **경고로 지나갔기** 때문이고,
+ * 게이트를 나머지 단계에 켜는 순간 즉시 차단이 된다.
+ *
+ * **모순이 파일 둘 사이에 있으므로 한쪽을 고쳐선 재발을 못 막는다** — 그래서 게이트다.
+ * 구조로 풀 수 있는지 먼저 쟀고(위계: 구조 > 게이트 > 센서 > Guide), 3건 중 1건만
+ * 옮기기로 풀렸다. `README.md` 는 정문이라 옮길 수 없다.
+ *
+ * **`write_deny` 를 함께 본다.** 어느 단계가 `docs/**` 를 열어 두고 다른 규칙이
+ * 같은 단계에서 그것을 막으면 그 단계는 통로가 아니다 — 허용만 세면 고아를 놓친다.
+ *
+ * @param docFiles 관할 문서의 **구체 경로** 목록 (패턴이 아니라 전개된 실파일).
+ *                 패턴끼리 포함관계를 판정하는 것보다 훨씬 단순하고 오탐이 없다.
+ * @param phases   `phase-matrix.json` 의 `phases` 객체.
+ */
+export function judgeDocJurisdiction(docFiles, phases) {
+  const ps = Object.values(phases || {}).filter((p) => p && typeof p === 'object');
+  const writable = (f) =>
+    ps.some(
+      (p) =>
+        (p.write_allow || []).some((a) => globToRegExp(a).test(f)) &&
+        !(p.write_deny || []).some((d) => globToRegExp(d).test(f))
+    );
+  return (docFiles || []).filter((f) => !writable(f));
+}
+
+function checkDocJurisdiction(m) {
+  if (!existsSync(DOC_MAP)) return; // 문서 레지스트리가 없으면 이 검사의 관할이 아니다
+  let map;
+  try {
+    map = JSON.parse(readFileSync(DOC_MAP, 'utf8'));
+  } catch {
+    return; // JSON 파손은 doc-freshness 가 자기 이름으로 보고한다 — 여기서 이중 보고하지 않는다
+  }
+  // 레지스트리의 path 는 패턴일 수 있다(`docs/adr/*.md`). 실파일로 전개해서 본다 —
+  // 실재하지 않는 등록은 doc-freshness C1 의 관할이지 이 검사의 관할이 아니다.
+  const files = [];
+  for (const d of map.docs || []) {
+    for (const f of globSync(d.path, { cwd: ROOT })) files.push(f.split(sep).join('/'));
+  }
+  const orphans = [...new Set(files)].sort();
+  const missing = judgeDocJurisdiction(orphans, (m || {}).phases);
+  if (!missing.length) {
+    note('P14', `관할 문서 ${orphans.length}건 전부 쓰기 가능한 단계가 있음`);
+    return;
+  }
+  for (const f of missing) {
+    fail(
+      'P14',
+      `관할 문서인데 어느 단계에서도 쓸 수 없다: ${f}`,
+      'doc-freshness 는 이 문서의 갱신을 요구하고(C2), gate_phase 는 그 갱신을 거부한다. ' +
+        '남는 통로는 force 뿐이고 force 는 주간 리포트 최상단에 박제된다 — 정직하게 일한 대가로 지표가 나빠진다. ' +
+        '고치는 법 (둘 중 하나): ' +
+        '(a) harness/policy/phase-matrix.json 의 어느 단계 write_allow 에 이 경로를 넣어라 — ' +
+        '성격이 자리를 정한다: 스펙·설계는 SPEC, 하네스·CI 는 HARNESS. ' +
+        '(b) 관리 대상이 아니면 harness/doc-map.json 의 docs[] 에서 빼라. ' +
+        '둘 다 아니면 이 문서는 "고치라고 요구받지만 고칠 수 없는" 상태로 남는다.'
+    );
+  }
+}
+
 function checkGenerated(m, r) {
   const rendered = renderReadme(m, r);
   if (!existsSync(README)) {
@@ -1210,7 +1312,7 @@ if (args.includes('--help') || args.includes('-h')) {
   console.log('사용법: node scripts/policy-lint.mjs [--print|--self-test]');
   console.log('  (인자 없음)  harness/policy/*.json 검증. 실패 시 exit 1');
   console.log('  --print      harness/policy/README.md 재생성 (검증도 함께 수행)');
-  console.log('  --self-test  P11 파서 음성 시험 — 뚫려야 할 것이 실제로 뚫리는지');
+  console.log('  --self-test  순수 함수 음성 시험 (P11 파서 · P9 줄바꿈 · P12 바깥 라벨 · P13 가드 커버리지 · P14 문서 관할)');
   process.exit(0);
 }
 if (args.includes('--self-test')) selfTest();
@@ -1225,6 +1327,7 @@ if (matrix) {
 checkRecurrence();
 checkCheckpointNarrative();
 if (matrix) checkGuardCoverage(matrix);
+if (matrix) checkDocJurisdiction(matrix);
 if (matrix) checkPatterns(matrix);
 if (risk) checkRisk(risk);
 if (matrix && risk && !args.includes('--print')) checkGenerated(matrix, risk);
@@ -1257,6 +1360,7 @@ const checks = [
   ['P11', '반복 대장 — 2회 이상 미처방 없음'],
   ['P12', '최신 체크포인트 서사에 저장소 밖 라벨 없음 (R7 재처방)'],
   ['P13', '전이 가드가 전부 센서 카탈로그에 등재됨 (F-1 재처방)'],
+  ['P14', 'doc-map 이 관할하는 문서가 전부 최소 한 단계에서 쓰기 가능 (두 정책 파일의 모순)'],
 ];
 for (const [id, label] of checks) {
   const n = problems.filter((p) => p.id === id).length;

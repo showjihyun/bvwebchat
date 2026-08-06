@@ -57,7 +57,7 @@ pathspec 을 좁게 쓸수록 상태 파일이 자동으로 빠진다. 그래서
 |---|---|---|---|
 | 1 | `node scripts/doc-freshness.mjs --full` | 문서가 코드보다 낡았는가 (C1~C6) | blocking: C1·C2·C4·C5 |
 | 1-1 | `node scripts/doc-freshness.mjs --pr --base origin/main` | **이 PR 이 만든 낡음** — `--full` 에서 C2 는 advisory 라 이 모드가 아니면 **선행 점검이 C2 를 구조적으로 못 본다** | blocking (CI 에도 배선됨) |
-| 2 | `node scripts/policy-lint.mjs` | 정책이 자기모순인가 (P1~P13 — 도달 불가 단계·빈 allow-set·끊긴 전이 그래프·매칭 불가 패턴·`enforced_by` 대조·**반복 대장 미처방**·**바깥 라벨**·**가드 커버리지**) | blocking |
+| 2 | `node scripts/policy-lint.mjs` | 정책이 자기모순인가 (P1~P14 — 도달 불가 단계·빈 allow-set·끊긴 전이 그래프·매칭 불가 패턴·`enforced_by` 대조·**반복 대장 미처방**·**바깥 라벨**·**가드 커버리지**·**문서 관할**) | blocking |
 | 2-1 | `node scripts/policy-lint.mjs --self-test` | **P11 파서 · P9 줄바꿈 · P12 바깥 라벨 · P13 가드 커버리지** | blocking |
 | 2-2 | `node scripts/eval-b.mjs --self-test` | **평가 준비 게이트 · 체크포인트 신선도 · 캐시 무효화 · 최신 정렬** | blocking |
 | 2-3 | `python harness/phase.py self-test` | **전이 게이트(R6 상태 신선도)가 무엇을 차단하는가** | blocking |

@@ -32,7 +32,8 @@
       "write_allow": [
         "specs/**",
         "docs/adr/**",
-        "docs/design/DESIGN.md",
+        "docs/design/**",
+        "docs/architecture.html",
         "docs/progress.md",
         "evals/golden/**",
         "_workspace/**"
@@ -128,6 +129,8 @@
         "scripts/**",
         ".github/**",
         "docs/harness/**",
+        "docs/deploy.md",
+        "README.md",
         "evals/*.md",
         "evals/results/**",
         "_workspace/**",

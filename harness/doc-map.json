@@ -1,7 +1,6 @@
 {
   "schema": 1,
   "_doc": "문서 레지스트리 겸 라우팅 테이블. scripts/doc-freshness.mjs가 소비한다.\n\n핵심 설계 결정: 갱신일(updated)을 문서 안에 손으로 쓰지 않는다. 프론트매터의 날짜는 반드시 거짓말을 한다 — 문서를 고치면서 날짜를 안 고치거나, 날짜만 고친다. 갱신일은 git에서 유도한다: git log -1 --format=%cI -- <path>. 이 결정 하나가 '메타데이터 자체의 드리프트'라는 문제 계층을 통째로 제거한다. 따라서 문서가 파일 안에 지고 있는 메타데이터는 없고, 전부 이 파일 한 곳에 있다.",
-
   "governed_globs": [
     "CLAUDE.md",
     "README.md",
@@ -18,22 +17,13 @@
     ".claude/agents/*.md",
     ".claude/skills/*/SKILL.md"
   ],
-
-  "exclude_globs": [
-    "docs/design/Design handoff for webchat/**",
-    "_workspace/**",
-    "node_modules/**",
-    "dist/**",
-    "claudedocs/**"
-  ],
-
+  "_removed_exclude_globs": "2026-08-06 감사 F-2 에서 제거했다. 실효가 0이었다 — governed_globs 는 허용목록이므로 목록에 없는 경로는 애초에 C1 모집단에 안 들어오고, exclude_globs 는 doc-freshness.mjs 의 C1 한 곳에서만 쓰였다. 5개 항목 전부 governed_globs 와 교집합 0건이었다(실측). 무해한 죽은 설정이 아니다: 2026-08-06 문서 감사가 'claudedocs 는 exclude_globs 라 어떤 신선도 센서도 보지 않는다' 고 보고했고 그것이 사용자에게 그대로 전달됐다 — 결론은 맞고 원인은 틀렸다. 센서가 판단해서 뺀 것이 아니라 아무도 판단한 적이 없다. 죽은 설정은 판단의 흔적처럼 읽혀 다시 판단하지 않게 만든다. 관리 대상에서 빼려면 governed_globs 에 넣지 않으면 되고, 등록된 문서는 docs[] 에서 빼면 된다 — 제외 목록이 할 일이 없다.",
   "defaults": {
     "tier": 2,
     "owner": "showjihyun",
     "review_every_days": 90,
     "depends_on": []
   },
-
   "docs": [
     {
       "path": "CLAUDE.md",
@@ -42,7 +32,11 @@
       "max_lines": 100,
       "_doc_depends": ".claude/skills/*/SKILL.md 를 뺐다(2026-07-29, recurrence R10). 판별 규칙: 재서술하면 의존, 포인터로만 참조하면 비의존. 이 파일의 참조 맵은 이제 '언제 어디로 가는가' 만 적고 스킬 내부 규칙을 재서술하지 않으므로 스킬 내용이 바뀌어도 이 파일의 문장이 거짓이 되지 않는다. 스킬이 추가·삭제되면 C1(레지스트리 완결성)이 doc-map.json 등록 누락을 잡는다 — 다만 C1 이 보는 것은 이 레지스트리이지 CLAUDE.md 의 참조 맵이 아니다(9차 재리뷰 n9-a 가 실측: 새 스킬을 여기 등록하고 참조 맵에 안 넣으면 doc-freshness 는 exit 0). 참조 맵의 행 누락을 잡는 센서는 현재 없고, 그 사실을 여기 적어 두는 것이 지금의 방어다. 왜 중요한가: 이 파일은 HASH_GLOBS 라 갱신할 때마다 트랙 B 전수 재실행(~$8)이 붙었고, 재서술 의존과 곱해져 스킬 한 줄 고치는 비용이 그것이 됐다. 개별로 옳은 두 규칙이 곱해져 틀린 사례다.",
       "_doc_depends2": "docs/adr/*.md 를 뺐다(2026-08-03). 위 판별 규칙(재서술하면 의존, 포인터로만 참조하면 비의존)을 ADR 에 적용했다 — 이 파일의 ADR 참조 네 곳은 전부 포인터다: L10 디렉토리와 '변경은 새 ADR 먼저' 절차 · L13 DESIGN 과의 관할 관계 · L65 PR 범위 카브아웃 · L82 'ADR 없는 변경 금지'. 어느 것도 특정 ADR 의 결정 내용을 옮겨 적지 않으므로 ADR 이 개정돼도 이 파일의 문장이 거짓이 되지 않는다. 발화 계기: ADR-0005 에 결정4 실증 블록을 덧붙이자 C2 가 이 파일을 지목했고 확인해 보니 낡은 문장이 하나도 없었다. 남는 노출: 새 ADR 이 진실 공급원 순서나 카브아웃 자체를 바꾸면 이 파일이 낡는데 C2 가 안 잡는다 — 그런 ADR 은 이 파일을 함께 고치는 것이 자명한 부류다. 주의: 이 판별을 적용한 문서가 이로써 6건이 됐다(스킬 2 · 골든 2 · ADR 1 · 이 파일 1). 매번 C2 가 먼저 막고 그때 하나씩 좁혔다 — depends_on 전수를 이 기준으로 한 번에 훑는 것이 옳고 docs/progress.md 보류표에 있다.",
-      "_c2_reviewed": { "dep": "harness/policy/phase-matrix.json", "sha": "24c68fa", "why": "가드에 latest_of 필드를 더한 변경이다. 이 문서가 매트릭스에서 옮겨 적는 것은 9단계 이름(L18-19)과 가드 이름 no_pending_spec(L81) 둘인데 어느 것도 안 바뀌었다 — 단계 목록도 가드 목록도 그대로다. 2026-08-04 재대조: latest_of 의 판정 줄 정의를 넓힌 변경도 이 문서가 옮겨 적지 않는 값이다 — 단계 이름·가드 이름 어느 쪽도 아니다." },
+      "_c2_reviewed": {
+        "dep": "harness/policy/phase-matrix.json",
+        "sha": "24c68fa",
+        "why": "가드에 latest_of 필드를 더한 변경이다. 이 문서가 매트릭스에서 옮겨 적는 것은 9단계 이름(L18-19)과 가드 이름 no_pending_spec(L81) 둘인데 어느 것도 안 바뀌었다 — 단계 목록도 가드 목록도 그대로다. 2026-08-04 재대조: latest_of 의 판정 줄 정의를 넓힌 변경도 이 문서가 옮겨 적지 않는 값이다 — 단계 이름·가드 이름 어느 쪽도 아니다."
+      },
       "depends_on": [
         "specs/requirements.md",
         "harness/policy/phase-matrix.json"
@@ -78,7 +72,9 @@
       "path": "docs/design/DESIGN.md",
       "tier": 1,
       "purpose": "UI 디자인. 진실 공급원 #4 — ADR과 관할 직교, 충돌 시 requirements가 이긴다.",
-      "depends_on": ["src/client/styles.css"],
+      "depends_on": [
+        "src/client/styles.css"
+      ],
       "review_every_days": 90
     },
     {
@@ -93,9 +89,21 @@
       "tier": 2,
       "purpose": "가드레일 지도 — 어떤 센서가 어디서 무엇을 잡는가. Guides / Boundary / S1~S4 4계열.",
       "_c2_reviewed": [
-        { "dep": ".claude/settings.json", "sha": "e336a0c", "why": "resume-test.mjs 를 R2 에서 R1 로 강등한 변경이다. 이 문서가 settings.json 에서 옮겨 적는 것은 등급 체계의 존재와 강제 주체(:33 'R0/R2/R3 정적 권한 → settings.json permissions')이고 개별 명령의 등급을 나열하지 않는다 — 그 나열은 harness/policy/README.md 가 생성물로 갖고, 이 변경에서 재생성했다. resume-test 언급은 :160 의 S4 재개 시험 행 하나뿐이고 거기서 말하는 것은 --cold 의 채점 방식이지 위험 등급이 아니다. :94 의 'settings.json ask 에도 있는데 막지 않았다' 는 git worktree remove 에 대한 서술이고 그 명령은 R2 로 남아 있어 여전히 참이다." },
-        { "dep": "harness/policy/tool-risk.json", "sha": "e336a0c", "why": "같은 강등이 이 파일의 R2/R1 배열을 옮겼다. 이 문서가 옮겨 적는 것은 등급의 정의와 강제 주체이지 어느 명령이 어느 등급인가의 목록이 아니다 — 그 목록은 policy/README.md 가 생성물로 갖는다. 주의: judgeC2Ack 은 dep 을 정확 일치로 본다(doc-freshness.mjs:238) — 글롭 harness/policy/** 로 적으면 면제되지 않는다." },
-        { "dep": "harness/policy/README.md", "sha": "e336a0c", "why": "같은 강등이 tool-risk.json 의 R2/R1 배열을 옮기고 policy/README.md 를 재생성했다. 이 문서가 policy 에서 옮겨 적는 것은 등급의 정의와 강제 주체이지 어느 명령이 어느 등급인가의 목록이 아니다 — 그 목록은 README.md 가 생성물로 갖고 policy-lint --print 가 JSON 에서 유도한다. 값을 두 곳에 적지 않는 것이 그 생성물의 존재 이유이므로, 이 문서에 그 값이 없는 것이 정상이다." }
+        {
+          "dep": ".claude/settings.json",
+          "sha": "e336a0c",
+          "why": "resume-test.mjs 를 R2 에서 R1 로 강등한 변경이다. 이 문서가 settings.json 에서 옮겨 적는 것은 등급 체계의 존재와 강제 주체(:33 'R0/R2/R3 정적 권한 → settings.json permissions')이고 개별 명령의 등급을 나열하지 않는다 — 그 나열은 harness/policy/README.md 가 생성물로 갖고, 이 변경에서 재생성했다. resume-test 언급은 :160 의 S4 재개 시험 행 하나뿐이고 거기서 말하는 것은 --cold 의 채점 방식이지 위험 등급이 아니다. :94 의 'settings.json ask 에도 있는데 막지 않았다' 는 git worktree remove 에 대한 서술이고 그 명령은 R2 로 남아 있어 여전히 참이다."
+        },
+        {
+          "dep": "harness/policy/tool-risk.json",
+          "sha": "e336a0c",
+          "why": "같은 강등이 이 파일의 R2/R1 배열을 옮겼다. 이 문서가 옮겨 적는 것은 등급의 정의와 강제 주체이지 어느 명령이 어느 등급인가의 목록이 아니다 — 그 목록은 policy/README.md 가 생성물로 갖는다. 주의: judgeC2Ack 은 dep 을 정확 일치로 본다(doc-freshness.mjs:238) — 글롭 harness/policy/** 로 적으면 면제되지 않는다."
+        },
+        {
+          "dep": "harness/policy/README.md",
+          "sha": "e336a0c",
+          "why": "같은 강등이 tool-risk.json 의 R2/R1 배열을 옮기고 policy/README.md 를 재생성했다. 이 문서가 policy 에서 옮겨 적는 것은 등급의 정의와 강제 주체이지 어느 명령이 어느 등급인가의 목록이 아니다 — 그 목록은 README.md 가 생성물로 갖고 policy-lint --print 가 JSON 에서 유도한다. 값을 두 곳에 적지 않는 것이 그 생성물의 존재 이유이므로, 이 문서에 그 값이 없는 것이 정상이다."
+        }
       ],
       "edit_policy": {
         "fact_update": "agent",
@@ -116,7 +124,10 @@
       "path": "harness/recurrence.md",
       "tier": 2,
       "purpose": "반복 실패 대장 — 같은 원인이 2회째면 등재하고, 3회 이상 미처방이면 policy-lint P11 이 차단한다. 운영 규칙 3은 '2회 반복 시 센서 또는 Guide'를 요구했는데 누적을 세는 자리가 없어 하루에 같은 원인으로 3~9회를 반복했다.",
-      "depends_on": ["scripts/policy-lint.mjs", ".claude/skills/harness-audit/SKILL.md"],
+      "depends_on": [
+        "scripts/policy-lint.mjs",
+        ".claude/skills/harness-audit/SKILL.md"
+      ],
       "review_every_days": 30
     },
     {
@@ -124,7 +135,9 @@
       "tier": 2,
       "purpose": "지표 M1~M8 정의. 실측값은 harness/reports/가 갖는다 — 이 문서에 값을 적지 않는다(공란 드리프트 방지).",
       "_doc_depends": "evals/golden/*.jsonl 을 뺐다(2026-08-03) — .harness/logs/** 및 harness/recurrence.md 를 뺀 것과 같은 '데이터 vs 계약' 판별이다. 골든의 케이스 한 건은 데이터이고 이 문서가 지는 계약은 M1~M8 의 정의와 산출 명령이다. 실증: RQ-13 클라이언트 축 골든 3건(GA-28·29·30)을 신설하자 C2 가 이 문서를 지목했는데, M7 행은 골든 수를 값으로 적지 않고 산출을 wc -l 로 가리키고 있었다 — 케이스가 늘어도 그 문장은 참이다. C2 는 커밋 시각만 보므로(doc-freshness.mjs 의 Date.parse 비교) 내용이 낡았는지는 원리적으로 판별하지 못하고, 케이스가 늘 때마다 무근거 차단이 반복된다. 남는 노출: 골든의 스키마(필드 이름·status 어휘)가 바뀌면 이 문서는 이제 C2 에 안 걸린다 — 스키마 변경은 케이스 추가와 달리 드문 사건이라 이 교환이 유리하다.",
-      "depends_on": ["scripts/metrics.mjs"],
+      "depends_on": [
+        "scripts/metrics.mjs"
+      ],
       "review_every_days": 30
     },
     {
@@ -149,10 +162,43 @@
         "harness/sensor-catalog.md"
       ],
       "_c2_reviewed": [
-        { "dep": "harness/policy/**", "sha": "24c68fa", "why": "판정 줄 정의 확장은 이 문서 §R15 절에 2026-08-04 문단으로 직접 반영돼 있다 — 낡음이 아니라 이미 동행한 변경이다." },
-        { "dep": "harness/sensor-catalog.md", "sha": "76fc490", "why": "카탈로그에 전이 가드 3행(session_declared·tree_clean·tests_committed)을 신설하고 policy-lint 검사 범위 표기를 P1~P13 으로 정정한 변경이다. 이 설계서가 카탈로그에서 옮겨 적는 것은 3층 모델의 구조와 '전이 가드 11종'이라는 개수인데, 신설된 셋은 이미 phase-matrix 에 있던 가드를 카탈로그가 뒤늦게 등재한 것이라 개수가 움직이지 않았다(11 그대로 — 실측 확인). 검사 범위도 이 문서는 P8·P9·P10·P11 을 개별 언급할 뿐 범위를 단언하지 않으므로 옮겨 적지 않는 값이다." }
+        {
+          "dep": "harness/policy/**",
+          "sha": "24c68fa",
+          "why": "판정 줄 정의 확장은 이 문서 §R15 절에 2026-08-04 문단으로 직접 반영돼 있다 — 낡음이 아니라 이미 동행한 변경이다."
+        },
+        {
+          "dep": "harness/sensor-catalog.md",
+          "sha": "76fc490",
+          "why": "카탈로그에 전이 가드 3행(session_declared·tree_clean·tests_committed)을 신설하고 policy-lint 검사 범위 표기를 P1~P13 으로 정정한 변경이다. 이 설계서가 카탈로그에서 옮겨 적는 것은 3층 모델의 구조와 '전이 가드 11종'이라는 개수인데, 신설된 셋은 이미 phase-matrix 에 있던 가드를 카탈로그가 뒤늦게 등재한 것이라 개수가 움직이지 않았다(11 그대로 — 실측 확인). 검사 범위도 이 문서는 P8·P9·P10·P11 을 개별 언급할 뿐 범위를 단언하지 않으므로 옮겨 적지 않는 값이다."
+        }
       ],
       "review_every_days": 90
+    },
+    {
+      "path": "docs/harness/workflow-report.html",
+      "tier": 2,
+      "purpose": "팀 공유용 AI 워크플로우 적용 보고서. 하네스가 무엇을 왜 하는지를 팀에 설명하는 문서 — 저장소 밖으로 읽히므로 낡으면 거짓이 전파된다.",
+      "_doc_why_registered": "claudedocs/ 에 있던 동안 어느 단계도 쓸 수 없었고(관할 없음) doc-map 에도 없어(등록 없음) 13일간 아무도 낡음을 못 봤다. 2026-08-06 문서 감사가 팀 도입 권고 자리에서 거짓 3건을 찾았고 그중 하나는 발동 0회인 게이트를 1순위로 권하고 있었다. 등록의 값어치는 C2 가 이것을 다시 잡는 것이다 — 그래서 depends_on 을 지표·이력 쪽에 건다: 이 문서가 옮겨 적는 것이 그것들이다.",
+      "depends_on": [
+        "harness/policy/phase-matrix.json",
+        "harness/sensor-catalog.md",
+        "harness/recurrence.md"
+      ],
+      "review_every_days": 30
+    },
+    {
+      "path": "docs/harness/harness-structure.html",
+      "tier": 2,
+      "purpose": "팀 공유용 하네스 구조 설명서. 9단계 상태 머신·가드·센서의 배치를 그림과 표로 옮긴다.",
+      "_doc_why_registered": "architecture-2026.html 이 '왜 이렇게 설계했는가'를, 이 문서가 '지금 무엇이 어떻게 배치돼 있는가'를 맡는다. 후자는 배선이 바뀔 때마다 낡으므로 depends_on 이 더 넓다.",
+      "depends_on": [
+        "harness/policy/**",
+        ".claude/hooks/**",
+        "harness/sensor-catalog.md",
+        "scripts/policy-lint.mjs"
+      ],
+      "review_every_days": 30
     },
     {
       "path": "evals/README.md",
@@ -177,10 +223,26 @@
         "harness/policy/phase-matrix.json"
       ],
       "_c2_reviewed": [
-        { "dep": "harness/policy/phase-matrix.json", "sha": "24c68fa", "why": "이 스킬이 매트릭스에서 옮겨 적는 것은 Phase 3.5 의 형식 계약(맨몸 '판정: PASS' 단독 줄)이고, 판정 줄 정의를 넓혀도 그 요구는 동일하다 — 맨몸 줄은 확장 전후 모두 통과이며 바뀐 것은 꾸밈 붙은 줄이 이제 '최신 판정'으로 인정되면서 차단된다는 것뿐이다. 단계 전이 표는 2026-08-03 압축에서 이미 포인터(phase.py show)로 바꿔 매트릭스 값이 남아 있지 않다." },
-        { "dep": ".claude/agents/test-writer.md", "sha": "f0002c7", "why": "R16(정션 파괴) 어포던스 절을 에이전트 정의 4개에 넣은 변경이다. 이 스킬이 test-writer 에서 옮겨 적는 것은 model 정책(sonnet)과 산출 경로뿐이고 워크트리 규율은 재서술하지 않는다 — 실측: rg 'worktree|정션|isolation' 이 이 파일에서 0건이다. 에이전트가 워크트리를 어떻게 다루는지는 이 스킬의 계약이 아니라 에이전트 자신의 계약이다." },
-        { "dep": ".claude/agents/coder.md", "sha": "f0002c7", "why": "같은 R16 어포던스 절이 coder.md 에도 들어갔다. 이 스킬이 coder 에서 옮겨 적는 것은 model 정책(sonnet)과 '테스트 파일 수정 금지는 단계가 막으므로 프롬프트에 다시 적지 않아도 된다' 는 계약뿐이고, 워크트리 규율은 재서술하지 않는다 — 실측 0건." },
-        { "dep": ".claude/agents/evaluator.md", "sha": "f0002c7", "why": "같은 R16 어포던스 절이 evaluator.md 에도 들어갔다. 이 스킬이 evaluator 에서 옮겨 적는 것은 model 정책(opus)과 Phase 3.5 형식 계약(맨몸 판정 줄)뿐이고, 워크트리 규율은 재서술하지 않는다 — 실측 0건. 세 에이전트 축이 같은 판별을 받는 이유는 R16 절이 네 파일에 동일 문구로 들어갔기 때문이다." }
+        {
+          "dep": "harness/policy/phase-matrix.json",
+          "sha": "24c68fa",
+          "why": "이 스킬이 매트릭스에서 옮겨 적는 것은 Phase 3.5 의 형식 계약(맨몸 '판정: PASS' 단독 줄)이고, 판정 줄 정의를 넓혀도 그 요구는 동일하다 — 맨몸 줄은 확장 전후 모두 통과이며 바뀐 것은 꾸밈 붙은 줄이 이제 '최신 판정'으로 인정되면서 차단된다는 것뿐이다. 단계 전이 표는 2026-08-03 압축에서 이미 포인터(phase.py show)로 바꿔 매트릭스 값이 남아 있지 않다."
+        },
+        {
+          "dep": ".claude/agents/test-writer.md",
+          "sha": "f0002c7",
+          "why": "R16(정션 파괴) 어포던스 절을 에이전트 정의 4개에 넣은 변경이다. 이 스킬이 test-writer 에서 옮겨 적는 것은 model 정책(sonnet)과 산출 경로뿐이고 워크트리 규율은 재서술하지 않는다 — 실측: rg 'worktree|정션|isolation' 이 이 파일에서 0건이다. 에이전트가 워크트리를 어떻게 다루는지는 이 스킬의 계약이 아니라 에이전트 자신의 계약이다."
+        },
+        {
+          "dep": ".claude/agents/coder.md",
+          "sha": "f0002c7",
+          "why": "같은 R16 어포던스 절이 coder.md 에도 들어갔다. 이 스킬이 coder 에서 옮겨 적는 것은 model 정책(sonnet)과 '테스트 파일 수정 금지는 단계가 막으므로 프롬프트에 다시 적지 않아도 된다' 는 계약뿐이고, 워크트리 규율은 재서술하지 않는다 — 실측 0건."
+        },
+        {
+          "dep": ".claude/agents/evaluator.md",
+          "sha": "f0002c7",
+          "why": "같은 R16 어포던스 절이 evaluator.md 에도 들어갔다. 이 스킬이 evaluator 에서 옮겨 적는 것은 model 정책(opus)과 Phase 3.5 형식 계약(맨몸 판정 줄)뿐이고, 워크트리 규율은 재서술하지 않는다 — 실측 0건. 세 에이전트 축이 같은 판별을 받는 이유는 R16 절이 네 파일에 동일 문구로 들어갔기 때문이다."
+        }
       ],
       "review_every_days": 60
     },
@@ -188,10 +250,21 @@
       "path": ".claude/skills/review-gate/SKILL.md",
       "tier": 2,
       "purpose": "머지 전 독립 리뷰 게이트 — reviewer APPROVE가 머지의 필요조건.",
-      "depends_on": [".claude/agents/reviewer.md", "harness/policy/phase-matrix.json"],
+      "depends_on": [
+        ".claude/agents/reviewer.md",
+        "harness/policy/phase-matrix.json"
+      ],
       "_c2_reviewed": [
-        { "dep": "harness/policy/phase-matrix.json", "sha": "24c68fa", "why": "이 스킬이 매트릭스에서 옮겨 적는 것은 Phase 2.5 의 형식 계약(맨몸 '판정: APPROVE' 단독 줄)과 :72-75 의 '판정이 여러 개면 마지막 것만 본다' 이고, 판정 줄 정의를 넓혀도 둘 다 그대로 참이다. 맨몸 줄은 확장 전후 모두 통과이고 꾸밈 붙은 줄은 전에도 가드를 열지 못했다(그때는 판정으로 안 세어져서, 지금은 pattern 에 걸려서) — 리뷰어에게 요구하는 것이 동일하다." },
-        { "dep": ".claude/agents/reviewer.md", "sha": "f0002c7", "why": "R16(정션 파괴) 어포던스 절 추가. 이 스킬이 reviewer 에서 옮겨 적는 것은 판정·라벨 줄 형식 계약뿐이고 워크트리 규율은 재서술하지 않는다 — 실측: rg 'worktree|정션|isolation' 이 이 파일에서 0건이다." }
+        {
+          "dep": "harness/policy/phase-matrix.json",
+          "sha": "24c68fa",
+          "why": "이 스킬이 매트릭스에서 옮겨 적는 것은 Phase 2.5 의 형식 계약(맨몸 '판정: APPROVE' 단독 줄)과 :72-75 의 '판정이 여러 개면 마지막 것만 본다' 이고, 판정 줄 정의를 넓혀도 둘 다 그대로 참이다. 맨몸 줄은 확장 전후 모두 통과이고 꾸밈 붙은 줄은 전에도 가드를 열지 못했다(그때는 판정으로 안 세어져서, 지금은 pattern 에 걸려서) — 리뷰어에게 요구하는 것이 동일하다."
+        },
+        {
+          "dep": ".claude/agents/reviewer.md",
+          "sha": "f0002c7",
+          "why": "R16(정션 파괴) 어포던스 절 추가. 이 스킬이 reviewer 에서 옮겨 적는 것은 판정·라벨 줄 형식 계약뿐이고 워크트리 규율은 재서술하지 않는다 — 실측: rg 'worktree|정션|isolation' 이 이 파일에서 0건이다."
+        }
       ],
       "review_every_days": 60
     },
@@ -200,8 +273,15 @@
       "tier": 2,
       "purpose": "상태 계약의 읽기·쓰기 — 체크포인트 저장과 세션 재개.",
       "_doc_depends": ".harness/state/** 를 뺐다(2026-07-28, 4차 재리뷰 B-h). 판별 규칙 적용: **체크포인트·전이 로그 인스턴스는 데이터이지 계약이 아니다.** 계약은 _state.py 의 스키마와 phase.py 의 명령 표면이 지고, 이 문서는 그 계약을 적지 인스턴스를 적지 않는다 — 체크포인트가 하나 늘어난다고 이 문서의 어떤 문장도 거짓이 되지 않는다. 그리고 인스턴스에 걸면 **만족 불가능**했다: 체크포인트는 추적 대상이고 하네스 PR 의 마지막 행동은 언제나 REVIEW 진입 체크포인트의 커밋이므로, 이 문서는 모든 하네스 PR 의 tip 에서 반드시 낡는다. 만족시키는 유일한 길이 '체크포인트를 커밋한 뒤 SKILL.md 를 한 번 더 건드리기'인데 그것은 이 저장소가 금지한 무변경 터치다.",
-      "_c2_reviewed": { "dep": "harness/phase.py", "sha": "24c68fa", "why": "이 문서가 재서술하는 것은 phase.py 의 명령 표면(resume·why·show 의 출력 계약, L32-34)이고 이번 변경은 guard_file_contains 내부 판정과 self-test 다 — 명령 표면이 안 바뀌었다. 2026-08-04 재대조: judge_latest_verdict 의 정규식 확장과 self-test 추가도 같은 이유로 명령 표면 밖이다 — resume·why·show 의 출력이 그대로다." },
-      "depends_on": ["harness/phase.py", "harness/_state.py"],
+      "_c2_reviewed": {
+        "dep": "harness/phase.py",
+        "sha": "24c68fa",
+        "why": "이 문서가 재서술하는 것은 phase.py 의 명령 표면(resume·why·show 의 출력 계약, L32-34)이고 이번 변경은 guard_file_contains 내부 판정과 self-test 다 — 명령 표면이 안 바뀌었다. 2026-08-04 재대조: judge_latest_verdict 의 정규식 확장과 self-test 추가도 같은 이유로 명령 표면 밖이다 — resume·why·show 의 출력이 그대로다."
+      },
+      "depends_on": [
+        "harness/phase.py",
+        "harness/_state.py"
+      ],
       "review_every_days": 60
     },
     {
@@ -221,22 +301,34 @@
       "tier": 2,
       "purpose": "주간 학습 루프 — 지표 갱신·실패 분류·골든 승격 후보 제시.",
       "_doc_depends": ".harness/logs/** 를 뺐다(2026-07-28) — B-h 와 같은 형태다. 트레이스 로그 인스턴스는 데이터이고, 이 문서가 적는 것은 어느 원천에서 어느 지표가 나오는가라는 계약이다. 로그 한 줄이 늘어난다고 문장이 거짓이 되지 않는다. **harness/recurrence.md 도 뺐다(2026-08-02) — 다만 근거를 두 번 고쳤다.** 1차 근거는 '대장의 행은 데이터다' 였는데 재리뷰(N-3)가 반증했다: 이 문서가 R11 의 횟수(세 번)와 R7 의 처방을 실제로 **재서술**하고 있었으므로, R10 이 확립한 판별 규칙('재서술하면 의존, 포인터로만 참조하면 비의존')에서 이 문서는 의존 쪽이었다. **그래서 축소를 되돌리는 대신 재서술을 포인터로 바꿨다(2026-08-03)** — R10 처방 그대로다. **이 근거를 세 번 썼고 세 번 다 전칭 주장이라 반증됐다** — 1차 '대장의 행은 데이터다'(회고 스킬이 R11 횟수·R7 처방을 재서술 중이었다) · 2차 '하나도 옮겨 적지 않는다'(R13 값이 남아 있었다) · 3차 '그 한 곳에 시간 한정으로'(SKILL.md:59 가 R2 값을 날짜 없이 재서술한다). recurrence.md R11 상세 2에 이 셋을 등재했다. **그래서 이번엔 전칭을 쓰지 않는다.** 남는 사실만 적는다: 이 문서는 대장의 값을 여러 곳에서 인용하며, 인용 중 날짜가 붙은 것은 대장이 갱신돼도 거짓이 되지 않고 날짜가 없는 것은 거짓이 될 수 있다. C2 를 뗀 실제 근거는 '값을 안 옮긴다'가 아니라 **'C2 는 커밋 시각만 보므로 이 결합에 대해 애초에 판별력이 없다'**(R1 상세 3절의 사각지대 — 한 파일 안에서 어느 행을 고쳤는지 안 본다)이고, 그것은 축소 여부와 무관하게 참이다. 인용을 포인터로 바꾸는 작업은 이 문서가 HASH_GLOBS 라 progress.md 보류표에 있다. **전칭 수식어를 쓰려면 그것을 반증할 rg 한 줄을 같은 자리에 적어라 — 위 셋은 전부 그 규칙 하나로 막혔다.** 남는 노출: 대장의 '쓰는 법'(처방 위계·닫힌 어휘)이 바뀌면 이 문서가 C2 에 안 걸리고 사람이 봐야 하며, 그 자리가 주간 회고 자신이다. 비용 전제도 적는다 — 이 문서는 HASH_GLOBS 라 갱신에 트랙 B 전수 재실행 1회($7.21)가 붙는다. 2026-08-03 에 그 값을 실제로 지불하면서 잠겨 있던 넷을 함께 열었다.",
-      "depends_on": ["scripts/metrics.mjs"],
+      "depends_on": [
+        "scripts/metrics.mjs"
+      ],
       "review_every_days": 60
     },
     {
       "path": ".claude/agents/*.md",
       "tier": 2,
       "purpose": "격리 세션 에이전트 정의. 프롬프트가 구조를 설명하되 대체하지 않는다.",
-      "_c2_reviewed": { "dep": "harness/policy/phase-matrix.json", "sha": "24c68fa", "why": "이 글롭이 덮는 넷 중 매트릭스 값을 재서술하는 것은 coder.md('GREEN 은 tests/** 쓰기를 막는다')와 test-writer.md('RED 는 src/** 쓰기를 막는다')이고, latest_of 추가는 write_deny 를 건드리지 않는다. reviewer.md·evaluator.md 는 이번 변경으로 실제로 낡아 같은 PR 에서 갱신했다(최신 판정 규칙) — 즉 이 면제는 '안 낡은 둘'에 대한 것이고 '낡은 둘'은 고쳤다. 2026-08-04 재대조 — 이번엔 넷 다 안 낡았다: 판정 줄 정의를 넓힌 변경이 evaluator.md·reviewer.md 의 계약('맨몸 판정 줄을 쓰라')을 바꾸지 않는다. 실측으로 확인했다 — 꾸밈 붙은 PASS 는 확장 전에도 차단이었고 후에도 차단이며, 맨몸 PASS 는 양쪽 다 통과다. 바뀐 것은 '꾸밈 붙은 최신 FAIL 이 앞의 옛 PASS 에 지던 버그'가 닫힌 것뿐이라 정직한 작성자에게 동작이 동일하다. coder.md·test-writer.md 는 write_deny 를 재서술하고 그것도 안 바뀌었다." },
-      "depends_on": ["harness/policy/phase-matrix.json"],
+      "_c2_reviewed": {
+        "dep": "harness/policy/phase-matrix.json",
+        "sha": "24c68fa",
+        "why": "이 글롭이 덮는 넷 중 매트릭스 값을 재서술하는 것은 coder.md('GREEN 은 tests/** 쓰기를 막는다')와 test-writer.md('RED 는 src/** 쓰기를 막는다')이고, latest_of 추가는 write_deny 를 건드리지 않는다. reviewer.md·evaluator.md 는 이번 변경으로 실제로 낡아 같은 PR 에서 갱신했다(최신 판정 규칙) — 즉 이 면제는 '안 낡은 둘'에 대한 것이고 '낡은 둘'은 고쳤다. 2026-08-04 재대조 — 이번엔 넷 다 안 낡았다: 판정 줄 정의를 넓힌 변경이 evaluator.md·reviewer.md 의 계약('맨몸 판정 줄을 쓰라')을 바꾸지 않는다. 실측으로 확인했다 — 꾸밈 붙은 PASS 는 확장 전에도 차단이었고 후에도 차단이며, 맨몸 PASS 는 양쪽 다 통과다. 바뀐 것은 '꾸밈 붙은 최신 FAIL 이 앞의 옛 PASS 에 지던 버그'가 닫힌 것뿐이라 정직한 작성자에게 동작이 동일하다. coder.md·test-writer.md 는 write_deny 를 재서술하고 그것도 안 바뀌었다."
+      },
+      "depends_on": [
+        "harness/policy/phase-matrix.json"
+      ],
       "review_every_days": 90
     },
     {
       "path": "docs/deploy.md",
       "tier": 2,
       "purpose": "배포 절차 — CI 책임 경계와 사내망 수동 반입.",
-      "depends_on": ["Dockerfile", ".github/workflows/deploy.yml", "scripts/smoke.sh"],
+      "depends_on": [
+        "Dockerfile",
+        ".github/workflows/deploy.yml",
+        "scripts/smoke.sh"
+      ],
       "review_every_days": 90
     },
     {
@@ -257,7 +349,10 @@
       "path": "README.md",
       "tier": 2,
       "purpose": "프로젝트 개요.",
-      "depends_on": ["package.json", "specs/requirements.md"],
+      "depends_on": [
+        "package.json",
+        "specs/requirements.md"
+      ],
       "review_every_days": 90
     },
     {
@@ -265,22 +360,54 @@
       "tier": 2,
       "purpose": "정책의 사람용 표 — scripts/policy-lint.mjs --print 가 생성한다. 손으로 고치지 않는다.",
       "generated_by": "node scripts/policy-lint.mjs --print",
-      "_c2_reviewed": { "dep": "harness/policy/phase-matrix.json", "sha": "24c68fa", "why": "policy-lint --print 가 만드는 생성물이고 P9(생성물 동기화)가 이번 변경 뒤에도 PASS 다. 생성물은 내용이 안 바뀌면 커밋될 수 없어 원리적으로 소스보다 낡으므로 C2 의 시각 비교로는 영원히 해소되지 않는다 — 이 면제가 없으면 매트릭스를 건드리는 모든 PR 이 여기서 막힌다. 2026-08-04 재대조: 판정 줄 정의 확장 뒤에도 P9 는 PASS 다 — README 는 단계·전이·쓰기 권한 표를 렌더링하고 가드 내부 필드(latest_of)는 애초에 렌더링 대상이 아니다." },
-      "depends_on": ["harness/policy/phase-matrix.json", "harness/policy/tool-risk.json"],
+      "_c2_reviewed": {
+        "dep": "harness/policy/phase-matrix.json",
+        "sha": "24c68fa",
+        "why": "policy-lint --print 가 만드는 생성물이고 P9(생성물 동기화)가 이번 변경 뒤에도 PASS 다. 생성물은 내용이 안 바뀌면 커밋될 수 없어 원리적으로 소스보다 낡으므로 C2 의 시각 비교로는 영원히 해소되지 않는다 — 이 면제가 없으면 매트릭스를 건드리는 모든 PR 이 여기서 막힌다. 2026-08-04 재대조: 판정 줄 정의 확장 뒤에도 P9 는 PASS 다 — README 는 단계·전이·쓰기 권한 표를 렌더링하고 가드 내부 필드(latest_of)는 애초에 렌더링 대상이 아니다."
+      },
+      "depends_on": [
+        "harness/policy/phase-matrix.json",
+        "harness/policy/tool-risk.json"
+      ],
       "review_every_days": 90
     }
   ],
-
   "checks": {
-    "C1": { "name": "레지스트리 완결성", "severity": "blocking", "scope": "repo" },
-    "C2": { "name": "결합 낡음", "severity": "blocking", "scope": "pr", "advisory_scope": "repo",
-            "_doc": "PR 범위에서만 차단한다. 저장소 전체 낡음을 게이트로 걸면 첫날부터 모든 PR이 빨개지고, 게이트는 그날로 무시된다. '이 PR이 건드린 의존만 책임진다'가 게이트를 살려둔다." },
-    "C3": { "name": "나이 초과", "severity": "advisory", "scope": "repo" },
-    "C4": { "name": "링크·경로 무결성", "severity": "blocking", "scope": "repo" },
-    "C5": { "name": "진입점 예산", "severity": "blocking", "scope": "repo",
-            "_doc": "max_lines를 가진 문서에만 적용. 안티패턴 01(거대한 단일 지시문)의 유일한 기계 방어다." },
-    "C6": { "name": "열린 마커 낡음", "severity": "advisory", "scope": "repo",
-            "marker_pattern": "(\\ud83d\\udfe1|TODO\\()", "stale_after_days": 14,
-            "_doc": "tier ≤2 문서의 🟡/TODO(가 14일을 넘으면 경고. 센서 카탈로그의 죽은 🟡과 ci.yml의 스테일 TODO가 이 검사의 발단이다." }
+    "C1": {
+      "name": "레지스트리 완결성",
+      "severity": "blocking",
+      "scope": "repo"
+    },
+    "C2": {
+      "name": "결합 낡음",
+      "severity": "blocking",
+      "scope": "pr",
+      "advisory_scope": "repo",
+      "_doc": "PR 범위에서만 차단한다. 저장소 전체 낡음을 게이트로 걸면 첫날부터 모든 PR이 빨개지고, 게이트는 그날로 무시된다. '이 PR이 건드린 의존만 책임진다'가 게이트를 살려둔다."
+    },
+    "C3": {
+      "name": "나이 초과",
+      "severity": "advisory",
+      "scope": "repo"
+    },
+    "C4": {
+      "name": "링크·경로 무결성",
+      "severity": "blocking",
+      "scope": "repo"
+    },
+    "C5": {
+      "name": "진입점 예산",
+      "severity": "blocking",
+      "scope": "repo",
+      "_doc": "max_lines를 가진 문서에만 적용. 안티패턴 01(거대한 단일 지시문)의 유일한 기계 방어다."
+    },
+    "C6": {
+      "name": "열린 마커 낡음",
+      "severity": "advisory",
+      "scope": "repo",
+      "marker_pattern": "(\\ud83d\\udfe1|TODO\\()",
+      "stale_after_days": 14,
+      "_doc": "tier ≤2 문서의 🟡/TODO(가 14일을 넘으면 경고. 센서 카탈로그의 죽은 🟡과 ci.yml의 스테일 TODO가 이 검사의 발단이다."
+    }
   }
 }

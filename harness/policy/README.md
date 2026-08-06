@@ -25,13 +25,13 @@
 | 단계 | 목적 | write_allow | write_deny |
 |---|---|---|---|
 | `IDLE` | 무작업. 상태 파일 부재·손상 시의 fail-closed 기본값 | `_workspace/**` `docs/progress.md` | — |
-| `SPEC` | 요구사항·ADR·디자인 작성. 코드는 만들지 않는다 | `specs/**` `docs/adr/**` `docs/design/DESIGN.md` `docs/progress.md` `evals/golden/**` `_workspace/**` | `src/**` `tests/**` |
+| `SPEC` | 요구사항·ADR·디자인 작성. 코드는 만들지 않는다 | `specs/**` `docs/adr/**` `docs/design/**` `docs/architecture.html` `docs/progress.md` `evals/golden/**` `_workspace/**` | `src/**` `tests/**` |
 | `PLAN` | 탐색·계획. 원장 기입 | `_workspace/**` `docs/progress.md` | `src/**` `tests/**` `specs/**` `docs/adr/**` |
 | `RED` | 실패하는 테스트만 만든다. 구현은 다음 단계다 | `tests/**` `_workspace/**` `docs/progress.md` | `src/**` `specs/**` `evals/golden/**` |
 | `GREEN` | 테스트를 통과시키는 최소 구현 + 리팩토링. 테스트는 건드리지 않는다 | `src/**` `_workspace/**` `docs/progress.md` | `tests/**` `specs/**` `evals/golden/**` |
 | `EVAL` | 독립 평가 보고서 작성. 코드를 고치지 않는다 | `_workspace/**` | `src/**` `tests/**` `specs/**` `docs/adr/**` `evals/golden/**` `.claude/**` `harness/**` `scripts/**` |
 | `REVIEW` | 독립 리뷰 보고서 작성. 코드를 고치지 않는다 | `_workspace/**` | `src/**` `tests/**` `specs/**` `docs/adr/**` `evals/golden/**` `.claude/**` `harness/**` `scripts/**` |
-| `HARNESS` | 하네스 변경 전용. CLAUDE.md의 '하네스·ADR 전용 PR' 카브아웃을 구조로 승격한 단계 — 기능 코드가 섞이는 것이 물리적으로 불가능하다 | `.claude/**` `harness/**` `scripts/**` `.github/**` `docs/harness/**` `evals/*.md` `evals/results/**` `_workspace/**` `docs/progress.md` `.gitignore` `CLAUDE.md` | `src/**` `tests/**` `specs/**` |
+| `HARNESS` | 하네스 변경 전용. CLAUDE.md의 '하네스·ADR 전용 PR' 카브아웃을 구조로 승격한 단계 — 기능 코드가 섞이는 것이 물리적으로 불가능하다 | `.claude/**` `harness/**` `scripts/**` `.github/**` `docs/harness/**` `docs/deploy.md` `README.md` `evals/*.md` `evals/results/**` `_workspace/**` `docs/progress.md` `.gitignore` `CLAUDE.md` | `src/**` `tests/**` `specs/**` |
 | `RELEASE` | 머지·배포. 원장과 changelog를 닫는다 | `docs/progress.md` `docs/harness/changelog.md` `_workspace/**` | `src/**` `tests/**` `specs/**` |
 
 ### 나가는 길 (exit_hint)
