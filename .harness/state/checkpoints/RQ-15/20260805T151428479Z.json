@@ -1,0 +1,72 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "feat/RQ-15-b-resume-participants",
+  "edge_legal": true,
+  "exit_hint": "PASS면 → python harness/phase.py enter REVIEW / FAIL이면 → enter GREEN",
+  "forced": false,
+  "from": "GREEN",
+  "guards": [
+    {
+      "ms": 5655,
+      "name": "check_full_green",
+      "ok": true
+    },
+    {
+      "ms": 47,
+      "name": "golden_coverage",
+      "ok": true
+    }
+  ],
+  "head_sha": "78c1a9f9ceb75c28f47e16247255dd8be179560c",
+  "reason": null,
+  "rq": "RQ-15",
+  "schema": 1,
+  "seq": 204,
+  "session": {
+    "acceptance": [
+      "새로고침 직후 user room 참여자 패널이 다른 사용자의 join·leave 를 기다리지 않고 채워진다 — 본인 포함",
+      "resume × 참여자 축 골든이 evals/golden/track-a-product.jsonl 에 있고, 그 when 절을 실제로 지나가는 실서버 통합 테스트가 있다",
+      "RQ-15-a 가 세운 global 예외(ADR-0008)를 깨지 않는다 — resume 이 global 참여자를 방송하게 만들지 않는다",
+      "리뷰어 APPROVE 로 REVIEW→RELEASE 가드를 연다"
+    ],
+    "done": [
+      "정적 축 확정 — session.ts:255 handleResume 이 :293-297 에서 socket.join + replaceMember 까지만 하고 broadcastParticipants 를 호출하지 않으며 ack(:304)에도 participants 가 없다. :35 의 ./broadcast import 가 emitUnreadToSocket·emitUnreadToSocketId 둘뿐이라 그 심볼이 파일에 아예 없다",
+      "클라 축 확정 — resume 핸들러(useChat.ts:186-201)가 rooms·unread·messagesByRoom(:200)만 seed 하고 participantsByRoom 을 건너뛴다. 본인 seed 는 join 경로(:313)에만 있고 resume 은 그 경로를 타지 않는다. ChatApp.tsx:25 의 ?? [] 가 빈 패널이 된다",
+      "global 무관 확인 — resume 핸들러가 :195 에서 GLOBAL_ROOM 을 걸러낸다. global 의 영구 공백은 RQ-15-a 가 ADR-0008 로 이미 닫았다",
+      "골든 공백 확정 — GA-14 는 새로고침 후 메시지 축, GA-19/20 은 join·leave 축. resume × 참여자 축은 0건이라 SPEC 선행이 필요하다",
+      "원장 등재 + 보류표 행에 착수 표시 (0e0d413). 브랜치 feat/RQ-15-b-resume-participants 를 main(5dbefdd)에서 땄다",
+      "PLAN 실행 재현 완료 — _workspace/RQ-15-b/repro-resume-participants.ts (실서버 + raw socket). resume ack 에 participants 가 없고, 재접속한 alice 도 남아 있던 bob 도 1200ms 안에 participants 를 0건 받는다. 대조군 carol 이 join 하자 그제야 도착 — 배선은 멀쩡하고 resume 이 방송을 안 일으키는 것이 유일한 원인이며 아무도 안 움직이면 영구 공백이다",
+      "축 결정(사용자) — 서버 방송 재사용. bob 도 못 받았다는 것이 결정적이었다: 방송 자체가 없으니 클라에 seed 할 데이터가 없어 서버 변경이 불가피하다. ResumeAck 확장안은 io 의존이 같은데 세 곳이 움직여 버렸다",
+      "내 실수 1건 — git commit -- .harness/state 로 IDLE→PLAN 체크포인트를 커밋했다고 여겼으나 pathspec 커밋은 untracked 신규 디렉터리를 싣지 않는다. 같은 시각 돌던 eval-b 의 GB-06 이 checkpoint_uncommitted 로 실패해 드러났다. git add 후 재커밋했고 보류표에 등재했다",
+      "PLAN 산출물 커밋 (4edd6be) — 원장에 재현 관측값과 축 결정을 인라인으로 적었다. _workspace 는 gitignore 라 재현 스크립트 자체는 신선한 워크트리에 없고, 그래서 관측값을 원장 본문에 넣었다",
+      "SPEC — GA-35(2인 새로고침)·GA-36(혼자 새로고침) 신설. GA-36 을 나눈 이유가 곧 구현 지시다: join 방송은 room.ts:77 이 memberCount > 1 로 게이팅하고 클라가 useChat.ts:313 에서 본인을 로컬 seed 해 메우는데 resume 에는 그 seed 가 없다 — 게이트를 복사하면 혼자 있는 room 에서 결함이 재생산된다",
+      "보류된 SPEC 산출물 정정 2건 동반(사용자 결정). GA-34 verify 를 배선 테스트로 옮기고 status 를 done 으로 올려 미커버 시 차단되게 했다. ADR-0008 버린 대안 1 의 두 거짓 절을 코드로 반증해 정정했다 — listRooms 가 global 을 인덱스 0 에 하드코딩하고 connection.ts:28 이 무조건 join 하므로 global 은 사라지지 않는다. 실제 실패 모드는 히스토리 유실과 목록 중복이다",
+      "검사 — golden-coverage --rq RQ-15 exit 0(GA-34 done 이면서 커버, GA-35·36 은 todo 경고), doc-freshness --pr exit 0(차단 0 · advisory 4 는 기존 오탐). 커밋 26984b0",
+      "SPEC→PLAN 경유 후 RED 진입 준비. tree_clean 은 src/**·tests/** 만 보므로 현재 미추적 문서 파일들은 걸리지 않는다",
+      "PLAN→RED 전이 통과 (가드 3건: no_pending_spec·session_declared·tree_clean 전부 PASS). test-writer 를 별도 세션으로 띄웠고 결과는 아직 안 왔다 — 산출물이 도착할 자리는 _workspace/RQ-15-b/01_test-writer_red.md 다",
+      "이전 세션이 띄운 트랙 B 가 끝났는데 실패였다(5 pass · 1 fail). 작업 알림의 exit 0 은 래퍼의 것이다. 게다가 아티팩트가 무효다 — head_sha 는 하네스 브랜치 커밋인데 실행 중에 내가 브랜치를 바꿨다. 하네스 브랜치에서 재실행해야 한다",
+      "RED 완료 — tests/integration/rq-15-b-resume-participants.test.ts 커밋(fa43928, 561줄). 서버 계약 축(raw socket)과 클라 표면 축(<App/> 렌더 + 언마운트→재렌더로 실제 새로고침) 둘 다에 GA-35·GA-36 을 건다. 내가 독립 검증했다: check.mjs --red --rq RQ-15-b exit 0, 실패 4건 전부 신규 파일, 기존 67건 회귀 0(총 71)",
+      "Red 실패 내용이 PLAN 재현과 일치한다 — 서버 축은 participants 이벤트가 끝내 안 오고, 클라 축은 expected [] to deeply equal [alice, bob] / [alice] 로 빈 패널이다. 네 describe 제목이 전부 GA-35·GA-36 을 담아 golden-coverage 가 잇는다",
+      "GREEN 완료 — 커밋 78c1a9f. session.ts 의 handleResume 이 io 를 받고 재합류 루프 안에서 replaceMember 직후 non-global room 마다 broadcastParticipants 를 부른다. connection.ts 의 resume 배선 1줄 동반. 2파일 16+/2-. 클라 변경 0",
+      "memberCount > 1 게이트를 복사하지 않았고 그 이유가 JSDoc 에 남았다 — 그 게이트는 join 경로 전용 경합 회피이고 클라의 join 시 로컬 seed 를 전제하는데 resume 에는 그 seed 가 없다. GA-36 이 이 함정을 감시한다",
+      "내가 독립 검증했다 — check.mjs 전체 exit 0 (lint + typecheck + 20파일 71/71). GREEN 커밋이 tests/** 를 건드리지 않은 것도 git show --stat 로 확인했다",
+      "task.rq 를 RQ-15-b → RQ-15 로 바꿨다. golden_coverage 가드가 requirements.md 를 분모로 쓰는데 RQ-15-b 는 새 요구사항이 아니라 RQ-15 의 resume 경로 미이행이라 분모에 없다. RQ-18-a·RQ-15-a 도 하위 ID 로 시작했다가 같은 벽에서 기저 RQ 로 바꿨다(phase.jsonl 에 두 값이 모두 남아 있다). 대가: 체크포인트가 checkpoints/RQ-15-b/ 에서 checkpoints/RQ-15/ 로 갈라진다"
+    ],
+    "goal": "RQ-15 는 '각 room 의 현재 참여자 목록을 표시해야 한다' 인데 새로고침한 사용자에게는 그 목록이 없다. 그리고 아무도 들어오거나 나가지 않으면 영영 채워지지 않는다 — 사용자가 스스로 회복할 수단이 없는 결함이고, RQ-15 의 인수 기준이 resume 경로에서만 미이행 상태로 남아 있다는 뜻이다",
+    "next": [
+      "RED 결과 확인 — _workspace/RQ-15-b/01_test-writer_red.md 를 읽고 check.mjs --red --rq RQ-15-b 가 exit 0 인지, 신규 테스트 제목에 GA-35·GA-36 문자열이 들어갔는지 직접 대조한다(golden-coverage 가 제목으로 골든과 코드를 잇는다)",
+      "GREEN — session.ts 의 handleResume 이 io 를 받아 재합류 루프 뒤 non-global room 마다 broadcastParticipants 를 부른다. memberCount > 1 게이트를 복사하지 않는다(GA-36 이 금지한다). connection.ts 의 resume 배선 동반, session.ts 의 ./broadcast import 에 심볼 추가. 클라 변경 0",
+      "EVAL — 평가자에게 워크트리 금지 · vite 트랜스폼 메모리 치환을 명시한다. 이 브랜치에는 R16 워크트리 규율이 없다"
+    ],
+    "open_questions": [
+      "GA-31·GA-32·GA-33 이 머지된 뒤에도 status:todo 로 남아 있다. golden-coverage 는 todo + 미커버를 경고로만 내므로 커버가 깨져도 차단되지 않는다. RQ-18 소관이라 이 PR 에서 건드리지 않고 보류표에 등재했다",
+      "pathspec 커밋이 새 RQ 의 첫 체크포인트 디렉터리를 빠뜨린다 — CLAUDE.md 의 전이 후 커밋 규율이 이 경우 부족하다. 이번에 eval-b 의 GB-06 이 checkpoint_uncommitted 로 실패해 드러났다. 하네스 후속",
+      "R16 정션 처방이 이 브랜치에 없다. EVAL 이 노출 지점이다"
+    ]
+  },
+  "to": "EVAL",
+  "ts": "2026-08-05T15:14:28.478Z",
+  "write_allow": [
+    "_workspace/**"
+  ]
+}
