@@ -111,8 +111,8 @@
 | 등급 | 접두사 |
 |---|---|
 | R0 | `git status` `git diff` `git log` `git show` `git branch` `git rev-parse` `git merge-base` `git ls-files` `git check-ignore` `git worktree list` `git blame` `gh pr view` `gh pr diff` `gh pr checks` `gh pr list` `node scripts/phase-audit.mjs` `node scripts/doc-freshness.mjs` `node scripts/golden-coverage.mjs` `node scripts/metrics.mjs` `node scripts/policy-lint.mjs` `node scripts/hooks-selftest.mjs` `python harness/phase.py show` `python harness/phase.py why` `ls` `cat` `wc` `head` `tail` `rg` `find` |
-| R1 | `git add` `git commit` `git switch` `git checkout -b` `git restore` `git stash` `git revert` `node scripts/check.mjs` `bash scripts/check.sh` `npm test` `npm run` `npx vitest` `npx eslint` `npx tsc` `python harness/phase.py enter` `mkdir` `touch` `cp` `mv` |
-| R2 | `git push` `gh pr create` `gh pr merge` `gh release` `docker` `npm install` `npm ci` `npm publish` `python harness/phase.py force` `node scripts/eval-b.mjs` `node scripts/resume-test.mjs` `git worktree add` `git worktree remove` |
+| R1 | `git add` `git commit` `git switch` `git checkout -b` `git restore` `git stash` `git revert` `node scripts/check.mjs` `bash scripts/check.sh` `npm test` `npm run` `npx vitest` `npx eslint` `npx tsc` `python harness/phase.py enter` `node scripts/resume-test.mjs` `mkdir` `touch` `cp` `mv` |
+| R2 | `git push` `gh pr create` `gh pr merge` `gh release` `docker` `npm install` `npm ci` `npm publish` `python harness/phase.py force` `node scripts/eval-b.mjs` `git worktree add` `git worktree remove` |
 | R3 | `rm -rf` `git push --force` `git push -f` `git reset --hard` `git rebase` `git filter-branch` `git clean -fdx` `curl` `wget` `chmod 777` |
 
 미지의 접두사: **allow**

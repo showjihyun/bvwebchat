@@ -1,0 +1,55 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "fix/harness-junction-r16",
+  "edge_legal": true,
+  "exit_hint": "하네스 변경 후 → python harness/phase.py enter REVIEW  (가드: 트랙 B 회귀 평가 아티팩트, changelog 동행)",
+  "forced": false,
+  "from": "IDLE",
+  "guards": [],
+  "head_sha": "e2593a2efab7b711a1ff44f18652213c4727144c",
+  "reason": null,
+  "rq": "HARNESS-JUNCTION",
+  "schema": 1,
+  "seq": 224,
+  "session": {
+    "acceptance": [
+      "리뷰에서 APPROVE 를 받아 reviewer_approve 가드를 연다",
+      "트랙 B 아티팩트가 현재 HEAD 에 대해 유효하다",
+      "main 을 끌어들여 브랜치 보호의 strict 요건을 만족한다"
+    ],
+    "done": [
+      "이 PR 의 본체(요약 — 상세 48건은 커밋된 HARNESS-JUNCTION 체크포인트에 있다): recurrence.md 에 R16 등재 + 어포던스 4파일 + 센서 카탈로그 정정 + CI 게이트 행 신설. policy-lint·self-test·doc-freshness·hooks-selftest 전부 exit 0",
+      "resume-test.mjs 를 R2→R1 로 강등(사용자 결정) — settings.json + tool-risk.json + policy/README.md 재생성 + 설계서 주석. eval-b 는 R2 유지",
+      "리뷰 2회 REQUEST_CHANGES 를 받고 지적을 전부 조치했다. 첫 회차 blocker 는 doc-freshness --pr 의 C2 3건(감사 Phase 1 의 --pr 은 변경 전 값인데 Phase 4 에 재실행 단계가 없다), 두 번째는 권한 강등 커밋이 settings.json 을 움직이고도 changelog 를 안 건드린 것과 체크포인트 서사의 저장소 밖 라벨이었다",
+      "이 PR 이 같은 형상을 세 번 냈다 — 프로그램 편집의 성공을 확인하지 않음(JSON 파손 · replace 무동작 · 글롭 오매칭). R14 를 4회차로 올리고 원인을 프로그램 편집 일반으로 넓혔다",
+      "리뷰를 돌리지 않고 중단했다(사용자 결정). 검사 10종·트랙 B 전부 초록이지만 APPROVE 를 못 받아 머지 불가 상태였다",
+      "중단 기간에 RQ-15-b 를 별도 브랜치에서 끝내 머지했다(PR 41, squash 614a980). 그 세션이 하네스 후속 3건을 새로 등재했다 — 커버된 골든의 status 를 올릴 경로 부재 · evaluator_pass 가 기저 RQ 보고서를 읽어 직전 하위 RQ 의 판정에 열리는 것 · pathspec 커밋이 untracked 신규 체크포인트를 빠뜨리는 것",
+      "재개 — main(614a980)을 머지했다(e2593a2). 충돌 2건은 append-only JSONL 이라 시간순 합집합으로 풀었다(phase 214+207→223 · decisions 27+25→28, forced 는 기존 1건 유지). docs/progress.md 는 자동 머지됐고 RQ 표 18행·보류표 29행에 중복이 없음을 확인했다"
+    ],
+    "goal": "워크트리 정리가 node_modules 정션을 따라가 원본을 파괴하는 사고가 4회다. 처방(.claude/agents 의 워크트리 규율)은 이 브랜치에만 있어 다른 브랜치에 도달하지 않는다. RQ-15-b 에서는 사고가 안 났지만 그것은 처방이 도달해서가 아니라 내가 평가자·리뷰어에게 워크트리 금지를 매번 손으로 지시했기 때문이다 — 사람 규율은 잊히고 머지된 정의는 안 잊힌다. 이 PR 을 닫는 것이 처방을 실제로 작동시키는 유일한 길이다",
+    "next": [
+      "트랙 B 전수 재실행 — main 머지로 HASH_GLOBS 가 움직여 이전 아티팩트가 무효다. 이 브랜치에는 워크트리 규율이 있으므로 eval-b 가 띄우는 evalb/ 워크트리가 처방의 실전 시험이 된다",
+      "아티팩트를 커밋한 뒤 HARNESS→REVIEW. 가드는 트랙 B 통과와 changelog 동행이다",
+      "리뷰 재요청 — 재리뷰 상한 1회를 넘겼다는 사실을 리뷰어에게 먼저 알린다"
+    ],
+    "open_questions": [
+      "이전 트랙 B 아티팩트(evals/results/track-b/ 아래 head_sha 가 b9e2030 인 것)가 미추적으로 남아 있다. 실행 중 브랜치가 바뀌어 오염됐고 GB-06 실패도 그 레이스의 산물이다 — 증거로 쓰지 않는다. 이번 재실행이 대체한다",
+      "RQ-15-b 가 남긴 하네스 후속 3건이 보류표에 있다. 이 PR 에 태울지 다음 하네스 PR 로 미룰지 정해야 한다 — 이 PR 은 이미 재리뷰 상한을 넘겼으므로 넓히는 쪽이 위험해 보인다"
+    ]
+  },
+  "to": "HARNESS",
+  "ts": "2026-08-06T00:56:44.411Z",
+  "write_allow": [
+    ".claude/**",
+    "harness/**",
+    "scripts/**",
+    ".github/**",
+    "docs/harness/**",
+    "evals/*.md",
+    "evals/results/**",
+    "_workspace/**",
+    "docs/progress.md",
+    ".gitignore",
+    "CLAUDE.md"
+  ]
+}

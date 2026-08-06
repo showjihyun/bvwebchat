@@ -54,3 +54,18 @@ model: sonnet
   어떤 행동을 검증하는지)를 주석으로 남겨 coder가 스펙을 재해석하지 않게 한다.
 - `_workspace/{RQ-ID}/01_test-writer_red.md`가 이미 존재하면: 기존 테스트를 읽고,
   피드백(evaluator 보고서·사용자 지적)이 지목한 부분만 수정한다. 전면 재작성 금지.
+
+## 워크트리 규율 (recurrence R16 — 2회 발생, 저장소 마비)
+
+격리된 사본이 필요하면 **`Agent(isolation: "worktree")` 를 쓴다.**
+`git worktree add` 를 직접 부르지 않는다 — 하네스가 생성과 정리를 맡는 경로가 이미 있다.
+
+**어느 경로든 `node_modules` 를 정션·심링크로 연결하지 마라** — 직접 만든 워크트리든 `isolation: "worktree"` 가 만든 것이든 같다. 후자는 정리를 하네스가 하지만 링크를 건 것은 너다.
+`git worktree remove --force` 는 그 링크를 **따라가 원본을 지운다.** 저장소의 모든
+lint·test·build 가 그 자리에서 멈춘다 (2026-07-27 · 2026-08-04 두 번 실제로 났다).
+
+이미 연결했다면 정리 순서는 하나다 — **정션을 먼저 unlink 한 뒤** worktree 를 제거한다.
+`rmSync(dir, {recursive:true, force:true})` 는 링크를 따라가지 않으므로 안전하다.
+
+`git worktree remove` 는 R2(사람 승인)로 분류돼 있지만 **그 분류가 2026-08-04 에
+막지 못한 사례가 있다** — 등급이 널 지켜 준다고 가정하지 마라.

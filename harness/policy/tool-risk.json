@@ -92,6 +92,7 @@
       "npx eslint",
       "npx tsc",
       "python harness/phase.py enter",
+      "node scripts/resume-test.mjs",
       "mkdir",
       "touch",
       "cp",
@@ -108,7 +109,6 @@
       "npm publish",
       "python harness/phase.py force",
       "node scripts/eval-b.mjs",
-      "node scripts/resume-test.mjs",
       "git worktree add",
       "git worktree remove"
     ],
