@@ -186,27 +186,14 @@
       "review_every_days": 90
     },
     {
-      "path": "docs/harness/workflow-report.html",
+      "path": "docs/harness/handbook.html",
       "tier": 2,
-      "purpose": "팀 공유용 AI 워크플로우 적용 보고서. 하네스가 무엇을 왜 하는지를 팀에 설명하는 문서 — 저장소 밖으로 읽히므로 낡으면 거짓이 전파된다.",
-      "_doc_why_registered": "claudedocs/ 에 있던 동안 어느 단계도 쓸 수 없었고(관할 없음) doc-map 에도 없어(등록 없음) 13일간 아무도 낡음을 못 봤다. 2026-08-06 문서 감사가 팀 도입 권고 자리에서 거짓 3건을 찾았고 그중 하나는 발동 0회인 게이트를 1순위로 권하고 있었다. 등록의 값어치는 C2 가 이것을 다시 잡는 것이다 — 그래서 depends_on 을 지표·이력 쪽에 건다: 이 문서가 옮겨 적는 것이 그것들이다.",
+      "purpose": "팀 공유 핸드북 — 제품(무엇을 만들었나)과 하네스(어떻게 만드나)를 한 페이지에. L&L 배포물.",
+      "_doc_why_registered": "저장소 밖으로 읽히는 문서라 낡으면 거짓이 전파된다. 등재하지 않으면 어떤 센서도 안 본다 — workflow-report.html 이 정확히 그렇게 13일을 낡았고 팀 도입 권고 자리에 거짓 3건을 담게 됐다(2026-08-06 문서 감사). 원본이던 architecture.html·harness-structure.html 은 이 문서에 흡수됐다: 같은 사실을 말하는 문서가 둘이면 하나는 반드시 낡는다.",
       "depends_on": [
+        "specs/requirements.md",
         "harness/policy/phase-matrix.json",
-        "harness/sensor-catalog.md",
-        "harness/recurrence.md"
-      ],
-      "review_every_days": 30
-    },
-    {
-      "path": "docs/harness/harness-structure.html",
-      "tier": 2,
-      "purpose": "팀 공유용 하네스 구조 설명서. 9단계 상태 머신·가드·센서의 배치를 그림과 표로 옮긴다.",
-      "_doc_why_registered": "architecture-2026.html 이 '왜 이렇게 설계했는가'를, 이 문서가 '지금 무엇이 어떻게 배치돼 있는가'를 맡는다. 후자는 배선이 바뀔 때마다 낡으므로 depends_on 이 더 넓다.",
-      "depends_on": [
-        "harness/policy/**",
-        ".claude/hooks/**",
-        "harness/sensor-catalog.md",
-        "scripts/policy-lint.mjs"
+        "harness/sensor-catalog.md"
       ],
       "review_every_days": 30
     },
@@ -419,5 +406,6 @@
       "stale_after_days": 14,
       "_doc": "tier ≤2 문서의 🟡/TODO(가 14일을 넘으면 경고. 센서 카탈로그의 죽은 🟡과 ci.yml의 스테일 TODO가 이 검사의 발단이다."
     }
-  }
+  },
+  "_deferred_registration": "docs/harness/workflow-report.html 은 아직 등재하지 않는다. 내용이 낡은 것을 알고 있는 상태(2026-08-06 문서 감사: 팀 도입 권고 자리에 거짓 3건)에서 등재하면 C2 가 정당하게 차단하고, 그것을 _c2_reviewed 로 면제하면 '낡지 않았다' 는 거짓을 기록하는 것이 된다. 갱신본 PR 에서 내용과 함께 등재한다 — 등재와 내용 수정은 나눌 수 없다(등재만 하면 CI 가 빨개지고, 내용만 고치면 다음에 또 낡는다). 관할은 이 PR 이 이미 열었다: claudedocs/ 에서 docs/harness/ 로 옮겨 HARNESS 단계가 쓸 수 있다."
 }
