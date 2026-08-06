@@ -20,6 +20,7 @@ const ROOT = resolve(import.meta.dirname, '..');
 const MATRIX = join(ROOT, 'harness/policy/phase-matrix.json');
 const RISK = join(ROOT, 'harness/policy/tool-risk.json');
 const README = join(ROOT, 'harness/policy/README.md');
+const CATALOG = join(ROOT, 'harness/sensor-catalog.md');
 const SETTINGS = join(ROOT, '.claude/settings.json');
 
 const problems = [];
@@ -855,8 +856,38 @@ function selfTest() {
     console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(22)} 기대 ${want ? `차단 ${want}건` : '통과'} · 실측 ${got ? `차단 ${got}건` : '통과'}`);
   }
 
-  const total = cases.length + eolCases.length + labelCases.length;
-  console.log(bad ? `\n정책 린트 자기시험 실패 ${bad}건 / ${total}건 — 파서가 뚫린다.` : `\n정책 린트 자기시험 ${total}건 통과 (P11 파서 ${cases.length} · P9 줄바꿈 ${eolCases.length} · P12 바깥 라벨 ${labelCases.length}).`);
+  // P13 — 가드 커버리지. **차단 쪽에 `통과값 + 부정어` 를 반드시 넣는다**: 이 저장소의
+  // 우회는 두 번 다 그 형상이었다(`미완료` = `완료` + 부정 접두 · `완료 예정` = `완료` + 미래).
+  // 통과해야 할 값만 시험하면 이 계열은 영원히 안 잡힌다.
+  console.log('');
+  console.log('── P13 가드 커버리지 (순수 함수 judgeGuardCoverage) ──');
+  const coverCases = [
+    ['정상 언급',        ['tree_clean'], '`tree_clean` 가드가 미커밋 변경을 막는다', 0],
+    ['부정어 — 아직 없다', ['tree_clean'], '`tree_clean` 은 아직 카탈로그에 없다',        1],
+    ['부정어 — 누락',     ['tree_clean'], '`tree_clean` 행이 누락돼 있다',              1],
+    ['미래형 — 예정',     ['tree_clean'], '`tree_clean` 을 곧 등재할 예정',             1],
+    ['미래형 — 추가할',    ['tree_clean'], '`tree_clean` 을 추가할 것',                 1],
+    ['부분 문자열 오탐',   ['tree_clean'], '`tree_cleanup` 스크립트가 임시 파일을 지운다',  1],
+    ['접두 오탐',        ['red_evidence'], 'pre_red_evidence 라는 다른 이름',           1],
+    ['코드 펜스 안은 제외', ['tree_clean'], '```\n tree_clean \n```\n다른 문장',          1],
+    ['여러 개 중 하나 누락', ['tree_clean', 'tests_committed'], '`tree_clean` 은 등재됨',  1],
+    ['둘 다 등재',       ['tree_clean', 'tests_committed'],
+      '`tree_clean` 을 막는다\n`tests_committed` 는 커밋을 요구한다',                    0],
+    ['다음 줄 부정어는 무관', ['tree_clean'],
+      '`tree_clean` 가드가 막는다\n다른 줄: 아직 없는 것도 있다',                        0],
+    ['같은 줄 먼 부정어는 무관', ['tree_clean'],
+      '`tree_clean` 가드가 미커밋 변경을 막는다 — 이것이 없으면 증거의 출처가 흐려진다',  0],
+    ['가드 0개',        [], '아무 내용',                                             0],
+  ];
+  for (const [name, guards, text, want] of coverCases) {
+    const got = judgeGuardCoverage(guards, text).length;
+    const ok = got === want;
+    if (!ok) bad++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(22)} 기대 ${want ? `누락 ${want}건` : '통과'} · 실측 ${got ? `누락 ${got}건` : '통과'}`);
+  }
+
+  const total = cases.length + eolCases.length + labelCases.length + coverCases.length;
+  console.log(bad ? `\n정책 린트 자기시험 실패 ${bad}건 / ${total}건 — 파서가 뚫린다.` : `\n정책 린트 자기시험 ${total}건 통과 (P11 파서 ${cases.length} · P9 줄바꿈 ${eolCases.length} · P12 바깥 라벨 ${labelCases.length} · P13 가드 커버리지 ${coverCases.length}).`);
   process.exit(bad ? 1 : 0);
 }
 
@@ -963,6 +994,74 @@ function checkCheckpointNarrative() {
       '파일명·스크립트명·단계명·규칙 ID 같은 저장소에 실재하는 식별자는 그대로 남긴다. ' +
       '`python harness/phase.py session --next "…"` 로 다시 선언한 뒤 전이를 한 번 거쳐야 체크포인트에 반영된다. ' +
       '(recurrence R7 재처방 — 1차 Guide 가 실패해 게이트로 올라왔다.)'
+  );
+}
+
+/**
+ * P13 — `phase-matrix.json` 의 가드가 전부 `harness/sensor-catalog.md` 에 언급되는가.
+ * **순수 함수다** (`--self-test`).
+ *
+ * 왜 필요한가: 카탈로그는 자기 머리말에서 *"가드레일 지도 한 장"* 이라고 선언한다.
+ * 지도에 없는 게이트는 **에이전트가 이유를 모른 채 차단당하는 자리**이고, 더 나쁘게는
+ * **감사 자신이 자기가 감사하는 대상을 잘못 알게 되는 자리**다.
+ *
+ * 2026-08-04 감사가 F-1 로 *"스펙 동결 CI 게이트가 카탈로그에 행이 없다"* 를 잡았고
+ * 처방은 **그 행 하나를 신설**하는 개별 대응이었다. 2026-08-06 감사가 방향 2 대조를
+ * 기계로 돌리자 **전이 가드 3종**(`session_declared`·`tree_clean`·`tests_committed`)이
+ * 같은 형상으로 비어 있었다 — **개별 대응이라 다른 축에서 그대로 재발했다.**
+ * 그래서 Guide 를 게이트로 한 칸 올린다(위계: 구조 > 게이트 > 센서 > Guide).
+ *
+ * **부분 문자열로 판정하지 않는다.** `tree_clean` 을 단순 `includes` 로 보면
+ * `tree_cleanup` 이 통과시킨다. 식별자 경계를 요구한다.
+ *
+ * **부정·미래 문장은 언급으로 세지 않는다.** 이 저장소의 우회는 두 번 다
+ * `통과값 + 부정어` 형상이었다(`미완료` = `완료` + 부정 접두 · `완료 예정` = `완료` + 미래).
+ * 카탈로그에 *"`tree_clean` 은 아직 없다"* 라고 적어 두면 그건 **등재가 아니라 부재의 고백**이다.
+ *
+ * **코드 펜스 안은 보지 않는다.** 예시 블록에 이름이 스쳐 지나가는 것은 지도가 아니다.
+ */
+export function judgeGuardCoverage(guardNames, catalogText) {
+  const body = String(catalogText || '').replace(/```[\s\S]*?```/g, '');
+  const NEGATED = /(아직|없다|없음|미등재|누락|예정|추가할|넣을|올릴|TODO|미배선)/;
+  const WINDOW = 40;
+  const missing = [];
+  for (const g of guardNames || []) {
+    const re = new RegExp(`(^|[^0-9A-Za-z_])${g.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^0-9A-Za-z_]|$)`, 'g');
+    let mentioned = false;
+    for (const m of body.matchAll(re)) {
+      // 부정은 **가드 이름 바로 뒤 창** 안에서만 센다. 줄 전체를 보면 등재 행의
+      // 설명 문장("…쓸 수 없다")이 오탐을 낸다 — 실제로 이 검사를 넣은 날 그렇게 걸렸다.
+      // 창은 줄 끝에서 자른다: 다음 줄의 부정어가 이 줄의 등재를 취소하지 않는다.
+      const start = m.index + m[0].length;
+      const eol = body.indexOf('\n', start);
+      const end = Math.min(start + WINDOW, eol === -1 ? body.length : eol);
+      if (!NEGATED.test(body.slice(start, end))) { mentioned = true; break; }
+    }
+    if (!mentioned) missing.push(g);
+  }
+  return missing;
+}
+
+function checkGuardCoverage(m) {
+  const guards = Object.keys((m || {}).guards || {});
+  if (!guards.length) return; // 가드가 없으면 이 검사의 관할이 아니다 — P5 가 죽은 참조를 본다
+  if (!existsSync(CATALOG)) {
+    fail('P13', 'harness/sensor-catalog.md 가 없다 — 가드레일 지도가 사라졌다',
+      '카탈로그를 복구하라. 지도 없는 게이트는 에이전트가 이유를 모른 채 차단당하는 자리다.');
+    return;
+  }
+  const missing = judgeGuardCoverage(guards, readFileSync(CATALOG, 'utf8'));
+  if (!missing.length) {
+    note('P13', `전이 가드 ${guards.length}종 전부 센서 카탈로그에 등재됨`);
+    return;
+  }
+  fail(
+    'P13',
+    `phase-matrix 의 가드 ${missing.length}종이 harness/sensor-catalog.md 에 없다: ${missing.join(' · ')}`,
+    '카탈로그에 각 가드의 행을 추가한다 — **무엇을 막는가 · 어느 전이에 걸리는가 · 강제 수단은 무엇인가**. ' +
+      '지도에 없는 게이트는 에이전트가 이유를 모른 채 차단당하는 자리이고, 감사 자신이 대상을 잘못 알게 되는 자리다. ' +
+      '가드를 지웠다면 phase-matrix.json 에서도 지워라 — P5 가 죽은 참조를 따로 잡는다. ' +
+      '(2026-08-06 감사: F-1 의 개별 대응이 다른 축에서 재발해 Guide 를 게이트로 올렸다.)'
   );
 }
 
@@ -1125,6 +1224,7 @@ if (matrix) {
 }
 checkRecurrence();
 checkCheckpointNarrative();
+if (matrix) checkGuardCoverage(matrix);
 if (matrix) checkPatterns(matrix);
 if (risk) checkRisk(risk);
 if (matrix && risk && !args.includes('--print')) checkGenerated(matrix, risk);
@@ -1156,6 +1256,7 @@ const checks = [
   ['P10', 'enforced_by 대조 (settings.json 실집행)'],
   ['P11', '반복 대장 — 2회 이상 미처방 없음'],
   ['P12', '최신 체크포인트 서사에 저장소 밖 라벨 없음 (R7 재처방)'],
+  ['P13', '전이 가드가 전부 센서 카탈로그에 등재됨 (F-1 재처방)'],
 ];
 for (const [id, label] of checks) {
   const n = problems.filter((p) => p.id === id).length;

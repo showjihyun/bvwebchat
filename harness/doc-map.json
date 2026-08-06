@@ -149,7 +149,8 @@
         "harness/sensor-catalog.md"
       ],
       "_c2_reviewed": [
-        { "dep": "harness/policy/**", "sha": "24c68fa", "why": "판정 줄 정의 확장은 이 문서 §R15 절에 2026-08-04 문단으로 직접 반영돼 있다 — 낡음이 아니라 이미 동행한 변경이다." }
+        { "dep": "harness/policy/**", "sha": "24c68fa", "why": "판정 줄 정의 확장은 이 문서 §R15 절에 2026-08-04 문단으로 직접 반영돼 있다 — 낡음이 아니라 이미 동행한 변경이다." },
+        { "dep": "harness/sensor-catalog.md", "sha": "76fc490", "why": "카탈로그에 전이 가드 3행(session_declared·tree_clean·tests_committed)을 신설하고 policy-lint 검사 범위 표기를 P1~P13 으로 정정한 변경이다. 이 설계서가 카탈로그에서 옮겨 적는 것은 3층 모델의 구조와 '전이 가드 11종'이라는 개수인데, 신설된 셋은 이미 phase-matrix 에 있던 가드를 카탈로그가 뒤늦게 등재한 것이라 개수가 움직이지 않았다(11 그대로 — 실측 확인). 검사 범위도 이 문서는 P8·P9·P10·P11 을 개별 언급할 뿐 범위를 단언하지 않으므로 옮겨 적지 않는 값이다." }
       ],
       "review_every_days": 90
     },
