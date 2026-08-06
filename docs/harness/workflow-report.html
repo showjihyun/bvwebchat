@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>bvwebchat — AI 워크플로우 적용 보고서</title>
+<title>bvwebchat — AI 워크플로우 적용 보고서 (v2)</title>
 <style>
+  /* ── 색 토큰: 라이트 기본 ──────────────────────────────── */
   :root {
     --bg: #ffffff;
     --bg-side: #f7f8fa;
@@ -19,11 +20,14 @@
     --good-soft: #e9f7ee;
     --warn: #b45309;
     --warn-soft: #fdf3e3;
+    --bad: #b91c1c;
+    --bad-soft: #fdecec;
     --idea: #7c3aed;
     --idea-soft: #f3eefe;
   }
+  /* 다크 토큰을 한 곳에만 적는다 — 두 셀렉터가 같은 블록을 공유한다 */
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]) {
       --bg: #14161b;
       --bg-side: #1a1d24;
       --bg-code: #22262f;
@@ -37,45 +41,94 @@
       --good-soft: #16301f;
       --warn: #fbbf24;
       --warn-soft: #362a12;
+      --bad: #f87171;
+      --bad-soft: #3a1c1c;
       --idea: #c4a5fd;
       --idea-soft: #2a2140;
     }
   }
+  :root[data-theme="dark"] {
+    --bg: #14161b;
+    --bg-side: #1a1d24;
+    --bg-code: #22262f;
+    --bg-card: #1c2027;
+    --text: #e5e8ee;
+    --text-dim: #9aa3b2;
+    --border: #2d323d;
+    --accent: #6ea0ff;
+    --accent-soft: #1e2a44;
+    --good: #4ade80;
+    --good-soft: #16301f;
+    --warn: #fbbf24;
+    --warn-soft: #362a12;
+    --bad: #f87171;
+    --bad-soft: #3a1c1c;
+    --idea: #c4a5fd;
+    --idea-soft: #2a2140;
+  }
+  :root[data-theme="light"] {
+    --bg: #ffffff;
+    --bg-side: #f7f8fa;
+    --bg-code: #f2f4f7;
+    --bg-card: #fafbfc;
+    --text: #1f2430;
+    --text-dim: #5b6472;
+    --border: #e3e6eb;
+    --accent: #2563eb;
+    --accent-soft: #eaf1fe;
+    --good: #15803d;
+    --good-soft: #e9f7ee;
+    --warn: #b45309;
+    --warn-soft: #fdf3e3;
+    --bad: #b91c1c;
+    --bad-soft: #fdecec;
+    --idea: #7c3aed;
+    --idea-soft: #f3eefe;
+  }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html { scroll-behavior: smooth; }
   body {
-    font-family: "Pretendard", "Pretendard Variable", -apple-system, "Segoe UI",
-      "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+    /* 시스템 폰트만 — 외부 폰트·CDN 참조 없음 (오프라인에서 열려야 한다) */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic",
+      "Apple SD Gothic Neo", "Noto Sans KR", Roboto, "Helvetica Neue", Arial, sans-serif;
     background: var(--bg);
     color: var(--text);
     line-height: 1.7;
     font-size: 15px;
+    overflow-x: hidden;
   }
 
-  /* ── 레이아웃: 좌측 내비 + 우측 본문 ─────────────────── */
+  /* ── 레이아웃 ─────────────────────────────────────────── */
   .layout { display: flex; min-height: 100vh; }
   nav.sidebar {
-    width: 268px; flex-shrink: 0;
+    width: 280px; flex-shrink: 0;
     background: var(--bg-side);
     border-right: 1px solid var(--border);
     position: sticky; top: 0; height: 100vh;
-    overflow-y: auto; padding: 28px 0 40px;
+    overflow-y: auto; padding: 24px 0 40px;
   }
-  .side-title { padding: 0 22px 18px; border-bottom: 1px solid var(--border); }
+  .side-title { padding: 0 20px 16px; border-bottom: 1px solid var(--border); }
   .side-title .proj { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
-  .side-title .sub { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
-  .nav-group { margin-top: 20px; }
+  .side-title .sub { font-size: 12px; color: var(--text-dim); margin-top: 4px; line-height: 1.5; }
+  .theme-btn {
+    margin-top: 10px; font: inherit; font-size: 11.5px; font-weight: 600;
+    padding: 3px 10px; border-radius: 999px; cursor: pointer;
+    background: var(--bg-card); color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+  .theme-btn:hover { color: var(--text); border-color: var(--accent); }
+  .nav-group { margin-top: 18px; }
   .nav-group-label {
-    padding: 0 22px; font-size: 11px; font-weight: 700;
+    padding: 0 20px; font-size: 10.5px; font-weight: 700;
     text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim);
-    margin-bottom: 6px;
+    margin-bottom: 5px;
   }
   nav.sidebar a {
-    display: block; padding: 6px 22px 6px 22px;
-    color: var(--text-dim); text-decoration: none; font-size: 13.5px;
-    border-left: 3px solid transparent;
+    display: block; padding: 5px 20px;
+    color: var(--text-dim); text-decoration: none; font-size: 13px;
+    border-left: 3px solid transparent; line-height: 1.45;
   }
-  nav.sidebar a.sub-item { padding-left: 36px; font-size: 13px; }
   nav.sidebar a:hover { color: var(--text); background: var(--accent-soft); }
   nav.sidebar a.active {
     color: var(--accent); font-weight: 700;
@@ -84,112 +137,132 @@
 
   main {
     flex: 1; min-width: 0;
-    padding: 48px 56px 120px;
-    max-width: 880px;
+    padding: 44px 52px 120px;
+    max-width: 920px;
   }
-  section { scroll-margin-top: 24px; margin-bottom: 72px; }
+  section { scroll-margin-top: 24px; margin-bottom: 64px; }
 
-  h1 { font-size: 30px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.3; }
+  h1 { font-size: 29px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.3; }
   .h1-sub { color: var(--text-dim); margin-top: 10px; font-size: 15px; }
   h2 {
-    font-size: 22px; font-weight: 800; letter-spacing: -0.02em;
-    padding-bottom: 10px; border-bottom: 2px solid var(--border);
-    margin-bottom: 20px;
+    font-size: 21px; font-weight: 800; letter-spacing: -0.02em;
+    padding-bottom: 9px; border-bottom: 2px solid var(--border);
+    margin-bottom: 18px;
   }
-  h3 { font-size: 17px; font-weight: 700; margin: 30px 0 10px; }
+  h3 { font-size: 16.5px; font-weight: 700; margin: 28px 0 9px; }
+  h4 { font-size: 14.5px; font-weight: 700; margin: 20px 0 6px; color: var(--text-dim); }
   p { margin-bottom: 12px; }
   p, li { color: var(--text); }
   ul, ol { padding-left: 22px; margin-bottom: 14px; }
   li { margin-bottom: 6px; }
   strong { font-weight: 700; }
   code {
-    font-family: "Cascadia Code", "D2Coding", Consolas, monospace;
-    font-size: 0.88em; background: var(--bg-code);
-    padding: 2px 6px; border-radius: 4px;
+    font-family: ui-monospace, SFMono-Regular, "Cascadia Code", "D2Coding",
+      Consolas, "Liberation Mono", monospace;
+    font-size: 0.87em; background: var(--bg-code);
+    padding: 2px 5px; border-radius: 4px;
+    word-break: break-word;
   }
-  a.inline { color: var(--accent); }
+  pre {
+    background: var(--bg-code); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px; margin: 12px 0;
+    overflow-x: auto;
+  }
+  pre code { background: none; padding: 0; font-size: 12.5px; line-height: 1.6; }
 
-  /* 칩·배지 */
+  /* 근거 표기 — 이 문서의 모든 수치에 붙는다 */
+  .ev {
+    display: block; font-size: 12px; color: var(--text-dim);
+    margin-top: 3px; line-height: 1.5;
+  }
+  .ev::before { content: "근거 "; font-weight: 700; letter-spacing: 0.02em; }
+  .ev code { font-size: 0.92em; }
+
+  /* 칩 */
   .chip {
-    display: inline-block; font-size: 11.5px; font-weight: 700;
+    display: inline-block; font-size: 11px; font-weight: 700;
     padding: 2px 9px; border-radius: 999px; vertical-align: middle;
+    white-space: nowrap;
   }
   .chip.good { background: var(--good-soft); color: var(--good); }
   .chip.warn { background: var(--warn-soft); color: var(--warn); }
+  .chip.bad  { background: var(--bad-soft);  color: var(--bad); }
   .chip.idea { background: var(--idea-soft); color: var(--idea); }
   .chip.acc  { background: var(--accent-soft); color: var(--accent); }
 
-  /* 카드·콜아웃 */
+  /* 콜아웃 */
   .callout {
     border: 1px solid var(--border); border-left: 4px solid var(--accent);
     background: var(--bg-card); border-radius: 8px;
-    padding: 14px 18px; margin: 16px 0;
+    padding: 13px 17px; margin: 15px 0;
   }
   .callout.good { border-left-color: var(--good); }
   .callout.warn { border-left-color: var(--warn); }
+  .callout.bad  { border-left-color: var(--bad); }
   .callout.idea { border-left-color: var(--idea); }
-  .callout .co-title { font-weight: 700; font-size: 13.5px; margin-bottom: 4px; }
+  .callout .co-title { font-weight: 700; font-size: 13.5px; margin-bottom: 5px; }
+  .callout p:last-child, .callout ul:last-child { margin-bottom: 0; }
 
-  /* 표 */
-  .table-wrap { overflow-x: auto; margin: 16px 0; }
-  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
-  th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; }
+  /* 표 — 각자 자기 스크롤 컨테이너 안에 */
+  .table-wrap { overflow-x: auto; margin: 15px 0; -webkit-overflow-scrolling: touch; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 520px; }
+  th, td { border: 1px solid var(--border); padding: 7px 11px; text-align: left; vertical-align: top; }
   th { background: var(--bg-side); font-weight: 700; white-space: nowrap; }
-  td .mono { font-family: Consolas, monospace; font-size: 12.5px; }
+  td.nowrap { white-space: nowrap; }
 
-  /* 정량 요약 타일 */
+  /* 정량 타일 */
   .stat-grid {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 12px; margin: 18px 0;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 11px; margin: 16px 0;
   }
   .stat {
     border: 1px solid var(--border); border-radius: 10px;
-    background: var(--bg-card); padding: 14px 16px;
+    background: var(--bg-card); padding: 13px 15px;
   }
-  .stat .num { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
-  .stat .lbl { font-size: 12.5px; color: var(--text-dim); margin-top: 2px; }
+  .stat .num { font-size: 23px; font-weight: 800; letter-spacing: -0.02em; }
+  .stat .lbl { font-size: 12.5px; color: var(--text-dim); margin-top: 2px; line-height: 1.45; }
+  .stat .src { font-size: 11px; color: var(--text-dim); margin-top: 6px; opacity: 0.85; line-height: 1.4; }
 
-  /* 파이프라인 다이어그램 */
-  .pipe-wrap { overflow-x: auto; margin: 20px 0; padding-bottom: 6px; }
-  .pipe { display: flex; align-items: stretch; gap: 0; min-width: 720px; }
+  /* 파이프라인 */
+  .pipe-wrap { overflow-x: auto; margin: 18px 0; padding-bottom: 6px; }
+  .pipe { display: flex; align-items: stretch; gap: 0; min-width: 860px; }
   .pipe-step {
     flex: 1; border: 1.5px solid var(--border); border-radius: 10px;
-    background: var(--bg-card); padding: 10px 12px; min-width: 108px;
+    background: var(--bg-card); padding: 9px 11px; min-width: 96px;
   }
-  .pipe-step .t { font-weight: 800; font-size: 13px; }
-  .pipe-step .d { font-size: 11.5px; color: var(--text-dim); margin-top: 3px; line-height: 1.5; }
+  .pipe-step .t { font-weight: 800; font-size: 12.5px; }
+  .pipe-step .d { font-size: 11px; color: var(--text-dim); margin-top: 3px; line-height: 1.5; }
   .pipe-step.hl { border-color: var(--accent); background: var(--accent-soft); }
   .pipe-arrow {
-    align-self: center; padding: 0 6px; color: var(--text-dim);
-    font-weight: 700; flex-shrink: 0;
+    align-self: center; padding: 0 5px; color: var(--text-dim);
+    font-weight: 700; flex-shrink: 0; font-size: 13px;
   }
   .pipe-note { font-size: 12.5px; color: var(--text-dim); margin-top: 8px; }
 
   /* 진실 공급원 위계 */
-  .hier { margin: 16px 0; }
+  .hier { margin: 15px 0; }
   .hier-row {
-    display: flex; align-items: baseline; gap: 12px;
-    padding: 9px 14px; border: 1px solid var(--border);
+    display: flex; align-items: baseline; gap: 11px; flex-wrap: wrap;
+    padding: 8px 13px; border: 1px solid var(--border);
     border-radius: 8px; margin-bottom: 6px; background: var(--bg-card);
   }
-  .hier-row .rank {
-    font-weight: 800; color: var(--accent); font-size: 13px; flex-shrink: 0; width: 20px;
-  }
+  .hier-row .rank { font-weight: 800; color: var(--accent); font-size: 13px; flex-shrink: 0; width: 18px; }
   .hier-row .name { font-weight: 700; font-size: 13.5px; flex-shrink: 0; }
-  .hier-row .desc { font-size: 12.5px; color: var(--text-dim); }
+  .hier-row .desc { font-size: 12.5px; color: var(--text-dim); flex: 1; min-width: 200px; }
 
-  hr.sep { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+  hr.sep { border: none; border-top: 1px solid var(--border); margin: 26px 0; }
 
-  /* 반응형 */
-  @media (max-width: 860px) {
+  @media (max-width: 900px) {
     .layout { flex-direction: column; }
     nav.sidebar {
       width: 100%; height: auto; position: static;
       border-right: none; border-bottom: 1px solid var(--border);
       padding: 16px 0;
     }
-    main { padding: 32px 20px 80px; }
+    main { padding: 28px 18px 80px; }
+    h1 { font-size: 24px; }
   }
+  img, svg { max-width: 100%; }
 </style>
 </head>
 <body>
@@ -198,7 +271,9 @@
 <nav class="sidebar" id="sidebar">
   <div class="side-title">
     <div class="proj">bvwebchat</div>
-    <div class="sub">AI 워크플로우 적용 보고서<br>개발본부 BE팀 · 2026-07-24</div>
+    <div class="sub">AI 워크플로우 적용 보고서 · <strong>v2</strong><br>
+      개발본부 BE팀 · 실측 기준일 2026-08-06</div>
+    <button class="theme-btn" id="themeBtn" type="button">테마 전환</button>
   </div>
 
   <div class="nav-group">
@@ -209,23 +284,33 @@
   <div class="nav-group">
     <div class="nav-group-label">적용 내역</div>
     <a href="#spec">3-1. 스펙 우선 · Deep Interview</a>
-    <a href="#adr">3-2. ADR — 아키텍처 결정 기록</a>
+    <a href="#adr">3-2. ADR 8건</a>
     <a href="#ledger">3-3. 진행 원장</a>
-    <a href="#tdd">3-4. TDD 3-세션 파이프라인</a>
-    <a href="#review">3-5. 독립 리뷰 게이트</a>
-    <a href="#guardrail">3-6. 가드레일 — hook·CI·권한</a>
-    <a href="#eval">3-7. 골든 eval · 메트릭</a>
+    <a href="#phases">3-4. 9단계 상태 머신 <span class="chip acc">신설</span></a>
+    <a href="#guards">3-5. 전이 가드 11종 <span class="chip acc">신설</span></a>
+    <a href="#tdd">3-6. TDD 3-세션 파이프라인</a>
+    <a href="#review">3-7. 독립 리뷰 게이트</a>
+    <a href="#guardrail">3-8. 가드레일 — hook·CI·권한</a>
+    <a href="#eval">3-9. 골든 eval · 지표 M1~M8</a>
+    <a href="#recurrence">3-10. 반복 실패 대장 <span class="chip acc">신설</span></a>
+    <a href="#retro">3-11. 주간 회고 <span class="chip acc">신설</span></a>
   </div>
   <div class="nav-group">
     <div class="nav-group-label">평가</div>
-    <a href="#value">4. 무엇이 좋았나 — 의미와 증거</a>
+    <a href="#value">4. 실제로 무엇을 잡았나</a>
+    <a href="#limits">4-1. 그리고 무엇을 못 잡았나</a>
     <a href="#stats">5. 정량 요약</a>
   </div>
   <div class="nav-group">
     <div class="nav-group-label">앞으로</div>
-    <a href="#remaining">6. 남은 과제</a>
+    <a href="#remaining">6. 남은 과제 · 미해소</a>
     <a href="#improve">7. 보완 제안</a>
     <a href="#team">8. 팀 적용 제언</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-label">부록</div>
+    <a href="#method">A. 이 문서의 측정 방법</a>
+    <a href="#corrections">B. v1 → v2 정정 이력</a>
   </div>
 </nav>
 
@@ -235,10 +320,47 @@
 <section id="overview">
   <h1>bvwebchat — AI 에이전트 워크플로우 적용 보고서</h1>
   <p class="h1-sub">
-    room 참여 채팅 + global 채팅 웹앱을 소재로, <strong>스펙 → ADR → TDD 파이프라인 →
-    독립 리뷰 → CI/CD</strong>로 이어지는 AI 에이전트 개발 워크플로우(하네스)를
-    설계·운영한 결과를 정리한다. 마감 7/31 대비 7/21에 전 요구사항 구현을 완료했다.
+    room 참여 채팅 + global 채팅 웹앱을 소재로, <strong>스펙 → ADR → 단계 상태 머신 →
+    TDD 파이프라인 → 독립 평가 → 독립 리뷰 → CI/CD</strong>로 이어지는 AI 에이전트
+    개발 워크플로우(하네스)를 설계·운영한 결과를 정리한다.
   </p>
+
+  <div class="callout warn">
+    <div class="co-title">이 판(v2)이 존재하는 이유 — 먼저 읽어야 할 것</div>
+    <p>
+      이 보고서의 v1은 <strong>2026-07-24에 작성된 뒤 12일 동안 한 번도 갱신되지 않았다.</strong>
+      2026-08-06 사실 검증에서 <strong>거짓 3건 · 틀림 3건 · 낡은 수치 14건 · 누락 10계열</strong>이 나왔고,
+      가장 나쁜 거짓 3건이 전부 <em>"무엇이 좋았나"</em>와 <em>"팀 도입 권고"</em> — 읽는 사람이
+      그대로 가져갈 자리에 박혀 있었다.
+    </p>
+    <p>
+      이 저장소는 그 실패 형상에 이미 이름이 있다. 반복 실패 대장의 <strong>R1 —
+      <em>"문서가 존재하지 않는 방어를 현재형으로 단언"</em>, 누적 14회</strong>다.
+      <strong>그리고 이 문서는 그 처방(문서 신선도 센서 C2)의 관할 밖이었다</strong> —
+      <code>harness/doc-map.json</code>에 <strong>등재된 적이 없다.</strong>
+      git에 추적되면서도 어떤 신선도 센서의 대상도 아니었고, 그래서 12일 동안 아무도 모르게
+      낡았다. 조용히 낡은 것은 규율이 아니라 구조의 결과다.
+      <span class="ev"><code>harness/recurrence.md</code> R1 행 ·
+      <code>harness/doc-map.json</code>의 <code>docs</code> 배열 23항목에 이 파일이 없다</span>
+    </p>
+    <div class="callout bad" style="margin:14px 0 0">
+      <div class="co-title"><span class="chip bad">v2 초안 정정</span> 원인을 처음엔 <strong>틀리게</strong> 짚었다</div>
+      2026-08-06 감사와 이 문서의 첫 초안은 <em>"제외 목록(<code>exclude_globs</code>)에 잡혀 있어서 센서가 안 본다"</em>고
+      적었다. <strong>결론은 맞고 원인은 틀렸다.</strong> 같은 날 <code>policy-lint</code> P14 작업이
+      실측하니 <code>governed_globs</code>가 <strong>허용목록</strong>이라 제외 목록은
+      교집합 0건 — <strong>실효가 0인 죽은 설정</strong>이었다. 제외된 게 아니라
+      <strong>아무도 판단한 적이 없었다.</strong> 그 5개 항목은 같은 날 삭제됐다.
+      <strong>죽은 설정은 판단의 흔적처럼 읽혀 다시 판단하지 않게 만든다</strong> —
+      그것이 이 오진의 기전이고, 이 판이 그 교훈을 자기 서두에 적는 이유다.
+      <span class="ev"><code>harness/doc-map.json</code> <code>_removed_exclude_globs</code> 주석 ·
+        <code>docs/harness/changelog.md</code> 2026-08-06 P14 행</span>
+    </div>
+    <p style="margin-bottom:0">
+      그래서 v2의 규칙은 하나다 — <strong>모든 수치를 저장소에서 직접 재고, 무엇을 근거로
+      쟀는지를 값 옆에 붙인다.</strong> "X가 Y를 막는다" 형태의 문장은 그 X가 실재하고 실제로
+      blocking인지 확인한 것만 남겼다. 확인하지 못한 것은 §A에 "확인 불가"로 적었다.
+    </p>
+  </div>
 
   <h3>무엇을 만들었나</h3>
   <ul>
@@ -252,11 +374,29 @@
       사내 L&amp;L(Lunch &amp; Learn) 공유 겸용.</li>
   </ul>
 
+  <h3>일정 — 그리고 마감 뒤에 무슨 일이 있었나</h3>
+  <p>
+    기능 RQ 12건은 <strong>마감 7/31 대비 7/21에 전부 완료</strong>됐다. 하지만 보고서를
+    거기서 끊으면 절반만 적는 것이다. <strong>그 뒤 결함 후속 RQ가 5건 나왔다</strong> —
+    <code>RQ-10-a</code>(새로고침 닉네임 재입력) · <code>RQ-13-a</code>(유령 room) ·
+    <code>RQ-15-a</code>(global 참여자 패널 공백) · <code>RQ-15-b</code>(resume 후 참여자 공백) ·
+    <code>RQ-18-a</code>(global이 room 목록에 없음).
+  </p>
+  <p>
+    <strong>다섯 건이 전부 클라이언트 배선 축이다.</strong> 그리고 그 자리는 v1 자신이
+    §7①에서 <em>"현 테스트의 대부분이 서버 통합이고 클라 배선은 추론적 리뷰로만 검증됐다"</em>고
+    예고한 바로 그 표면이다. <strong>제안이 맞았고 그 제안을 실행하지 않은 대가를 다섯 번 치렀다</strong>
+    — 이 문서에서 가장 값나가는 한 줄이다.
+    <span class="ev"><code>docs/progress.md</code> 작업 원장 RQ-10-a·13-a·15-a·15-b·18-a 행 ·
+    v1 §7① 원문</span>
+  </p>
+
   <div class="callout">
     <div class="co-title">이 문서를 읽는 법</div>
-    3~3-7장이 "무엇을 적용했나", 4~5장이 "그래서 무엇이 좋았나(증거 포함)",
-    6~8장이 "남은 것과 팀에 가져갈 것"이다. 모든 주장에는 저장소 내 파일·PR·테스트
-    출력 근거를 병기했다.
+    3장이 "무엇을 적용했나", 4장이 "그래서 실제로 무엇이 잡혔나(그리고 무엇이 안 잡혔나)",
+    5장이 정량, 6~8장이 "남은 것과 팀에 가져갈 것"이다.
+    <strong>모든 수치 뒤에는 그것을 어떻게 쟀는지가 붙어 있다.</strong> 근거 없이 적을 수 있는
+    문장은 이 문서에 없다 — 그것이 v1이 실패한 방식이기 때문이다.
   </div>
 </section>
 
@@ -264,41 +404,54 @@
 <section id="bigpicture">
   <h2>2. 워크플로우 전체 구조</h2>
   <p>
-    핵심 아이디어는 두 가지다. <strong>① 진실 공급원의 위계를 문서로 고정</strong>하고,
-    <strong>② 사람의 규율에 기대던 것을 hook·CI·권한 설정으로 물리적으로 강제</strong>한다.
+    핵심 아이디어는 셋이다. <strong>① 진실 공급원의 위계를 문서로 고정</strong>하고,
+    <strong>② 작업을 <em>단계</em>에 넣어 단계가 쓰기 가능한 경로를 정하며</strong>,
+    <strong>③ 사람의 규율에 기대던 것을 hook·CI·권한으로 강제</strong>한다.
     에이전트가 "하지 말아야 할 일"은 프롬프트로 부탁하는 게 아니라 도구 수준에서 차단된다.
+  </p>
+  <p>
+    v1에는 <strong>②가 통째로 없었다.</strong> 작성 3일 뒤(2026-07-27) 도입된
+    단계 상태 머신이 지금 이 저장소에서 <em>"지금 무엇을 쓸 수 있는가"</em>를 정하는 주체이고,
+    <code>CLAUDE.md</code> 최상단 절이 그 모델이다. §3-4·§3-5가 그 본체다.
   </p>
 
   <h3>진실 공급원 위계 (충돌 시 위가 이김)</h3>
   <div class="hier">
-    <div class="hier-row"><span class="rank">1</span><span class="name">specs/requirements.md</span><span class="desc">EARS 형식 요구사항. 여기 없는 기능은 만들지 않는다 — 스코프 크리프의 방어선</span></div>
-    <div class="hier-row"><span class="rank">2</span><span class="name">docs/adr/</span><span class="desc">아키텍처 결정 기록 6건. 모순 구현 금지, 변경은 새 ADR 먼저</span></div>
-    <div class="hier-row"><span class="rank">3</span><span class="name">CLAUDE.md</span><span class="desc">최상위 규칙의 포인터 인덱스. 상세는 참조 파일로 위임해 항상 짧게 유지</span></div>
+    <div class="hier-row"><span class="rank">1</span><span class="name">specs/requirements.md</span><span class="desc">EARS 형식 요구사항 14건. 여기 없는 기능은 만들지 않는다 — 스코프 크리프의 방어선</span></div>
+    <div class="hier-row"><span class="rank">2</span><span class="name">docs/adr/</span><span class="desc">아키텍처 결정 기록 <strong>8건</strong>. 모순 구현 금지, 변경은 새 ADR 먼저</span></div>
+    <div class="hier-row"><span class="rank">3</span><span class="name">CLAUDE.md</span><span class="desc">최상위 규칙의 포인터 인덱스. 상세는 참조 파일로 위임해 100줄 이하 유지 — <code>doc-map.json</code> C5가 기계로 강제</span></div>
     <div class="hier-row"><span class="rank">4</span><span class="name">docs/design/DESIGN.md</span><span class="desc">UI 진실 공급원. 기능을 추가할 수 없어 충돌 시 requirements가 이긴다</span></div>
   </div>
+  <p class="ev"><code>ls docs/adr/</code> → 0001~0008 + 템플릿 ·
+    <code>CLAUDE.md</code> "진실 공급원" 절 · <code>harness/doc-map.json</code> C5(<code>max_lines</code>)</p>
 
-  <h3>RQ 1건의 생애주기</h3>
+  <h3>RQ 1건의 생애주기 — 단계로 표현하면</h3>
   <div class="pipe-wrap">
     <div class="pipe">
-      <div class="pipe-step"><div class="t">스펙 동결</div><div class="d">Deep Interview로 🟡 해소, 미완이면 hook이 구현 차단</div></div>
+      <div class="pipe-step"><div class="t">IDLE</div><div class="d">원장 기입. 상태 파일 부재 시의 fail-closed 기본값</div></div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-step hl"><div class="t">Red</div><div class="d">test-writer 세션 — 실패 테스트 작성, 테스트 커밋 선행</div></div>
+      <div class="pipe-step"><div class="t">SPEC</div><div class="d">요구사항·ADR·<strong>골든 정답</strong>. 코드는 못 만든다</div></div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-step hl"><div class="t">Green</div><div class="d">coder 세션 — 최소 구현, 테스트 파일 수정 금지</div></div>
+      <div class="pipe-step"><div class="t">PLAN</div><div class="d">탐색·계획. 세션 선언</div></div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-step hl"><div class="t">독립 평가</div><div class="d">evaluator 세션 — 코드·파일만 보고 PASS/FAIL 판정</div></div>
+      <div class="pipe-step hl"><div class="t">RED</div><div class="d">test-writer — 실패 테스트만. <code>src/**</code> 쓰기 불가</div></div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-step"><div class="t">리뷰 게이트</div><div class="d">reviewer 세션 APPROVE = 머지 필요조건</div></div>
+      <div class="pipe-step hl"><div class="t">GREEN</div><div class="d">coder — 최소 구현. <code>tests/**</code> 쓰기 불가</div></div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-step"><div class="t">CI + 머지</div><div class="d">브랜치 보호, status check `gate` 필수</div></div>
+      <div class="pipe-step hl"><div class="t">EVAL</div><div class="d">evaluator — 보고서만. 코드 못 고침</div></div>
       <div class="pipe-arrow">→</div>
-      <div class="pipe-step"><div class="t">배포 + 스모크</div><div class="d">Docker 빌드→기동→골든 케이스 스모크</div></div>
+      <div class="pipe-step"><div class="t">REVIEW</div><div class="d">reviewer — APPROVE가 다음 간선의 가드</div></div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step"><div class="t">RELEASE</div><div class="d">머지·배포. 원장·changelog를 닫는다</div></div>
     </div>
     <div class="pipe-note">
-      강조된 3단계는 각각 <strong>격리된 별도 에이전트 세션</strong>에서 실행된다 — 3-4장 참조.
+      강조된 3단계는 각각 <strong>격리된 별도 에이전트 세션</strong>에서 실행된다(§3-6).
+      <code>HARNESS</code>는 이 흐름과 직교하는 아홉 번째 단계로, 하네스 변경 전용이다(§3-4).
       스펙 항목 1개 = 브랜치 1개 = PR 1개 원칙.
     </div>
   </div>
+  <p class="ev"><code>harness/policy/phase-matrix.json</code> — <code>phases</code> 9개 ·
+    <code>transitions</code> 16개 정의 · <code>guards</code> 11개</p>
 </section>
 
 <!-- ═══════════════════ 3-1. 스펙 ═══════════════════ -->
@@ -307,51 +460,83 @@
   <p>
     구현 전에 요구사항을 EARS 형식("~하면, 시스템은 ~해야 한다")으로 작성하고,
     모호한 항목(🟡)은 <strong>Deep Interview</strong>(질문 은행 기반의 구조화된 문답)로
-    전부 해소한 뒤 <strong>v1으로 동결</strong>했다. 🟡 8건 → 0건 → 동결 (2026-07-17, PR #7).
+    전부 해소한 뒤 <strong>v1으로 동결</strong>했다. 🟡 <strong>8건 → 0건</strong> → 동결
+    (2026-07-17, PR&nbsp;#7).
+    <span class="ev"><code>docs/progress.md</code> Phase 1·2 ·
+      현재 <code>grep -cE '^- \*\*RQ-[0-9]+\*\*.*🟡' specs/requirements.md</code> → <strong>0</strong></span>
   </p>
   <ul>
     <li><strong>모든 RQ에 ID</strong>가 있고, 그 ID가 브랜치명(<code>feat/RQ-XX-*</code>)·
-      테스트 파일명(<code>rq-02-message-isolation.test.ts</code>)·골den 케이스(GA-*)까지
+      테스트 파일명(<code>rq-02-message-isolation.test.ts</code>)·골든 케이스(<code>GA-*</code>)까지
       관통한다. 요구사항 → 테스트 → PR의 추적성이 이름 규칙만으로 확보된다.</li>
     <li><strong>비요구사항 명시</strong>: DM, 파일 전송, 계정, 영속 DB 등 "안 만드는 것"을
       스펙에 박아두어, 에이전트의 선의의 기능 추가를 판정 가능하게 만들었다.</li>
     <li><strong>동결 후 개정 절차</strong>: RQ-18(안 읽음 배지)은 디자인 단계에서 필요가
-      드러나자 v1.1 개정으로 추가했다. "구현 게이트"(해당 RQ의 코드 착수 시점) 이전이면
-      스펙만 개정 가능, 이후면 코드와 같은 PR에 동행해야 한다 — 드리프트의 조작적 정의.</li>
+      드러나자 v1.1 개정으로 추가했다. <strong>"구현 게이트"</strong>(해당 RQ의 코드 착수 시점)
+      이전이면 스펙만 개정 가능, 이후면 코드와 같은 PR에 동행해야 한다 — 드리프트의 조작적 정의이고
+      <strong>RQ 단위로 판정</strong>한다.</li>
+    <li><strong>결함 후속 RQ의 ID 규약</strong>: 완료된 RQ의 결함은 <code>RQ-10-a</code>처럼
+      접미사로 적는다. 새 번호를 붙이면 요구사항 신설이 되어 인터뷰가 앞에 붙고, 기존 번호를
+      그대로 쓰면 원장에서 구별되지 않는다. <strong>이 규약이 게이트를 한 번 깨뜨렸다</strong>
+      — 반복 대장 R12(§3-10).</li>
   </ul>
-  <p style="font-size: 13px; color: var(--text-dim);">
-    참고: 같은 인터뷰 기법은 디자인에도 적용됐다 (디자인 인터뷰 D1~D16 →
-    <code>DESIGN.md</code> 확보, Phase 3.5). 이 문서는 BE 관점이라 상세는 생략한다.
-  </p>
-  <div class="callout good">
-    <div class="co-title">왜 의미가 있나</div>
-    LLM 에이전트의 대표적 실패 모드가 "그럴듯한 기능을 알아서 추가"하는 스코프 크리프다.
-    스펙이 유일한 허가 목록이 되면 리뷰어(사람이든 에이전트든)가 diff를 "스펙에 있나?"
-    하나로 판정할 수 있다. 실제로 reviewer 에이전트의 첫 번째 검사 항목이 이것이다.
+
+  <div class="callout bad">
+    <div class="co-title"><span class="chip bad">v1 정정</span> 스펙 동결 게이트는 <strong>한 번도 발동하지 않았다</strong></div>
+    <p>
+      v1은 이 게이트를 <em>"가장 싸고 가장 자주 발동한 가드레일"</em>이라 적고
+      팀 도입 권고 1순위 근거로 삼았다. <strong>실측하면 발동 횟수는 0이다.</strong>
+    </p>
+    <ul>
+      <li>🟡은 <strong><code>src/</code>·<code>tests/</code>가 저장소에 생기기 전에 이미 0</strong>이었다
+        (스펙 동결 <code>d8a0058</code> 2026-07-17 → 구현 파일 첫 등장 <code>c866b8f</code> 같은 날).
+        즉 <code>pending &gt; 0</code> 분기는 구현 파일 쓰기가 존재한 전 구간에서 도달 불가였다.</li>
+      <li>당시의 PreToolUse 훅 <code>gate_spec_freeze.py</code>는 <strong>2026-07-27에 삭제</strong>됐다 —
+        저장소 자신의 결정 기록이 <em>"영구 no-op(🟡 0건)이면서 매 Write에 파이썬 프로세스를 붙였다"</em>고
+        적는다. 지금 <code>.claude/hooks/</code>에 그 파일은 없다.</li>
+      <li>기능은 두 층으로 흡수됐고 <strong>둘 다 지금도 실재하며 blocking이다</strong> —
+        전이 가드 <code>no_pending_spec</code>(<code>PLAN→RED</code>)과
+        <code>ci.yml</code>의 <code>스펙 동결 게이트</code> 스텝(<code>exit 1</code>).
+        <strong>다만 둘의 실전 발동도 0회다</strong>(🟡이 계속 0이므로).</li>
+    </ul>
+    <p style="margin-bottom:0">
+      <strong>교훈은 게이트가 나쁘다는 것이 아니라, "값나갔다"를 발동 횟수로 말해야 한다는 것이다.</strong>
+      실제로 하중을 받은 경계면은 이것이 아니라 단계×경로 매트릭스다(§3-8).
+      <span class="ev"><code>ls .claude/hooks/</code>(gate_spec_freeze 없음) ·
+        <code>grep -cE "pending|🟡|requirements" .claude/hooks/gate_phase.py</code> → <strong>0</strong> ·
+        <code>.github/workflows/ci.yml</code> 24–32행(<code>exit 1</code>) ·
+        <code>harness/policy/phase-matrix.json</code> <code>guards.no_pending_spec</code> ·
+        <code>harness/sensor-catalog.md</code> "스펙 동결 (CI 축)" 행</span>
+    </p>
   </div>
 </section>
 
 <!-- ═══════════════════ 3-2. ADR ═══════════════════ -->
 <section id="adr">
-  <h2>3-2. ADR — 아키텍처 결정 기록</h2>
+  <h2>3-2. ADR — 아키텍처 결정 기록 <span class="chip acc">6 → 8</span></h2>
   <p>
-    아키텍처 갈림길 6개를 ADR로 기록하고, <strong>ADR과 모순되는 코드 변경을 금지</strong>했다
+    아키텍처 갈림길을 ADR로 기록하고, <strong>ADR과 모순되는 코드 변경을 금지</strong>했다
     (변경하려면 새 ADR로 대체가 먼저).
   </p>
   <div class="table-wrap"><table>
     <tr><th>번호</th><th>갈림길</th><th>결정</th></tr>
-    <tr><td>ADR-0001</td><td>실시간 전송</td><td>Node.js+TS + Socket.IO (FE: React+Vite), 단일 프로세스</td></tr>
-    <tr><td>ADR-0002</td><td>메시지 영속성</td><td>인메모리 링버퍼 (room당 50개), 재시작 소실 허용</td></tr>
-    <tr><td>ADR-0003</td><td>사용자 식별</td><td>닉네임 + 서버 발급 토큰, 퇴장 유예 30초, 활성 room 정의</td></tr>
-    <tr><td>ADR-0004</td><td>global 채널</td><td>예약된 상설 room (생성·삭제·leave 예외 명문화)</td></tr>
-    <tr><td>ADR-0005</td><td>테스트 전략</td><td>통합 중심 TDD, Vitest, 전송 계층만 대역 허용</td></tr>
-    <tr><td>ADR-0006</td><td>배포</td><td>Docker 단일 컨테이너, 스모크 = 골든 케이스 승격</td></tr>
+    <tr><td class="nowrap">ADR-0001</td><td>실시간 전송</td><td>Node.js+TS + Socket.IO (FE: React+Vite), 단일 프로세스</td></tr>
+    <tr><td class="nowrap">ADR-0002</td><td>메시지 영속성</td><td>인메모리 링버퍼 (room당 50개), 재시작 소실 허용</td></tr>
+    <tr><td class="nowrap">ADR-0003</td><td>사용자 식별</td><td>닉네임 + 서버 발급 세션 토큰, 퇴장 유예 30초, 활성 room 정의</td></tr>
+    <tr><td class="nowrap">ADR-0004</td><td>global 채널</td><td>예약된 상설 room (생성·삭제·leave 예외 명문화)</td></tr>
+    <tr><td class="nowrap">ADR-0005</td><td>테스트 전략</td><td>통합 중심 TDD, Vitest, 전송 계층만 대역 허용</td></tr>
+    <tr><td class="nowrap">ADR-0006</td><td>배포</td><td>Docker 단일 컨테이너, 스모크 = 골든 케이스 승격</td></tr>
+    <tr><td class="nowrap"><strong>ADR-0007</strong></td><td>서버 모듈 경계 <span class="chip acc">2026-07-27</span></td><td><code>createChatServer</code> 822줄 → <code>src/server/chat/</code> 8모듈 + 조립점 51줄. 구속 규칙 4개(인스턴스별 상태 / 단방향 계층 / 순수 코어 — ESLint <code>no-restricted-imports</code>로 기계 강제 / 타이머 소유권). <strong><code>tests/</code> 무수정(0줄)</strong>으로 행동 보존 실증</td></tr>
+    <tr><td class="nowrap"><strong>ADR-0008</strong></td><td>global 참여자 <span class="chip acc">2026-08-05 · PR #40</span></td><td>global 채널은 참여자 목록을 <strong>갖지 않는다</strong>. 서버를 고쳐 넣는 대신 <em>예외를 명문화하고 UI가 그 이유를 표시</em>하는 쪽을 택했다 — 현재 배제가 RQ-12(빈 room 자동 삭제)의 <strong>구조적</strong> 보장이라, 고치면 그 보장이 구조에서 조건문으로 한 칸 내려가기 때문</td></tr>
   </table></div>
+  <p class="ev"><code>ls docs/adr/</code> → <code>0001</code>~<code>0008</code> + <code>0000-template.md</code>, <code>README.md</code> ·
+    각 ADR 제목은 파일 첫 헤딩</p>
   <p>
     특기할 점은 ADR이 <strong>테스트 전략과 구현 범위 판단의 근거</strong>로 실제 소비됐다는
     것이다. 예: RQ-14(메시지 순서 보장)는 ADR-0001의 "단일 프로세스 이벤트 루프"가
-    순서를 자연 보장하므로, 테스트 4건이 <strong>구현 코드 0줄로 즉시 Green</strong>이 됐다 —
-    아키텍처 결정의 부수 효과를 테스트가 증명한 사례.
+    순서를 자연 보장하므로, 테스트 4건이 <strong>구현 코드 0줄로 즉시 Green</strong>이 됐다.
+    반대로 ADR-0008은 <strong>ADR이 "고치지 않는다"를 정당화한 사례</strong>다 —
+    결정이 구현을 대체하기도 하고 억제하기도 한다.
   </p>
 </section>
 
@@ -367,298 +552,1390 @@
     <li>세션이 바뀌어도(컨텍스트가 초기화돼도) 에이전트가 "지금 어디까지 왔고 다음이
       뭔지"를 원장 한 파일로 복원한다 — LLM의 세션 휘발성에 대한 대응.</li>
     <li>RQ별 행에 리뷰에서 나온 <strong>후속 과제(⚠️)까지 병기</strong>해, 머지 후 잊히는
-      minor 지적이 없도록 했다. 6장 "남은 과제"가 이 기록에서 나온다.</li>
+      minor 지적이 없도록 했다. §6이 이 기록에서 나온다.</li>
+    <li><strong>보류표</strong>가 별도로 있다 — <em>"하지 않기로 결정한 것"</em>과
+      <em>"되살릴 조건"</em>을 짝으로 적는다. "나중에 한다"와 구별하는 것이 요점이다.</li>
     <li>하네스 자체의 변경도 별도 원장(<code>docs/harness/changelog.md</code>)으로 추적한다 —
-      워크플로우의 진화·퇴행을 리뷰 가능하게.</li>
+      2026-07-16부터 2026-08-06까지 <strong>127행</strong>. 이 동행은 이제 문화가 아니라
+      전이 가드 <code>changelog_updated</code>가 강제한다.</li>
   </ul>
+  <p class="ev"><code>wc -l docs/progress.md</code> → 216행 ·
+    <code>grep -c '^| 2026' docs/harness/changelog.md</code> → <strong>127</strong> ·
+    <code>phase-matrix.json</code> <code>guards.changelog_updated</code></p>
+
+  <div class="callout">
+    <div class="co-title">원장이 스스로 드러낸 구멍 — <code>DOCS-SHARE</code> <span class="chip warn">🔄 부분 해소</span></div>
+    원장에 <strong>🔄 상태로 아직 열려 있는 행</strong>이 하나 있다. 팀 공유용 정리 문서가
+    저장소에 <strong>합법적으로 커밋될 경로가 없다</strong>는 것이다.
+    단계 모델의 <code>docs</code> 관할이 좁아 일반 프로젝트 문서가 살 자리가 없었고,
+    <strong>리뷰어 5명이 각각 지적하고도 아무도 처리하지 못했다.</strong>
+    원인이 규율이 아니라 구조라는 것을 원장 자신이 적고 있다 — 이 보고서가 어떤 신선도
+    센서에도 등재되지 못한 것과 <strong>같은 종의 구멍</strong>이다.
+    <strong>2026-08-06에 절반이 닫혔다</strong>: <code>policy-lint</code> P14가 신설되고
+    이 보고서가 <code>docs/harness/</code> 아래로 옮겨져 <code>HARNESS</code> 단계에서
+    커밋 가능해졌다(§3-8). <strong>남은 절반은 등재다</strong> — 관할이 생겨도
+    <code>doc-map</code>에 올리지 않으면 센서는 여전히 보지 않는다(§B 말미).
+    <span class="ev"><code>docs/progress.md</code> <code>DOCS-SHARE</code>·<code>DOCS-JURISDICTION</code> 행 ·
+      <code>harness/reports/2026-W32.md</code> §5 · <code>docs/harness/changelog.md</code> 2026-08-06 P14 행</span>
+  </div>
 </section>
 
-<!-- ═══════════════════ 3-4. TDD 파이프라인 ═══════════════════ -->
+<!-- ═══════════════════ 3-4. 단계 상태 머신 ═══════════════════ -->
+<section id="phases">
+  <h2>3-4. 9단계 상태 머신 — 단계가 쓰기 경계를 정한다 <span class="chip acc">v1에 통째로 없던 절</span></h2>
+  <p>
+    2026-07-27 이후 이 저장소에서 <em>"지금 무엇을 쓸 수 있는가"</em>를 정하는 것은
+    <code>harness/policy/phase-matrix.json</code>이고, PreToolUse 훅 <code>gate_phase</code>가
+    <strong>경로 × 단계</strong>로 쓰기를 거부한다. 상태의 <strong>유일한 writer</strong>는
+    <code>harness/phase.py</code>이고, <code>enter &lt;PHASE&gt;</code> 전이마다 가드가 실행된다.
+  </p>
+  <p>
+    프레임을 한 줄로 하면 이렇다 — <strong>v1이 "규칙"이라 부른 것들이 지금은 "쓸 수 없음"이다.</strong>
+    "테스트를 고쳐서 통과시키지 마라"는 부탁이 아니라 <code>GREEN</code>의
+    <code>write_deny</code>에 <code>tests/**</code>가 있는 것이고, "평가 중에 자기 정답지를
+    고치지 마라"는 <code>evals/golden/**</code>이 <code>SPEC</code>에서만 열리는 것이다.
+  </p>
+
+  <div class="table-wrap"><table>
+    <tr><th>단계</th><th>목적</th><th>쓸 수 있는 곳 (<code>write_allow</code>)</th><th>명시적으로 막힌 곳 (<code>write_deny</code>)</th></tr>
+    <tr><td class="nowrap"><strong>IDLE</strong></td><td>무작업. 상태 파일 부재·손상 시의 <strong>fail-closed 기본값</strong></td><td><code>_workspace/**</code> · <code>docs/progress.md</code></td><td>— (그 밖 전부 <code>default_deny</code>)</td></tr>
+    <tr><td class="nowrap"><strong>SPEC</strong></td><td>요구사항·ADR·디자인·<strong>골든 정답</strong>. 코드는 만들지 않는다</td><td><code>specs/**</code> · <code>docs/adr/**</code> · <code>DESIGN.md</code> · <code>evals/golden/**</code> · <code>docs/progress.md</code> · <code>_workspace/**</code></td><td><code>src/**</code> · <code>tests/**</code></td></tr>
+    <tr><td class="nowrap"><strong>PLAN</strong></td><td>탐색·계획. 원장 기입</td><td><code>_workspace/**</code> · <code>docs/progress.md</code></td><td><code>src/**</code> · <code>tests/**</code> · <code>specs/**</code> · <code>docs/adr/**</code></td></tr>
+    <tr><td class="nowrap"><strong>RED</strong></td><td>실패하는 테스트만 만든다</td><td><code>tests/**</code> · <code>_workspace/**</code> · <code>docs/progress.md</code></td><td><strong><code>src/**</code></strong> · <code>specs/**</code> · <code>evals/golden/**</code></td></tr>
+    <tr><td class="nowrap"><strong>GREEN</strong></td><td>테스트를 통과시키는 최소 구현 + 리팩토링</td><td><code>src/**</code> · <code>_workspace/**</code> · <code>docs/progress.md</code></td><td><strong><code>tests/**</code></strong> · <code>specs/**</code> · <code>evals/golden/**</code></td></tr>
+    <tr><td class="nowrap"><strong>EVAL</strong></td><td>독립 평가 보고서 작성. 코드를 고치지 않는다</td><td><code>_workspace/**</code> <em>만</em></td><td><code>src</code>·<code>tests</code>·<code>specs</code>·<code>adr</code>·<code>golden</code>·<code>.claude</code>·<code>harness</code>·<code>scripts</code></td></tr>
+    <tr><td class="nowrap"><strong>REVIEW</strong></td><td>독립 리뷰 보고서 작성. 코드를 고치지 않는다</td><td><code>_workspace/**</code> <em>만</em></td><td>EVAL과 동일</td></tr>
+    <tr><td class="nowrap"><strong>HARNESS</strong></td><td>하네스 변경 전용 — <strong>기능 코드가 섞이는 것이 물리적으로 불가능</strong></td><td><code>.claude/**</code> · <code>harness/**</code> · <code>scripts/**</code> · <code>.github/**</code> · <code>docs/harness/**</code> · <code>evals/results/**</code> · <code>CLAUDE.md</code> 등</td><td><strong><code>src/**</code> · <code>tests/**</code></strong> · <code>specs/**</code></td></tr>
+    <tr><td class="nowrap"><strong>RELEASE</strong></td><td>머지·배포. 원장과 changelog를 닫는다</td><td><code>docs/progress.md</code> · <code>docs/harness/changelog.md</code> · <code>_workspace/**</code></td><td><code>src/**</code> · <code>tests/**</code> · <code>specs/**</code></td></tr>
+  </table></div>
+  <p class="ev"><code>harness/policy/phase-matrix.json</code> <code>phases</code> 객체 전문.
+    사람용 표는 <code>harness/policy/README.md</code>(<code>policy-lint --print</code>가 생성 — 손으로 고치지 않는다)</p>
+
+  <h3><code>HARNESS</code> 단계가 이 설계의 핵심이다</h3>
+  <p>
+    v1은 <em>"하네스 변경은 별도 원장으로 추적한다"</em>고 산문으로 적었다.
+    지금 그것은 <strong>구조</strong>다 — <code>HARNESS</code> 단계에서는
+    <code>src/**</code>·<code>tests/**</code> 쓰기가 거부되므로
+    "하네스 PR에 기능 코드가 슬쩍 섞이는" 일이 일어날 수 없다.
+  </p>
+  <div class="callout warn">
+    <div class="co-title">이 경계면이 하중을 받았다는 증거 — 다만 <strong>"차단"이 아니라 "경고"였다</strong></div>
+    <p>
+      <code>HARNESS</code> 단계에서 <code>src/**</code> 쓰기가 시도된 기록이
+      <strong>15건</strong> 있다. 그런데 <strong>15건 전부 <code>warn_only: true</code>이고
+      전부 2026-07-27 하루에 몰려 있다</strong> — 그날 <code>HARNESS</code>는 아직
+      <code>enforce.warn_only</code> 목록에 있었고, 같은 날 그 목록에서 빠졌다.
+      즉 <strong>이 15건은 막힌 것이 아니라 경고로 통과한 것이다.</strong>
+    </p>
+    <p style="margin-bottom:0">
+      <code>HARNESS</code>가 차단으로 전환된 뒤 같은 형상의 시도는
+      <strong>0건</strong>이다. 그것을 "게이트가 행동을 바꿨다"고 읽고 싶지만
+      <strong>표본 하나로는 그 인과를 말할 수 없다</strong>(그 뒤 하네스 작업의 성격도 달라졌다).
+      말할 수 있는 것은 두 가지뿐이다 — <strong>경계면은 하중을 받았고, 그 하중은 전환 전에 왔다.</strong>
+      실제 거부 17건의 구성은 §3-8에 따로 적는다.
+      <span class="ev"><code>.harness/logs/tools.jsonl</code> <code>gate_block</code> 중
+        <code>pattern="src/**"</code> 15건 전수 파싱(<code>warn_only</code> 전부 <code>true</code>,
+        <code>ts</code> 범위 2026-07-27T01:52Z ~ 08:51Z) ·
+        <code>git show aa91071:harness/policy/phase-matrix.json</code>의
+        <code>enforce.warn_only</code>에 <code>HARNESS</code> 있음 → 같은 날
+        <code>2bcaa28</code>에서 빠짐 · <strong>이 로그는 gitignore — 이 머신 전용이다</strong></span>
+    </p>
+  </div>
+
+  <h3>유예(<code>warn_only</code>)와 <code>force</code> — 게이트를 죽이지 않는 장치</h3>
+  <p>
+    <code>SPEC</code>·<code>PLAN</code>·<code>RELEASE</code>·<code>IDLE</code>은
+    <code>enforce.warn_only</code>에 있어 차단 대신 stderr 경고만 낸다.
+    매트릭스 자신이 그 이유를 적는다 — <em>"게이트의 첫 주가 가장 위험하므로(force 습관화)
+    RED/GREEN/EVAL/REVIEW부터 켠다. force 비율이 5%를 넘으면 에이전트가 아니라
+    이 매트릭스가 틀렸다는 신호다."</em>
+  </p>
+  <p>
+    <strong>실측 <code>force</code> 비율은 1 / 255 = 0.4%</strong>다. 5% 기준의 12분의 1이고,
+    그 1건은 사유가 <code>phase.jsonl</code>에 박제돼 있으며 <code>permissions.ask</code>가
+    사람 승인을 거치게 한다.
+    <span class="ev"><code>.harness/state/phase.jsonl</code> 전 레코드를 파싱해
+      <code>forced === true</code>를 셈 → 1 / 255 ·
+      <code>node scripts/metrics.mjs</code> 헤더도 같은 값을 낸다.
+      주간 리포트 W32는 같은 축을 <strong>1/229</strong>로 적었다 — 그 뒤 전이가 26회 늘었을 뿐 분자는 그대로다</span></p>
+  <p>
+    다만 정직하게 적을 것이 하나 있다. <strong>그 <code>force</code> 1건의 사유문에 거짓이 하나 들어 있었다</strong> —
+    존재하지 않는 우회로를 <em>"원칙상 거절했다"</em>고 자찬한 문장이다(파이프라인 뒤
+    <code>$?</code>로 <code>tail</code>의 종료 코드를 읽은 결과). 평가자가 잡았고 리뷰어가
+    <em>"감사 기록에서 최악의 거짓은 작성자의 신뢰도를 제조하는 거짓"</em>이라 판정했다.
+    <code>force</code> 자체의 정당성은 독립 확인됐지만 <strong>곁가지 주장은 거짓이었고 반복 대장
+    R11의 7회차로 등재됐다.</strong>
+    <span class="ev"><code>docs/progress.md</code> 보류표 "force 사유문 정정 (2026-08-03)" ·
+      <code>harness/recurrence.md</code> R11</span>
+  </p>
+</section>
+
+<!-- ═══════════════════ 3-5. 전이 가드 ═══════════════════ -->
+<section id="guards">
+  <h2>3-5. 전이 가드 11종 — 합법 간선도 산출물이 없으면 열리지 않는다 <span class="chip acc">v1에 없던 절</span></h2>
+  <p>
+    매트릭스에는 <strong>간선 16개</strong>가 정의돼 있고, 그중 다음 단계로 <em>전진</em>하는
+    간선에는 가드가 붙는다. 가드의 역할은 하나다 — <strong>직전 단계가 실제로 만들었어야 할
+    산출물을 요구</strong>한다. v1이 "에이전트에게 지시하는 규칙"으로 서술했던 것들
+    (테스트 커밋 선행 · 완료 주장에 실행 증거 · reviewer APPROVE가 머지 필요조건 ·
+    changelog 기록 의무)이 전부 여기로 옮겨왔다.
+  </p>
+
+  <div class="table-wrap"><table>
+    <tr><th>가드</th><th>어느 간선</th><th>무엇을 요구하는가</th><th>종류</th></tr>
+    <tr><td class="nowrap"><code>no_pending_spec</code></td><td><code>SPEC→PLAN</code> · <code>PLAN→RED</code></td><td><code>requirements.md</code>에 🟡 PENDING이 0건</td><td>grep</td></tr>
+    <tr><td class="nowrap"><code>session_declared</code></td><td><code>PLAN→RED</code></td><td><code>session.json</code>에 <code>task.rq</code>·<code>goal</code>·<code>acceptance</code>. <em>goal은 '무엇'이 아니라 '왜'를 적는다 — 무엇을 했는지는 git이 이미 안다</em></td><td>상태 필드</td></tr>
+    <tr><td class="nowrap"><code>tree_clean</code></td><td><code>PLAN→RED</code></td><td><code>src/**</code>·<code>tests/**</code>에 커밋되지 않은 변경이 없음 — Red 증거가 <em>이 단계에서</em> 만들어졌음의 증명</td><td>git</td></tr>
+    <tr><td class="nowrap"><code>tests_committed</code></td><td><code>RED→GREEN</code></td><td>브랜치에 <code>tests/**</code> 커밋 ≥ 1. <strong>M3(테스트 선행률)이 이 전이에서 측정된다</strong></td><td>git</td></tr>
+    <tr><td class="nowrap"><code>red_evidence</code></td><td><code>RED→GREEN</code></td><td><em>정당한</em> Red — (a) 이름에 해당 RQ를 포함한 테스트가 1건 이상 FAIL (b) tsc 오류가 <code>TS2307/TS2305</code>(미구현 모듈 임포트)에만 국한. <strong>테스트 파일 자체의 타입 오류는 '깨진 테스트'로 분류해 거부</strong></td><td>실행</td></tr>
+    <tr><td class="nowrap"><code>check_full_green</code></td><td><code>GREEN→EVAL</code></td><td><code>check.mjs</code> 전체(lint + tsc + vitest) exit 0</td><td>실행</td></tr>
+    <tr><td class="nowrap"><code>golden_coverage</code></td><td><code>GREEN→EVAL</code></td><td>그 RQ에 매핑된 <code>GA-*</code> 골든 중 테스트로 구현되지 않은 케이스가 없음. <em>"사양 대조 없는 테스트 통과는 완료가 아니다"</em>의 집행 지점</td><td>실행</td></tr>
+    <tr><td class="nowrap"><code>evaluator_pass</code></td><td><code>EVAL→REVIEW</code></td><td>평가 보고서의 <strong>마지막</strong> 판정 줄이 <code>판정: PASS</code>이고, 그 뒤로 <code>src/**</code>가 변경되지 않았을 것</td><td>파일 내용</td></tr>
+    <tr><td class="nowrap"><code>reviewer_approve</code></td><td><code>REVIEW→RELEASE</code></td><td>리뷰 보고서의 마지막 판정 줄이 <code>판정: APPROVE</code></td><td>파일 내용</td></tr>
+    <tr><td class="nowrap"><code>track_b_passing</code></td><td><code>HARNESS→REVIEW</code></td><td>트랙 B 회귀 평가 아티팩트가 존재하고 통과. <em>"평가셋 없는 하네스 튜닝은 안티패턴"</em></td><td>실행</td></tr>
+    <tr><td class="nowrap"><code>changelog_updated</code></td><td><code>HARNESS→REVIEW</code></td><td>이 브랜치에서 <code>docs/harness/changelog.md</code>가 변경됐을 것</td><td>git</td></tr>
+  </table></div>
+  <p class="ev"><code>harness/policy/phase-matrix.json</code> <code>guards</code> 객체 — 정확히 11개 키</p>
+
+  <div class="callout warn">
+    <div class="co-title">가드 둘이 <strong>fail-open이었다</strong> — 그리고 "닫았다"고 적은 뒤에도 절반만 닫혀 있었다</div>
+    <p>
+      <code>evaluator_pass</code>·<code>reviewer_approve</code>는 원래
+      <strong>파일 전체</strong>에서 <code>판정: PASS</code>를 찾았다. 그런데 평가 보고서는
+      회차를 append하는 규약이라, <strong>856행의 옛 <code>PASS</code>가 1239행의 최신
+      <code>FAIL</code>을 덮었다</strong> — 즉 <strong>FAIL 보고서가 전이를 열어 줬다.</strong>
+      <code>latest_of</code>(판정 줄 중 마지막만 본다)로 2026-08-03에 닫았다.
+    </p>
+    <p style="margin-bottom:0">
+      <strong>그리고 그 처방이 절반만 닫혀 있었다.</strong> 판정 줄 정의가 <code>\S+$</code>
+      (토큰 하나짜리 줄)라서, 마지막 회차가 <code>판정: FAIL — D1 회귀</code>처럼 꾸밈을 달면
+      그 줄이 판정으로 세어지지 않고 <strong>앞의 맨몸 옛 <code>PASS</code></strong>가 다시 이겼다.
+      형식을 맨몸으로 쓰라고 강제받는 쪽은 <code>PASS</code>뿐이라 —
+      <strong>FAIL을 쓰는 평가자의 자연스러운 작문이 곧 우회였다.</strong>
+      2026-08-04에 정의를 <code>.*$</code>로 넓혀 fail-closed로 마감했다(음성 시험 16건,
+      <code>phase.py self-test</code> 8 → 25건).
+      <span class="ev"><code>phase-matrix.json</code> <code>guards.evaluator_pass._latest_of</code> 주석 전문 ·
+        <code>harness/recurrence.md</code> R15 · <code>docs/progress.md</code> <code>HARNESS-GATES</code> 행</span>
+    </p>
+  </div>
+
+  <h3>전이 그래프가 아직 못 덮는 형상 — 미해소</h3>
+  <p>
+    게이트가 <em>"새 기능을 TDD로 만든다"</em>는 한 가지 형상만 전제한다는 것이
+    보류표에 등재돼 있다. <strong>결함 수정 · 회귀 잠금 · 스펙 정정은 그 형상이 아니다.</strong>
+  </p>
+  <ul>
+    <li><strong>① 구현 완료 후 골든 <code>status</code>를 올릴 경로가 없다</strong> —
+      <code>evals/golden/**</code>은 <code>SPEC</code>에서만 열리는데
+      <code>SPEC</code>에서 나가는 길은 <code>red_evidence</code>를 지난다.</li>
+    <li><strong>③ 회귀 잠금 전용 라운드는 완주 불가</strong> — <code>red_evidence</code>가
+      실패 테스트를 요구하는데 결함이 이미 닫혀 있으면 원리적으로 만들 수 없다.
+      <strong>유일한 <code>force</code> 1건이 정확히 여기서 났다.</strong></li>
+    <li><strong>④ <code>HARNESS→IDLE</code>이 가드 0이라 우회가 된다</strong> —
+      하네스를 고친 뒤 <code>IDLE</code>로 빠지면 트랙 B 없이 다른 경로로 갈 수 있다.
+      실제로 한 번 그렇게 했고, <em>"절차적으로는 깨끗했지만 가드가 그것을 보장한 것이 아니라
+      우연히 정당했을 뿐"</em>이라고 원장이 적는다.</li>
+  </ul>
+  <p class="ev"><code>docs/progress.md</code> 보류표 "전이 그래프가 '새 기능 TDD' 형상만 전제한다 — 구멍 3종" · "<code>HARNESS→IDLE</code>이 가드 0" 행</p>
+</section>
+
+<!-- ═══════════════════ 3-6. TDD 파이프라인 ═══════════════════ -->
 <section id="tdd">
-  <h2>3-4. TDD 3-세션 파이프라인 (tdd-workflow 스킬)</h2>
+  <h2>3-6. TDD 3-세션 파이프라인 · 에이전트 4 · 스킬 5</h2>
   <p>
     RQ 1건을 <strong>서로 격리된 에이전트 세션 3개</strong>가 릴레이로 구현한다.
-    데이터는 <code>_workspace/{RQ-ID}/</code> 파일로만 전달하고, 중간 산출물은 감사
-    추적을 위해 보존한다.
+    데이터는 <code>_workspace/{RQ-ID}/</code> 파일로만 전달하고, 각 경계에서
+    <code>harness/phase.py</code> 전이를 밟는다.
   </p>
   <div class="table-wrap"><table>
     <tr><th>단계</th><th>에이전트</th><th>모델</th><th>역할과 제약</th></tr>
-    <tr><td>Red</td><td>test-writer</td><td>Sonnet</td><td>RQ의 EARS 문장 + 골든 케이스만 보고 실패 테스트 작성. <strong>구현 코드 작성 금지</strong>. 테스트 커밋을 구현보다 선행시킨다</td></tr>
-    <tr><td>Green</td><td>coder</td><td>Sonnet</td><td>실패 테스트를 통과시키는 최소 구현. <strong>테스트 파일 수정 금지</strong> — 모순 발견 시 수정이 아니라 보고</td></tr>
-    <tr><td>평가</td><td>evaluator</td><td>Opus</td><td>구현 세션의 대화·의도 설명 없이 <strong>파일과 코드만 보고</strong> 전체 테스트 재실행·골든 커버리지 대조·테스트 약화 감지 → PASS/FAIL</td></tr>
+    <tr><td>Red</td><td><code>test-writer</code></td><td>Sonnet</td><td>RQ의 EARS 문장 + 골든 케이스만 보고 실패 테스트 작성. <strong>구현 코드 작성 금지</strong>(<code>RED</code>가 <code>src/**</code>를 막는다)</td></tr>
+    <tr><td>Green</td><td><code>coder</code></td><td>Sonnet</td><td>실패 테스트를 통과시키는 최소 구현. <strong>테스트 파일 수정 금지</strong>(<code>GREEN</code>이 <code>tests/**</code>를 막는다) — 모순 발견 시 수정이 아니라 보고</td></tr>
+    <tr><td>평가</td><td><code>evaluator</code></td><td><strong>Opus</strong></td><td>구현 세션의 대화·의도 설명 없이 <strong>파일과 코드만 보고</strong> 전체 테스트 재실행·골든 커버리지 대조·테스트 약화 감지 → PASS/FAIL</td></tr>
+    <tr><td>리뷰</td><td><code>reviewer</code></td><td><strong>Opus</strong></td><td>diff만 보고 ADR·CLAUDE.md 위반, 스코프 크리프, 보안, 과잉 설계 → APPROVE / REQUEST_CHANGES</td></tr>
   </table></div>
+  <p class="ev"><code>ls .claude/agents/</code> → 4개 · 각 파일 frontmatter의 <code>model:</code> 필드</p>
+
+  <h3>스킬 5종 — 어느 문을 통과하는가</h3>
+  <div class="table-wrap"><table>
+    <tr><th>스킬</th><th>언제</th><th>무엇을 하는가</th></tr>
+    <tr><td class="nowrap"><code>tdd-workflow</code></td><td>RQ 구현 착수</td><td>Red → Green → 독립 평가를 각각 별도 세션으로 오케스트레이션하고 각 경계에서 전이를 밟는다</td></tr>
+    <tr><td class="nowrap"><code>review-gate</code></td><td>머지 전</td><td>reviewer를 격리 세션으로 띄워 <code>REVIEW→RELEASE</code>를 여는 APPROVE를 받는다</td></tr>
+    <tr><td class="nowrap"><code>harness-audit</code> <span class="chip acc">신설</span></td><td>하네스 변경 <strong>착수 전</strong></td><td><code>doc-freshness --full</code>·<code>policy-lint</code>·<code>hooks-selftest</code>·<code>eval-b</code>·센서 카탈로그 대조를 일괄 실행하고 <strong>변경 제안을 정확히 1건만</strong> 낸다</td></tr>
+    <tr><td class="nowrap"><code>retro-metrics</code> <span class="chip acc">신설</span></td><td>주간</td><td>M1~M8을 실측해 <code>harness/reports/</code>에 기록. <strong>게이트가 아니라 학습이다 — 통과·차단 판정을 내리지 않는다</strong></td></tr>
+    <tr><td class="nowrap"><code>checkpoint-resume</code> <span class="chip acc">신설</span></td><td>세션 시작·재개·저장</td><td>상태 계약의 읽기·쓰기. <code>.harness/state/</code>의 유일한 writer가 <code>phase.py</code>이므로 파일을 직접 편집하지 않는다</td></tr>
+  </table></div>
+  <p class="ev"><code>ls .claude/skills/</code> → 5개 · 각 <code>SKILL.md</code> frontmatter의 <code>description</code></p>
 
   <h3>왜 세션을 쪼개는가 — 격리가 곧 가치</h3>
   <ul>
     <li>테스트 작성자가 구현을 보면 <strong>구현에 맞춘 테스트</strong>가 된다 → Red를 분리.</li>
     <li>평가자가 구현 세션의 맥락(작성자의 자기 설명)을 공유하면 <strong>자기 채점</strong>이
       된다 → 평가를 분리하고, 프롬프트에 RQ-ID와 폴더 경로만 전달.</li>
-    <li>에이전트 간 자유 통신(팀 모드)은 이 격리를 깨므로 의도적으로 쓰지 않았다 —
-      구조가 곧 정책이다.</li>
-  </ul>
-  <ul>
+    <li>에이전트 간 자유 통신(팀 모드)은 이 격리를 깨므로 <strong>Red→Green→Eval 파이프라인에
+      의도적으로 쓰지 않는다</strong> — 가치가 격리다.</li>
     <li><strong>판정 모델 상향</strong>: 생성(Sonnet)보다 판정(evaluator·reviewer = Opus)에
       더 강한 모델을 배치했다. 파이프라인의 신뢰도 상한은 판정 품질이 정한다는 판단.</li>
-    <li><strong>실패 시 프로토콜</strong>: FAIL이면 보고서를 입력으로 coder 1회 재호출,
-      2연속 FAIL이면 자동 반복을 멈추고 사람에게 보고. 테스트 약화로 우회하는 것은
-      evaluator의 검사 항목이자 금지 규칙.</li>
   </ul>
+
+  <h3>토폴로지 규칙 — 내려갈 때만 근거를 적는다</h3>
+  <p>
+    <code>CLAUDE.md</code>가 명문화한 규칙이다. 기본값은 <strong>단일 세션</strong>이고,
+    한 칸 내려갈 때마다 사유를 남긴다:
+    단일 세션 → <strong>스크립트</strong>(같은 절차 2회 이상 수동 반복 + 출력이 결정론적) →
+    <strong>스킬</strong>(다단계 + 분기·게이트, 컨텍스트 격리 불필요) →
+    <strong>서브 에이전트</strong>((a)격리 (b)병렬 (c)컨텍스트 예산 중 최소 하나가 참일 때만).
+    <strong>병렬로 같은 트리를 쓰는 에이전트는 <code>isolation: "worktree"</code>로 띄운다</strong> —
+    이 규칙이 지켜지지 않아 커밋 오염이 3회 났다(R3).
+  </p>
 </section>
 
-<!-- ═══════════════════ 3-5. 리뷰 게이트 ═══════════════════ -->
+<!-- ═══════════════════ 3-7. 리뷰 게이트 ═══════════════════ -->
 <section id="review">
-  <h2>3-5. 독립 리뷰 게이트 (review-gate 스킬)</h2>
+  <h2>3-7. 독립 리뷰 게이트 (review-gate 스킬)</h2>
   <p>
     1인 프로젝트에서는 사람 리뷰어가 없고, GitHub은 자기 PR을 자기가 승인할 수 없다.
     그래서 <strong>격리 세션의 reviewer 에이전트(Opus) APPROVE를 머지의 필요조건</strong>으로
-    삼았다. CI(결정론적 검사)와 reviewer(추론적 검사)의 이중 게이트이며, main 브랜치
-    보호(status check 필수)가 물리적으로 받친다.
+    삼았다. CI(결정론적 검사)와 reviewer(추론적 검사)의 이중 게이트다.
   </p>
   <ul>
     <li>reviewer에게 diff·관련 RQ/ADR 목록만 주고 <strong>구현 세션의 의도 설명은 주지
       않는다</strong> — 작성자 논리에 오염되지 않은 리뷰가 게이트의 존재 이유.</li>
     <li>검사 관점: 스펙 근거 없는 변경(스코프 크리프), ADR·CLAUDE.md 위반, 보안,
-      과잉 설계. REQUEST_CHANGES 2연속이면 자동 반복을 멈추고 설계 재검토 신호로 취급.</li>
-    <li>실효성 증거: RQ-05 리뷰에서 <strong>잘못된 URL 인코딩에 서버가 크래시하는 결함
-      (B-1, 무인증 원격 DoS)을 blocker로 적발</strong>해 머지 전에 수정됐고, 스펙 개정 PR #11 리뷰는 "활성 room 미정의"(major)를 잡아
-      test-writer가 멈출 상태를 사전에 해소했다.</li>
+      과잉 설계. 보고서는 <code>라벨: drift</code> | <code>없음</code> 고정 형식을 의무화한다
+      (M1의 사람 절반이 이 라벨에 전적으로 의존한다).</li>
   </ul>
-</section>
 
-<!-- ═══════════════════ 3-6. 가드레일 ═══════════════════ -->
-<section id="guardrail">
-  <h2>3-6. 가드레일 — hook·CI·권한으로 강제</h2>
+  <div class="callout warn">
+    <div class="co-title">정확히 말하면 — <strong>GitHub은 이 게이트를 강제하지 않는다</strong></div>
+    <p>
+      브랜치 보호를 직접 조회하면 <code>required_status_checks.contexts = ["gate"]</code>,
+      <code>strict: true</code>, <code>enforce_admins: true</code>,
+      <code>allow_force_pushes: false</code>다. <strong><code>required_pull_request_reviews</code>는 없다</strong> —
+      즉 GitHub이 요구하는 승인 수는 0이고, 물리적으로 받치는 것은
+      <strong>CI 잡 <code>gate</code> 하나</strong>다.
+    </p>
+    <p style="margin-bottom:0">
+      reviewer APPROVE를 강제하는 것은 <strong>로컬 전이 가드 <code>reviewer_approve</code></strong>이고,
+      그것은 <code>REVIEW→RELEASE</code>를 막을 뿐 <code>gh pr merge</code>를 막지 못한다.
+      <strong>규율과 게이트가 겹치는 지점이 아니라 규율만 있는 지점</strong>이라는 것을
+      팀에 전할 때 반드시 함께 적어야 한다.
+      <span class="ev"><code>gh api repos/:owner/:repo/branches/main/protection</code> 응답 전문 ·
+        <code>phase-matrix.json</code> <code>guards.reviewer_approve</code></span>
+    </p>
+  </div>
+
+  <h3>리뷰가 실제로 몇 번 막았나 — REQUEST_CHANGES 기록</h3>
   <p>
-    센서 카탈로그(<code>harness/sensor-catalog.md</code>)는 가드레일을
-    <strong>Guide(행동 전 읽는 규칙) / Sensor(행동 후 관찰·교정)</strong>,
-    <strong>결정론적(Comp) / 추론적(Inf)</strong>으로 분류한 한 장의 지도다.
-    원칙: <em>"반드시"는 hook·CI로 강제하고, "권장"만 문서(Guide)로 남긴다.</em>
+    "리뷰 게이트가 있다"보다 "몇 번 REQUEST_CHANGES를 냈나"가 정보다.
+    원장·changelog에 기록으로 남은 것만 적는다:
   </p>
   <div class="table-wrap"><table>
-    <tr><th>가드레일</th><th>배치 시점</th><th>강제 수단</th></tr>
-    <tr><td>스펙 동결 게이트 — 🟡 미해소 시 구현 차단</td><td>구현 파일 수정 직전 + PR</td><td>PreToolUse hook exit 2 + CI fail</td></tr>
-    <tr><td>골든 정답 수정 승인 — 에이전트가 자기 정답을 쓰지 못하게</td><td><code>evals/golden/**</code> 쓰기 시</td><td>permissions ask 게이트</td></tr>
-    <tr><td>파일 수정 후 빠른 검사 (lint+typecheck, 실측 1.4초)</td><td>수정 직후</td><td>PostToolUse hook → check.sh --fast</td></tr>
-    <tr><td>전체 테스트 + 테스트-코드 동행 검사</td><td>CI, PR 머지 게이트</td><td>ci.yml → vitest run (테스트 ~2초, check.sh 전체 3.2초)</td></tr>
-    <tr><td>독립 평가·독립 리뷰</td><td>구현 직후 / 머지 전</td><td>오케스트레이터 스킬 + 브랜치 보호</td></tr>
-    <tr><td>배포 후 스모크 (골든 GA-01·GA-04 프로덕션 승격)</td><td>main 머지 → 배포 직후</td><td>deploy.yml → smoke.sh</td></tr>
-    <tr><td>트래젝토리 로그 (세션 행동 기록)</td><td>세션 종료</td><td>Stop hook</td></tr>
+    <tr><th>PR / 작업</th><th>회차</th><th>무엇이 blocker였나</th></tr>
+    <tr><td><code>RQ-05</code> 배포 (PR #26)</td><td>1차 REQUEST_CHANGES</td><td><strong>B-1</strong> 잘못된 URL 인코딩에 서버 크래시 = <strong>무인증 원격 DoS</strong>. 구현·평가 세션이 모두 놓쳤다</td></tr>
+    <tr><td><code>harness-l3</code> (PR #31)</td><td><strong>재리뷰 9차까지</strong> — 6차까지 전부 REQUEST_CHANGES</td><td>설계서 표 드리프트 · C2 문서 축 면제 · P11 fail-open 등. <strong>이 반복이 §6의 "종료 조건"을 낳았다</strong></td></tr>
+    <tr><td><code>RQ-13-a</code> (PR #36)</td><td>1차 REQUEST_CHANGES (blocker 2)</td><td>신설 골든 3건을 <strong>전 전송 목</strong>으로 구현해 ADR-0005 위반 — D1 회귀 뮤테이션에도 50/50 초록이었다</td></tr>
+    <tr><td><code>HARNESS-GATES</code> (PR #37)</td><td>1차 REQUEST_CHANGES (blocker 1 · major 4)</td><td><strong>이 PR이 "닫았다"고 세 문서에 적은 fail-open이 절반만 닫혀 있었던 것</strong></td></tr>
+    <tr><td><code>RQ-18-a</code> (PR #39)</td><td>1차 REQUEST_CHANGES (blocker 1 · major 3)</td><td><strong>리뷰어가 평가자 2회를 뒤집었다</strong> — 평가자는 두 번 다 PASS를 냈는데 리뷰어가 <em>이 PR이 만든 회귀</em>(join이 로컬 큐로 옮겨져 message가 추월)를 특정했다</td></tr>
+    <tr><td><code>RQ-15-a</code> (PR #40)</td><td>1차 REQUEST_CHANGES (blocker 1)</td><td><code>ChatApp</code>을 렌더해 참여자 패널을 단언하는 테스트가 <strong>0건</strong>이라 <code>isGlobal</code> 배선이 무방비 — <code>isGlobal→false</code>로 바꿔도 65/65 초록이었다</td></tr>
+    <tr><td><code>HARNESS-JUNCTION</code> (PR #42)</td><td>1차·2차 REQUEST_CHANGES (blocker 3 누계) → 3차 APPROVE</td><td>재리뷰 상한(1회)을 넘겼고 <strong>리뷰어가 그것을 감형에 쓰지 않았다</strong></td></tr>
+    <tr><td><code>DOCS-JURISDICTION</code> (PR #45)</td><td>1차·2차 REQUEST_CHANGES → <strong>3차 APPROVE</strong></td><td>원장·changelog 요약 기준으로 <strong>blocker가 전부 스코프와 절차 위생 축</strong>이었다 — 같은 PR에 팀 공유 핸드북을 얹은 것(그 PR이 바꾸는 값을 그 문서가 재서술한다)과, 관할 배정 조치가 죽은 경로를 만든 것. <strong>설계(P14 자체)는 세 회차 내내 되돌려지지 않고 그대로 머지됐다.</strong> <em>게이트가 설계를 막은 게 아니라 짐 싣는 법을 막았다</em></td></tr>
   </table></div>
-  <h3>운영 규칙 (센서 카탈로그에서)</h3>
-  <ul>
-    <li><strong>왼쪽 배치 원칙</strong>: 센서는 가능한 한 이른 시점(수정 직후 &gt; pre-commit
-      &gt; CI &gt; 리뷰)에 둔다. 피드백 지연이 짧을수록 에이전트의 자기 교정이 싸다.</li>
-    <li><strong>에러 메시지에 고치는 법을 담는다</strong> — 읽는 주체가 사람이 아니라
-      에이전트이기 때문이다.</li>
-    <li><strong>같은 실수 2회 → 센서 또는 Guide 하나 추가</strong> (둘 다는 과잉).
-      실제 운영에선 반복을 기다리지 않고 1회 사고 만에 조치한 사례도 있다: RQ-01
-      파이프라인에서 Red 증거가 vitest 출력만 캡처해 타입 버그를 놓치자, test-writer
-      정의에 <code>tsc --noEmit</code> 증거를 의무화했다 (2026-07-20 changelog).</li>
-  </ul>
+  <p class="ev"><code>docs/progress.md</code> 각 RQ 행 · <code>docs/harness/changelog.md</code>
+    2026-07-27·07-28·08-02·08-03·08-06 행 · <code>evals/golden/track-b-harness.jsonl</code> GB-06 <code>note</code>
+    (<em>"6차까지 전부 REQUEST_CHANGES"</em>) ·
+    <strong>회차 수는 <code>.harness/state/phase.jsonl</code>로 교차 확인했다</strong> —
+    <code>REVIEW→IDLE</code> 되돌림이 REQUEST_CHANGES, <code>REVIEW→RELEASE</code>가 APPROVE다
+    (PR #45 브랜치: 되돌림 2회 → 3회차에 <code>reviewer_approve</code> 통과)</p>
+
+  <div class="callout good">
+    <div class="co-title">가장 값나간 패턴 — <strong>리뷰어가 평가자를 뒤집은 것</strong></div>
+    RQ-18-a에서 평가자는 두 번 PASS를 냈고, 회차 1은 문제의 조치를 <em>"별도 RQ가 스코프
+    규율에 맞다"</em>고까지 적었다. <strong>리뷰어가 그것을 뒤집었다</strong> — 그 조치가
+    이 PR이 만든 회귀(<code>join</code>만 로컬 큐로 옮겨 <code>message</code>가 추월)임을
+    특정했기 때문이다. <strong>두 판정 계층을 둔 값이 여기서 나온다</strong>:
+    평가자는 "테스트가 스펙을 검증하는가"를 보고 리뷰어는 "이 diff가 무엇을 부수는가"를 본다.
+    한 층만 있었으면 회귀가 머지됐다.
+  </div>
 </section>
 
-<!-- ═══════════════════ 3-7. eval ═══════════════════ -->
-<section id="eval">
-  <h2>3-7. 골든 eval 세트 · 메트릭</h2>
-  <h3>두 트랙의 골든 케이스</h3>
-  <ul>
-    <li><strong>트랙 A — 제품 행동</strong> (27케이스): "사용자가 X 하면 Y여야 한다"를
-      JSONL로 정의하고, 각 케이스를 통합 테스트로 구현해 <code>verify</code> 필드로
-      연결한다. 이 중 GA-01·GA-04는 배포 스모크로 <strong>프로덕션 승격</strong>됐다 —
-      골든 케이스가 문서 → 테스트 → 배포 검증까지 재사용되는 구조.</li>
-    <li><strong>트랙 B — 하네스 행동</strong> (5케이스): "coder가 테스트를 약화시키면
-      evaluator가 적발해야 한다" 같은 <strong>워크플로우 자체의 행동</strong>을 rubric으로
-      정의하고 사람이 체크한다. 하네스를 바꿀 때의 회귀 테스트다. 단, 5건 모두 아직
-      정식 실행 기록이 없는 todo 상태 — 절차 정의까지가 현재 지점이다 (6장 참조).</li>
-    <li><strong>정답은 사람이 쓴다</strong>: 에이전트가 자기 정답을 쓰는 순환을
-      permissions(ask 게이트)로 차단. 승격 루프 — 트래젝토리 로그에서 이상했던
-      세션의 입력을 새 케이스로 추가한다. 케이스 수 13 → 32로 성장.</li>
-  </ul>
-  <h3>메트릭 베이스라인 (M1~M7)</h3>
+<!-- ═══════════════════ 3-8. 가드레일 ═══════════════════ -->
+<section id="guardrail">
+  <h2>3-8. 가드레일 — 무엇이 실제로 blocking인가</h2>
   <p>
-    "하네스가 먹혔는가"를 감이 아니라 숫자로 회고하기 위한 지표: 스펙 밖 변경 수(M1),
-    스펙-코드 동행률(M2), 테스트 선행률(M3), time-to-merge(M4), 재작업률(M5),
-    세션당 도구 호출(M6), 골든 케이스 수(M7). 전부 git·CI·로그 등 <strong>기존 산출물에서
-    수집</strong>하며 별도 인프라를 만들지 않았다. M4~M6은 "하네스가 속도를 죽이고 있지
-    않은지"를 감시하는 부작용 지표라는 점이 특징.
+    센서 카탈로그(<code>harness/sensor-catalog.md</code>)는 가드레일을 <strong>3층</strong>으로
+    나눈다 — <strong>Guides</strong>(행동 전 읽는 규칙) · <strong>Boundary</strong>(구조적 통제,
+    "불가능") · <strong>Sensors S1~S4</strong>(행동 후 관찰·교정). 운영 규칙의 우선순위는
+    <strong>구조 &gt; 게이트 &gt; 센서 &gt; Guide</strong> 4단계다.
+    <span class="ev"><code>grep -nE '^#{1,3} ' harness/sensor-catalog.md</code> ·
+      같은 파일 "운영 규칙" 5항</span>
+  </p>
+  <p>
+    아래 표의 <strong>"blocking?" 열은 추측이 아니다</strong> —
+    CI는 <code>.github/workflows/ci.yml</code>에 <code>continue-on-error</code>가
+    <strong>0건</strong>이므로 스텝이 <code>exit ≠ 0</code>을 내면 잡 <code>gate</code>가
+    빨개지고, 그 잡이 브랜치 보호의 유일한 필수 status check다.
+  </p>
+
+  <div class="table-wrap"><table>
+    <tr><th>가드레일</th><th>배치 시점</th><th>강제 수단</th><th>blocking?</th></tr>
+    <tr><td><strong>단계 × 경로 쓰기 경계</strong></td><td>모든 Write/Edit/Bash <em>직전</em></td><td>PreToolUse <code>hook.py gate_phase</code> → <code>gate_phase.py</code> (서브프로세스 0, 예산 ≤150ms)</td><td><span class="chip good">차단</span> 판정 <strong>70건 중 17건 실제 거부</strong></td></tr>
+    <tr><td>Bash 리다이렉트 차단</td><td>같은 훅</td><td><code>tool-risk.json</code> <code>deny_redirect</code> — <code>.harness/state/**</code>·<code>evals/golden/**</code> 등</td><td><span class="chip warn">부분</span> <em>탐지이지 예방이 아니다 — <code>node -e fs.write…</code>는 못 막는다</em></td></tr>
+    <tr><td><strong>전이 가드 11종</strong></td><td>단계 전이 시</td><td><code>harness/phase.py enter</code> — 합법 간선이어도 가드가 거부</td><td><span class="chip good">차단</span> 우회는 <code>force</code>(<code>ask</code> + 박제) 1/255</td></tr>
+    <tr><td>파일 수정 직후 빠른 검사</td><td>수정 직후</td><td>PostToolUse <code>hook.py post_observe</code> → <code>check.mjs --fast</code> = <strong>eslint 단독</strong> (예산 5초, ADR-0005 결정5)</td><td><span class="chip warn">경고</span> 훅은 판정을 내지 않는다</td></tr>
+    <tr><td>전체 검증 (lint + tsc + vitest)</td><td>CI · <code>GREEN→EVAL</code></td><td><code>ci.yml</code> → <code>bash scripts/check.sh</code> → <code>check.mjs</code> · 가드 <code>check_full_green</code></td><td><span class="chip good">차단</span></td></tr>
+    <tr><td>스펙 동결 (CI 축)</td><td>CI</td><td><code>ci.yml</code> 스텝 — <code>grep -cE '^- \*\*RQ-[0-9]+\*\* 🟡'</code> → <code>exit 1</code></td><td><span class="chip good">차단</span> <strong>단 실전 발동 0회</strong></td></tr>
+    <tr><td>정책 린트 <strong>P1~P14</strong></td><td>CI</td><td><code>node scripts/policy-lint.mjs</code></td><td><span class="chip good">차단</span> <strong>P11이 사람의 합리화를 3회 거부했다</strong> · P14는 2026-08-06 신설</td></tr>
+    <tr><td>게이트 음성 시험</td><td>CI</td><td><code>policy-lint --self-test</code> + <code>eval-b --self-test</code> + <code>phase.py self-test</code></td><td><span class="chip good">차단</span></td></tr>
+    <tr><td>훅 자기검사</td><td>CI</td><td><code>node scripts/hooks-selftest.mjs</code> — 게이트가 실제로 allow/deny를 내는지</td><td><span class="chip good">차단</span></td></tr>
+    <tr><td>문서 신선도 C1~C6</td><td>CI</td><td><code>node scripts/doc-freshness.mjs --pr</code> — <strong>이 PR이 만든 낡음만</strong></td><td><span class="chip good">차단</span> <strong>단 <code>doc-map</code>에 등재된 문서만</strong></td></tr>
+    <tr><td>스펙-코드 동행 (M2)</td><td>CI</td><td><code>::warning::</code>만 출력</td><td><span class="chip bad">막지 않는다</span></td></tr>
+    <tr><td>골든 정답 수정 방어</td><td><code>evals/golden/**</code> 쓰기</td><td><strong>단계 매트릭스</strong> — <code>SPEC</code>에서만 열리고 <code>RED·GREEN·EVAL·REVIEW</code>에서 deny. <strong>permissions는 <code>allow</code>다</strong></td><td><span class="chip good">차단</span> 방어가 <strong>권한에서 단계로</strong> 옮겨갔다</td></tr>
+    <tr><td>독립 평가 · 독립 리뷰</td><td>구현 직후 / 머지 전</td><td><code>evaluator_pass</code>·<code>reviewer_approve</code> 가드 (로컬)</td><td><span class="chip warn">로컬만</span> GitHub은 승인 0을 요구한다</td></tr>
+    <tr><td>배포 후 스모크</td><td>main 머지 → 배포</td><td><code>deploy.yml</code> → Docker 빌드 → 기동 → <code>smoke.sh</code> (GA-01·GA-04 프로덕션 승격)</td><td><span class="chip good">배포 실패</span></td></tr>
+    <tr><td>트래젝토리 로그</td><td>세션 종료</td><td>Stop hook <code>log_trajectory</code> + <code>stop_state</code></td><td><span class="chip acc">관측</span></td></tr>
+  </table></div>
+  <p class="ev"><code>.github/workflows/ci.yml</code> 전문 (<code>grep -c continue-on-error</code> → <strong>0</strong>, 블로킹 스텝 <strong>6개</strong> + 비블로킹 경고 1개) ·
+    <code>.claude/settings.json</code> <code>hooks</code>·<code>permissions</code> ·
+    <code>.github/workflows/deploy.yml</code> ·
+    <code>.harness/logs/tools.jsonl</code> 파싱(<code>gate_block</code> 70 / <code>warn_only !== true</code> 17)</p>
+
+  <div class="callout warn">
+    <div class="co-title">실제 거부 17건은 <strong>무엇이었나</strong> — 게이트를 실제보다 강해 보이게 적지 않기 위해</div>
+    <p>
+      로그 전수를 뜯으면 17건의 구성은 이렇다:
+      <strong>셸 리다이렉트 차단 11건</strong>(<code>tool-risk.json</code>의
+      <code>deny_redirect</code> — 상태 파일·정책 파일·골든 정답지로 <code>&gt;</code>를 쏘는 시도) +
+      <strong>도구 층 <code>write_deny</code> 6건</strong>(<code>REVIEW</code>·<code>HARNESS</code>에서
+      <code>Edit</code>/<code>Write</code>/<code>MultiEdit</code>가 거부됨).
+      <strong><code>src/**</code> 쓰기가 실제로 거부된 기록은 0건이다</strong>(§3-4).
+    </p>
+    <p style="margin-bottom:0">
+      즉 이 저장소에서 하중을 실제로 받아 <em>거부까지 간</em> 경계면은
+      <strong>"에이전트가 상태·정책·정답지를 직접 고치려는 시도"</strong>였지
+      "구현 코드가 하네스 PR에 섞이는 것"이 아니었다.
+      후자는 <strong>경고 구간에만 시도가 있었다.</strong>
+      <span class="ev"><code>.harness/logs/tools.jsonl</code> <code>warn_only !== true</code> 17건
+        전수 나열(<code>tool</code>·<code>phase</code>·<code>pattern</code>) ·
+        <code>harness/policy/tool-risk.json</code> <code>deny_redirect</code></span>
+    </p>
+  </div>
+
+  <div class="callout good">
+    <div class="co-title"><span class="chip acc">2026-08-06 신설</span> P14 — <strong>정책 파일 둘이 서로 반대를 말하고 있었다</strong></div>
+    <p>
+      <code>doc-map</code>은 <em>"이 문서는 관리 대상이다"</em>라고 선언하고
+      <code>phase-matrix</code>는 <em>"이 경로는 어느 단계에서도 못 쓴다"</em>고 말했다.
+      실측하니 그런 문서가 <strong>3건</strong>이었다 — 저장소 정문
+      (<code>README.md</code>)까지 포함해서다.
+      <strong><code>doc-freshness</code> C2는 갱신을 <em>요구</em>하고
+      <code>gate_phase</code>는 <em>거부</em>한다</strong> — 남는 통로가 <code>force</code>뿐이고
+      <code>force</code>는 주간 리포트 최상단에 박제된다.
+      <strong>정직하게 일한 대가로 지표가 나빠지는 배치였다.</strong>
+    </p>
+    <p style="margin-bottom:0">
+      여태 안 터진 이유가 이 절의 요점이다 — <strong>그 셋의 수정이 전부
+      <code>warn_only</code> 단계에서 일어나 경고로 지나갔기 때문</strong>이다.
+      모순이 <strong>파일 둘 사이</strong>에 있어 한쪽만 고치면 재발하므로 게이트로 올렸다.
+      <strong>이식할 교훈은 "정책 파일이 둘 이상이면 그들 사이의 모순을 검사하는 자리가 필요하다"</strong>이다 —
+      개별 파일은 각각 완벽하게 정합할 수 있다.
+      <span class="ev"><code>scripts/policy-lint.mjs</code> P14 +
+        순수 함수 <code>judgeDocJurisdiction</code> + 음성 시험 13건 ·
+        <code>docs/harness/changelog.md</code> 2026-08-06 P14 행 ·
+        <code>node scripts/policy-lint.mjs --self-test</code> → 78건 통과</span>
+    </p>
+  </div>
+
+  <div class="callout bad">
+    <div class="co-title"><span class="chip bad">v1 정정</span> <code>--fast</code>는 typecheck를 하지 않는다 — 그리고 그 공백이 실제 사고를 낳았다</div>
+    <p>
+      v1은 <em>"파일 수정 후 빠른 검사(lint+typecheck, 실측 1.4초)"</em>라고 적었다.
+      <strong>당시에도 지금도 <code>--fast</code>는 eslint만 돈다.</strong>
+      스크립트 자신의 헤더가 <em>"변경·미추적 소스 파일만 <strong>lint</strong>"</em>라고 적는다.
+    </p>
+    <p style="margin-bottom:0">
+      중요한 것은 이 오기가 자기 문서 안에서 반증됐다는 점이다. v1은 세 페이지 뒤에서
+      <em>"Red 증거가 vitest 출력만 캡처해 타입 버그를 놓치자 <code>tsc --noEmit</code> 증거를
+      의무화했다"</em>는 사고를 자랑스럽게 인용한다 — <strong>그 사고의 구조적 원인이 바로
+      빠른 경로에 typecheck가 없다는 것이다.</strong> 지금 typecheck는 두 자리에만 있다:
+      전체 검증(<code>check.mjs</code> 인자 없음)과 <strong>전이 가드
+      <code>red_evidence</code></strong>. 즉 공백이 메워진 게 아니라 <strong>왼쪽에서
+      전이 시점으로 옮겨졌다.</strong>
+      <span class="ev"><code>scripts/check.mjs</code> 헤더 8행 · <code>modeFast()</code> 144–171행
+        (<code>eslint --cache --no-warn-ignored</code> 단 하나) ·
+        <code>docs/harness/changelog.md</code> 2026-07-20 행</span>
+    </p>
+  </div>
+
+  <h3>왼쪽 배치 원칙 — 그리고 새로 생긴 칸</h3>
+  <p>
+    센서는 가능한 한 이른 시점에 둔다:
+    <strong>수정 직후 &gt; 전이 &gt; pre-commit &gt; CI &gt; 리뷰.</strong>
+    v1은 <em>"수정 직후 &gt; pre-commit &gt; CI &gt; 리뷰"</em>로 적었는데,
+    <strong>가운데 "전이"가 새로 생겼다</strong> — 그리고 위 typecheck 사례가 보여주듯
+    그 칸이 실제로 일을 받아 갔다.
+  </p>
+  <p>
+    나머지 두 운영 규칙도 그대로 살아 있다 —
+    <strong>에러 메시지에 고치는 법을 담는다</strong>(읽는 주체가 사람이 아니라 에이전트이기 때문),
+    <strong>같은 실수 2회 → 센서 또는 Guide 하나</strong>(둘 다는 과잉).
+    후자는 이제 집행 기구가 있다(§3-10).
+    <span class="ev"><code>harness/sensor-catalog.md</code> "운영 규칙" 1·2·3항</span>
+  </p>
+</section>
+
+<!-- ═══════════════════ 3-9. eval ═══════════════════ -->
+<section id="eval">
+  <h2>3-9. 골든 eval 세트 · 지표 M1~M8</h2>
+  <h3>두 트랙 — 다른 것을 잰다</h3>
+  <div class="table-wrap"><table>
+    <tr><th></th><th>트랙 A (<code>track-a-product.jsonl</code>)</th><th>트랙 B (<code>track-b-harness.jsonl</code>)</th></tr>
+    <tr><td class="nowrap">대상</td><td>제품 행동</td><td>하네스·에이전트 행동</td></tr>
+    <tr><td class="nowrap">케이스</td><td><strong>36건</strong> (GA-01 ~ GA-36)</td><td><strong>7건</strong> (GB-01 ~ GB-07)</td></tr>
+    <tr><td class="nowrap">판정</td><td>통합 테스트 (<code>verify</code> 필드가 가리키는 파일)</td><td>rubric — <code>auto</code>(결정론) + <code>judge</code>(추론)</td></tr>
+    <tr><td class="nowrap">실행</td><td><code>npx vitest run</code> · <code>golden-coverage.mjs</code></td><td><code>scripts/eval-b.mjs</code></td></tr>
+    <tr><td class="nowrap">게이트</td><td><code>GREEN→EVAL</code>의 <code>golden_coverage</code></td><td><code>HARNESS→REVIEW</code>의 <code>track_b_passing</code></td></tr>
+  </table></div>
+  <p class="ev"><code>wc -l evals/golden/*.jsonl</code> → 36 + 7 = <strong>43</strong> ·
+    <code>evals/README.md</code> 트랙 비교 표</p>
+
+  <div class="callout bad">
+    <div class="co-title"><span class="chip bad">v1 정정</span> 골든 시작값은 13이 아니라 <strong>15</strong>였다</div>
+    v1은 <em>"케이스 수 13 → 32로 성장"</em>이라 적었다. 골든 파일이 처음 생긴 커밋
+    <code>e37ce9c</code>(2026-07-16, 하네스 스타터 킷)에서 실제 값은
+    <strong>트랙 A 10 + 트랙 B 5 = 15</strong>다. 13은
+    <code>harness/metrics-baseline.md</code>의 M7 베이스라인 칸에 적혀 있던 값이고,
+    <strong>원천 자체가 틀렸으며 문서가 그것을 그대로 인용했다.</strong>
+    (그 칸은 이후 삭제됐다 — 아래 "값 열 폐지".)
+    <span class="ev"><code>git show e37ce9c:evals/golden/track-a-product.jsonl | grep -c '^{'</code> → 10 ·
+      트랙 B 동일 방식 → 5 · <code>git show 65bff7e:harness/metrics-baseline.md</code> M7 행 → <code>13</code></span>
+  </div>
+
+  <h3>트랙 A — 분모는 골든이 아니라 요구사항이다</h3>
+  <p>
+    <code>golden-coverage.mjs</code>의 분모는 골든 파일이 아니라
+    <strong><code>specs/requirements.md</code>의 RQ 전수</strong>다. RQ를 열거하고 4분류한다:
+    <code>GA</code>(골든 + 테스트 실재, 11건) · <code>스모크</code>(RQ-05) ·
+    <code>제약</code>(RQ-16·17) · <code>미커버</code>(→ <strong>차단</strong>).
+  </p>
+  <p>
+    <strong>이 뒤집기 자체가 사고에서 나왔다.</strong> 분모가 GA 케이스이던 시절,
+    GA가 없는 RQ는 분모 밖이라 <em>미커버로 셀 수조차 없었다</em> — 실측에서 RQ 14개 중
+    3개가 그 상태였는데 센서는 <code>27/27 통과</code>를 냈다.
+    <strong>분모에 없는 것은 실패하지 않는다.</strong>
+    <span class="ev"><code>evals/README.md</code> "분모는 요구사항이다 (2026-07-27 정정)" ·
+      <code>harness/rq-coverage.json</code> <code>_doc</code></span>
+  </p>
+
+  <h3>트랙 B — 이제 자동 러너가 있고, 가드가 이것을 요구한다</h3>
+  <p>
+    v1은 트랙 B를 <em>"5건 모두 아직 정식 실행 기록이 없는 todo 상태 — 절차 정의까지가
+    현재 지점"</em>이라고 적었다. 지금은 다르다:
+  </p>
+  <ul>
+    <li><strong>7케이스 중 필수 6</strong> — <code>GB-02</code>만 <code>blocked</code>다.</li>
+    <li>러너 <code>scripts/eval-b.mjs</code>가 격리 워크트리에서 실행하고,
+      아티팩트 <strong>47건</strong>이 <code>evals/results/track-b</code> 아래에 커밋돼 있다.</li>
+    <li><strong><code>HARNESS→REVIEW</code>의 <code>track_b_passing</code> 가드가 이것을
+      차단 조건으로 요구한다</strong> — 하네스를 바꾸면 회귀 평가를 돌리지 않고는
+      리뷰로 나갈 수 없다.</li>
+    <li>최신 아티팩트 <code>544703f3…</code>는 <strong>6/6 pass</strong>.
+      <strong>과거 실행 중 5 pass · 1 fail이었던 회차의 실패 아티팩트도 커밋돼 있다</strong> —
+      실패를 지우지 않는 것이 이 저장소의 규약이다.</li>
+  </ul>
+  <p class="ev"><code>evals/golden/track-b-harness.jsonl</code> 각 케이스 <code>status</code> ·
+    커밋된 아티팩트 <strong>47건</strong>(디스크에는 미커밋 3건 포함 50건) ·
+    아티팩트 <code>summary</code> 필드 직접 파싱(최신 <code>544703f3</code> =
+    <code>{total:6, pass:6, fail:0}</code>) ·
+    <code>phase-matrix.json</code> <code>guards.track_b_passing</code></p>
+
+  <div class="callout warn">
+    <div class="co-title"><code>GB-02</code>가 <code>blocked</code>인 이유 — 그리고 그것이 남긴 공백</div>
+    <p>
+      <code>GB-02</code>는 유일하게 <strong>실제 개발 과업</strong>(누수 재현 테스트를 쓰고
+      <code>RED→GREEN</code> 전이를 밟는다)이다. 나머지 6건은 <em>거부한다·설명한다·판별한다</em>의
+      판단 과업이라 18~337초에 끝나는데, 이것만 4회 실측에서 878~1109초를 쓰고도
+      <strong>매번 한 걸음이 남았다</strong>(1회는 PASS, 3회는 FAIL — 즉 <em>경계선 위</em>다).
+    </p>
+    <p style="margin-bottom:0">
+      <strong>그 결과 <code>tests_committed</code>·<code>red_evidence</code> 두 가드는 헤드리스
+      평가로 실증할 수 없고, 실제 RQ 구현이 그 부담을 진다.</strong> 그리고 그 실증이 실제로
+      왔을 때 게이트가 자기 인자를 못 받아 막혔다 — 반복 대장 R12(§3-10).
+      <span class="ev"><code>evals/golden/track-b-harness.jsonl</code> GB-02 <code>note</code>
+        (4회 실측 전문: ①881초 $5.98 PASS ②442초 $2.77 FAIL ③1109초 $7.26 FAIL ④878초 $6.31 FAIL)</span>
+    </p>
+  </div>
+
+  <h3>지표 M1~M8 — 그리고 <strong>M4를 지운 이유</strong></h3>
+  <p>
+    v1은 <em>"M1~M7"</em>과 <em>"M1~M7의 '현재' 열 산정은 7/31 회고 산출물로 예정"</em>이라
+    적었다. 둘 다 바뀌었다.
+  </p>
+  <div class="table-wrap"><table>
+    <tr><th>#</th><th>지표</th><th>원천</th><th>정직한 한계</th></tr>
+    <tr><td>M1</td><td>스펙 밖 변경</td><td>게이트 차단 로그 + reviewer 보고서 <code>라벨:</code> 줄</td><td><strong>둘로 쪼개서 읽는다.</strong> 기계 부분은 <em>시도</em>를 세지 머지된 드리프트를 세지 않는다</td></tr>
+    <tr><td>M2</td><td>스펙-코드 동행률</td><td>git — 분모 = RED 진입 기록이 있는 브랜치</td><td>"구현 게이트 이후"를 git만으로는 판정할 수 없었다. <code>phase.jsonl</code>이 그 경계를 처음으로 기록한다</td></tr>
+    <tr><td>M3</td><td>테스트 선행률</td><td><code>phase.jsonl</code>의 unforced <code>RED→GREEN</code></td><td>CI의 grep 프록시는 <strong>삭제했다</strong> — 순서를 못 보기 때문. 프록시와 정확한 센서를 함께 두면 서로 다른 답을 낸다</td></tr>
+    <tr><td><s>M4</s></td><td><s>PR time-to-merge</s></td><td>—</td><td><strong>삭제.</strong> 1인 저장소에서 머지 지연은 리뷰 대기가 아니라 <strong>사람의 수면 시간</strong>을 잰다</td></tr>
+    <tr><td>M5</td><td>재작업률</td><td>git</td><td>원천은 처음부터 있었고 수집기만 없었다 — 그래서 지표를 잘라야 할 때 1순위다</td></tr>
+    <tr><td>M6</td><td>세션당 도구 호출</td><td><code>trajectory.jsonl</code></td><td>로컬 전용. 절대값이 아니라 추세만 본다</td></tr>
+    <tr><td>M7</td><td>골든 케이스 수</td><td><code>evals/golden/*.jsonl</code></td><td>수가 늘어도 케이스 <em>품질</em>은 재지 못한다</td></tr>
+    <tr><td><strong>M8a</strong></td><td>게이트 <strong>시도</strong> <span class="chip acc">신설</span></td><td><code>tools.jsonl</code> <code>gate_block</code> 전체</td><td>이것만 보면 <strong>게이트가 실제보다 강해 보인다</strong></td></tr>
+    <tr><td><strong>M8b</strong></td><td>게이트 <strong>실제 차단</strong> <span class="chip acc">신설</span></td><td>같은 로그 중 <code>warn_only !== true</code></td><td>로컬 전용. 술어를 <code>=== false</code>로 쓰면 안 된다 — 리다이렉트 차단은 그 필드가 <em>없다</em></td></tr>
+  </table></div>
+  <p class="ev"><code>harness/metrics-baseline.md</code> 지표 표 + "## 삭제한 지표 — M4" ·
+    <code>harness/reports/2026-W32.md</code></p>
+
+  <div class="callout">
+    <div class="co-title">M8을 둘로 나눈 것이 이 저장소의 서술 규율을 대표한다</div>
+    <code>warn_only</code> 단계에서는 게이트가 <strong>차단 기록을 남기고도 쓰기를 통과시킨다.</strong>
+    하나로 합쳐 보고하면 게이트가 실제보다 강해 보이고, 그 착시가 지표에까지 번진다.
+    <strong>같은 규율이 "값 열 폐지"에도 적용됐다</strong> — <code>metrics-baseline.md</code>는
+    이제 <em>정의만</em> 갖고 값은 <code>harness/reports/</code>가 갖는다. 이유가 한 줄로 적혀 있다:
+    <em>"값이 두 곳에 있으면 반드시 어긋난다."</em>
+  </div>
+</section>
+
+<!-- ═══════════════════ 3-10. 반복 실패 대장 ═══════════════════ -->
+<section id="recurrence">
+  <h2>3-10. 반복 실패 대장 R1~R17 <span class="chip acc">v1에 통째로 없던 절</span></h2>
+  <p>
+    운영 규칙 3은 <em>"같은 실수가 2회 반복되면 센서 하나 <strong>또는</strong> Guide 한 줄"</em>을
+    요구했다. <strong>그런데 누적을 세는 곳이 없었다.</strong> 그래서 2026-07-27 하루에 같은 원인으로
+    3~9회를 반복하면서 매번 새로 발견했다 — 규칙은 알고 있었고 세는 자리가 없었다.
+  </p>
+  <p>
+    <code>harness/recurrence.md</code>가 그 자리다. <strong>17행</strong>이 있고,
+    <code>scripts/policy-lint.mjs</code>의 <strong>P11</strong>이 읽어
+    <strong>2회 이상인데 처방이 열려 있으면 CI를 <code>exit 1</code></strong>로 만든다.
+    처방은 <strong>구조 &gt; 게이트 &gt; 센서 &gt; Guide</strong> 중 <em>주 처방을 하나만</em> 고르고,
+    <strong>한 칸 내려가려면 위 칸이 실제로 불가능해야 한다</strong>(코드 수준까지 써 본 뒤에).
+  </p>
+
+  <div class="table-wrap"><table>
+    <tr><th>ID</th><th>원인</th><th>횟수</th><th>처방 층위</th><th>상태</th></tr>
+    <tr><td class="nowrap"><strong>R1</strong></td><td><strong>문서가 존재하지 않는 방어를 현재형으로 단언</strong> — 코드/정책을 바꾸고 그 사실을 근거로 쓰는 다른 문장을 안 고침</td><td><strong>14</strong></td><td>센서 (<code>doc-freshness</code> C2)</td><td><span class="chip warn">사각지대 확인</span></td></tr>
+    <tr><td class="nowrap"><strong>R11</strong></td><td><strong>재지 않은 근거를 쓴다</strong> — 유예·채택·전칭 단언. 대장의 처방문은 <em>"6회 중 3회는 P11 관할 밖"</em>이라고 6회 시점 서술을 유지한다</td><td><strong>8</strong></td><td>게이트 (P11) + 사람 리뷰</td><td><span class="chip warn">관할 밖 3회</span></td></tr>
+    <tr><td class="nowrap"><strong>R2</strong></td><td>분류는 옳은데 <strong>집행이 0이고 아무도 검사하지 않음</strong> — <code>gate_spec_freeze</code>(무력) · P11 자신</td><td>5</td><td>센서 (P8·P10·P11 자기시험)</td><td><span class="chip warn">두 번 어김</span></td></tr>
+    <tr><td class="nowrap"><strong>R13</strong></td><td>체크포인트가 재개를 지탱하지 못한다 — <code>goal</code>/<code>next</code> 부정합 · <strong>앵커 빈곤</strong></td><td>5</td><td>센서 (회고 질문)</td><td><span class="chip warn">배치 시점 어긋남</span></td></tr>
+    <tr><td class="nowrap"><strong>R10</strong></td><td>평가와 문서 수렴의 <strong>순서가 어긋나 전수 재실행이 두 번</strong> 붙는다</td><td>5</td><td>구조 (<code>CLAUDE.md</code>가 스킬 규칙을 재서술하지 않는다)</td><td><span class="chip good">처방됨</span></td></tr>
+    <tr><td class="nowrap"><strong>R4</strong></td><td>전이가 체크포인트를 만드는데 <strong>커밋하지 않고 평가를 돌림</strong></td><td>4</td><td>게이트 2차 (<code>eval-b</code>가 시작 시 거부)</td><td><span class="chip good">재처방됨</span></td></tr>
+    <tr><td class="nowrap"><strong>R14</strong></td><td>구조화 파일을 프로그램으로 고칠 때 <strong>재직렬화가 의미 변경을 파묻는다</strong> (2줄 변경에 99줄)</td><td>4</td><td>Guide (<code>Edit</code>로 수술적으로)</td><td><span class="chip good">처방됨</span></td></tr>
+    <tr><td class="nowrap"><strong>R16</strong></td><td><strong>워크트리 정리가 <code>node_modules</code> 정션을 따라가 원본을 파괴</strong> — 저장소의 모든 lint·test·build가 멈춘다</td><td><strong>4</strong></td><td>Guide (제약을 <code>.claude/agents/*.md</code>로 이동)</td><td><span class="chip good">처방됨</span> <em>단 §6 참조</em></td></tr>
+    <tr><td class="nowrap"><strong>R3</strong></td><td><strong>커밋 오염</strong> — pathspec 없는 <code>git commit</code>이 남의 스테이징을 함께 싣는다</td><td>3</td><td>구조 (<code>isolation: "worktree"</code>)</td><td><span class="chip good">처방됨</span></td></tr>
+    <tr><td class="nowrap"><strong>R7</strong></td><td><code>next</code>가 체크포인트만으로 복원되지 않는다 — 바깥 문서 라벨을 쓴다</td><td>3</td><td>게이트 (<code>policy-lint</code> P12)</td><td><span class="chip warn">범위 한계</span></td></tr>
+    <tr><td class="nowrap"><strong>R17</strong></td><td><strong>선행 점검이 자기가 만든 낡음을 구조적으로 못 본다</strong> — <code>harness-audit</code> Phase 1의 값은 <em>변경 전</em></td><td>3</td><td>게이트(절차) — Phase 4에 재실행 0번 단계 신설</td><td><span class="chip good">처방됨</span></td></tr>
+    <tr><td class="nowrap">R5·R6·R8·R9·R12·R15</td><td>rubric이 측정 대상이 아닌 것을 잰다 · 낡은 <code>session.json</code> 박제 · 값을 바꾸고 재서술 문서를 안 씀 · 센서가 환경에 따라 다른 답 · <strong>게이트가 자기 인자를 못 받는다</strong> · 판정이 "이번 실행"이 아니라 "누적"을 잰다</td><td>1~2</td><td>Guide / 게이트 / 구조</td><td><span class="chip good">전부 처방됨</span></td></tr>
+  </table></div>
+  <p class="ev"><code>harness/recurrence.md</code> "## 대장" 표 — 17행 전수.
+    건수의 정본은 <code>node scripts/policy-lint.mjs --self-test</code>의 출력이다
+    (<em>대장에 숫자를 적었다가 두 번 낡았다 — R10 처방</em>)</p>
+
+  <div class="callout bad">
+    <div class="co-title">R1이 15회인 것 — 그리고 <strong>이 보고서가 걸린 병이 정확히 그것이다</strong></div>
+    <p>
+      최다 누적은 <strong>R1: "문서가 존재하지 않는 방어를 현재형으로 단언" 15회</strong>다
+      (2026-08-06 하루에 13 → 14 → 15로 두 번 올랐다).
+      2026-08-06 감사가 이 보고서에서 <strong>같은 형상을 3건 더</strong> 찾았다 —
+      스펙 동결 게이트 "가장 자주 발동"(발동 0회) · "테스트-코드 동행 검사가 머지 게이트"(경고 전용) ·
+      "수정 직후 lint+typecheck"(eslint 단독).
+      <strong>정직하게 적으면 그 3건은 대장에 별도 회차로 등재되지 않았다</strong> —
+      누적은 다른 인스턴스들의 것이다. 대장이 이 문서를 세지 않은 이유도 같다: 관할 밖이었다.
+    </p>
+    <p>
+      <strong>15회차가 이 문단의 논지를 바꿨다.</strong> 같은 날 팀 공유 핸드북이
+      입력 방어 3종(문자열 길이 상한 · 메시지 빈도 제한 · 채널 수 상한)을 현재형으로 단언했는데
+      <strong>그 코드가 없었다</strong> — 서버의 상한 상수는 이력 보관 개수와 유예 시간 둘뿐이고,
+      입력 검증은 타입과 비어 있지 않음만 본다.
+      <strong>기전이 다르다</strong>: 이제까지 R1은 전부 <em>드리프트</em>(참이었다가 거짓이 됨)였고
+      이것은 <em>날조</em>(한 번도 참인 적 없음)다.
+      <strong>그리고 R1의 처방인 C2가 날조를 구조적으로 못 잡는다</strong> —
+      C2는 문서와 의존의 <em>커밋 시각</em>을 비교하는데, 날조에는 움직인 의존이 없다.
+      잡은 것은 센서가 아니라 이 문서를 고치라고 붙인 사람이 근거 파일을 찾다가였다.
+      <strong>15회차에 와서야 처방이 절반만 덮는다는 것이 드러났다.</strong>
+      이 보고서의 거짓 3건도 같은 계열이다 — 그래서 관할에 넣는 것만으로는 부족하고,
+      그 사실이 이 문단이 자기 자신에 대해 말할 수 있는 가장 정직한 것이다.
+    </p>
+    <p style="margin-bottom:0">
+      <strong>대장의 두 번째 존재 이유가 여기 적혀 있다</strong>:
+      <em>"처방을 적어두지 않으면 '이미 고쳤다'고 믿은 채 같은 실패를 계속 내고,
+      틀린 처방을 적어두면 '답이 없다'고 믿은 채 같은 실패를 계속 낸다.
+      후자가 더 나쁘다 — 전자는 다시 보면 발견되지만 후자는 다시 볼 이유를 지운다."</em>
+      실제로 R1의 1차 기록은 <em>"센서로는 답이 없다"</em>였고 <strong>그것이 틀렸다</strong>.
+      한 줄(<code>doc-freshness</code>의 문서 축 면제)을 지우자 즉시 15건이 나왔다.
+    </p>
+  </div>
+
+  <h3>게이트가 사람의 합리화를 잡은 기록 — R11</h3>
+  <p>
+    R11의 실질은 이것이다. <strong><code>policy-lint</code> P11이 "2회 이상 미처방"으로
+    거부한 뒤에야 다시 봤고, 다시 보면 매번 근거가 무너졌다.</strong>
+  </p>
+  <div class="table-wrap"><table>
+    <tr><th>회차</th><th>유예 근거</th><th>재보니</th></tr>
+    <tr><td>R8</td><td><em>"<code>phase-audit</code>과 같은 <code>ci.yml</code>이라 같은 PR이어야 한다"</em></td><td><strong>두 배선은 독립이다.</strong> <code>doc-freshness --pr</code>만 넣어도 CI는 안 빨개진다</td></tr>
+    <tr><td>R10</td><td><em>"<code>CLAUDE.md</code>는 헌법이라 개정은 별도 PR"</em></td><td><strong>이 브랜치에서 이미 여러 번 고쳤고</strong>, 재실행 비용도 이미 매몰돼 있었다</td></tr>
+    <tr><td>7회차</td><td><code>force</code> 사유문 — <em>"없는 뒷문을 원칙상 거절했다"</em></td><td><strong>그 뒷문은 존재하지 않는다.</strong> 파이프라인 뒤 <code>$?</code>로 <code>tail</code>의 종료 코드를 읽었다</td></tr>
+    <tr><td>8회차</td><td>GB-06 진단 — <em>"신선도와 무상관, 낡음 가설 기각"</em></td><td>실제 변수는 <strong>앵커 밀도</strong>였고, <strong>그 사실은 골든 <code>note</code>에 이미 적혀 있었다</strong></td></tr>
+  </table></div>
+  <p>
+    7·8회차는 <em>"안 잰 것"</em>이 아니라 <strong>다른 것을 잰 것</strong>이고,
+    8회차에는 <em>"이미 재어 둔 것을 안 읽은 것"</em>이 겹쳤다.
+    그래서 원인 서술이 <em>"미루려는 근거"</em> → <strong>"재지 않은 근거"</strong>로 넓어졌다.
+  </p>
+</section>
+
+<!-- ═══════════════════ 3-11. 주간 회고 ═══════════════════ -->
+<section id="retro">
+  <h2>3-11. 주간 회고 — 2회차까지 산출됨 <span class="chip acc">v1은 "예정"으로 남겼다</span></h2>
+  <p>
+    v1은 <em>"7/31 회고 + 메트릭 산정"</em>을 남은 과제로 적었다.
+    <code>harness/reports/2026-W31.md</code>·<code>2026-W32.md</code> 두 회차가 이미 나왔고,
+    수집기 <code>scripts/metrics.mjs</code>와 <code>retro-metrics</code> 스킬이 그것을 생성한다
+    (v1 §7③ "메트릭 수집 스크립트화" 제안이 실행된 것이다).
+  </p>
+
+  <h3>W32 실측값 — 그리고 <strong>지표 둘이 무너졌는데 무너진 것은 행동이 아니라 지표였다</strong></h3>
+  <div class="table-wrap"><table>
+    <tr><th>지표</th><th>값</th><th>회고의 판단</th></tr>
+    <tr><td><code>force</code> 사용률</td><td><strong>0.4% (1/229)</strong></td><td>5% 이하 — 게이트가 아직 사람의 인내를 소모하고 있지 않다</td></tr>
+    <tr><td>M3 테스트 선행률</td><td>57% (8/14)</td><td><strong>되돌림 간선을 실패로 센다.</strong> <code>EVAL→GREEN</code>(평가 FAIL)·<code>REVIEW→GREEN</code>(REQUEST_CHANGES)은 매트릭스에 정의된 <em>정당한</em> 되돌림이고 교정 루프가 작동한 증거다. 되돌림을 뺀 값은 <strong>8/9 = 89%</strong>로 목표 ≥80%를 넘는다</td></tr>
+    <tr><td>M5 재작업률</td><td>39% (7/18)</td><td><strong>7쌍 전부 <code>src/**</code> 공통 파일이 0개</strong>다. 겹친 것은 <code>docs/progress.md</code>·<code>.harness/state/**</code>(모든 PR이 규약상 건드린다)와 append성 레지스트리뿐 — M5는 재작업이 아니라 <strong>배송 속도</strong>를 재고 있다</td></tr>
+    <tr><td>M7 골든</td><td>43 (이전 34)</td><td>승격 루프 작동</td></tr>
+    <tr><td>M8a / M8b</td><td>67 / 17</td><td><strong>제거 후보가 아니다</strong> — 경계면이 하중을 받고 있다는 직접 증거. <strong>다만 M8a의 최대 버킷(<code>HARNESS</code>의 <code>src/**</code> 15회)은 <code>warn_only</code> 구간의 경고였다</strong>(§3-4·§3-8)</td></tr>
+  </table></div>
+  <p class="ev"><code>harness/reports/2026-W32.md</code> 지표 표 + "회고 판단(사람이 쓴 부분)" 절.
+    <strong>위 값은 W32 시점이다</strong> — 이 문서 작성 시점(2026-08-06 후반)에 다시 재면
+    <code>force</code> <strong>1/255</strong> · M8a <strong>70</strong> / M8b <strong>17</strong> ·
+    M5 <strong>38%</strong>다. 회고 값과 본문 값이 다르면 <strong>회고는 그 주의 스냅샷이고 본문은 지금</strong>이다</p>
+
+  <div class="callout good">
+    <div class="co-title">회고가 자기 도구의 결함을 이름 붙인 것 — <strong>"게이트가 잘 작동할수록 M3가 나빠진다"</strong></div>
+    M3의 분모가 <code>EVAL→GREEN</code>·<code>REVIEW→GREEN</code>을 <em>"RED를 안 거친 GREEN 진입"</em>으로
+    센다. 그런데 그 간선들은 <strong>교정 루프가 실제로 작동했다는 증거</strong>다.
+    <code>harness/recurrence.md</code> <strong>R5</strong>가 이 형상에 이미 이름을 붙여 뒀다 —
+    <em>"rubric이 측정 대상이 아닌 것을 잰다 — 게이트가 잘 작동할수록 실패하는 rubric."</em>
+    <strong>같은 형상이 rubric 층이 아니라 지표 층에서 재발했다.</strong>
+    회고가 그것을 알아본 것 자체가 대장의 값이다.
+  </div>
+
+  <p>
+    회고 스킬은 <strong>게이트가 아니다</strong> — 통과·차단 판정을 내리지 않는다.
+    <code>metrics.mjs</code>가 항상 <code>exit 0</code>인 이유도 헤더에 적혀 있다:
+    <em>"지표 산출은 관측이지 판정이 아니다 — 관측과 차단은 다른 도구의 일이다."</em>
   </p>
 </section>
 
 <!-- ═══════════════════ 4. 가치 ═══════════════════ -->
 <section id="value">
-  <h2>4. 무엇이 좋았나 — 의미와 증거</h2>
+  <h2>4. 실제로 무엇을 잡았나 — 기록으로 남은 것만</h2>
   <p>
     아래는 워크플로우가 <strong>실제로 사고를 잡았거나 비용을 줄인 기록</strong>이다.
-    전부 저장소의 원장·changelog·PR에 남아 있다.
+    전부 저장소의 원장·changelog·PR·아티팩트에 남아 있다.
   </p>
 
   <div class="callout good">
     <div class="co-title"><span class="chip good">적발</span> 골든 케이스가 격리 구멍을 잡다 — GA-10</div>
     RQ-02(메시지 격리) 구현에서 "발신자가 room 참여자인지" 검증이 빠진 이월 구멍을
-    골든 케이스 GA-10이 잡아, <code>socket.rooms.has</code> 검증이 추가됐다 (PR #16).
-    보안 성격의 결함이 스펙 단계에서 만든 케이스로 걸러진 사례.
-  </div>
-  <div class="callout good">
-    <div class="co-title"><span class="chip good">적발</span> 독립 리뷰가 크래시를 머지 전에 잡다</div>
-    RQ-05(배포) 리뷰에서 reviewer가 잘못된 URL 인코딩에 서버가 크래시하는 결함(B-1,
-    인증 없이 원격에서 트리거 가능한 DoS)을 blocker로 판정, 수정 후 머지됐다. 구현·평가
-    세션이 모두 놓친 것을 세 번째 시각이 잡았다 — 격리된 다중 검증 계층의 존재 이유.
-  </div>
-  <div class="callout good">
-    <div class="co-title"><span class="chip good">적발</span> 스펙 리뷰가 파이프라인 정지를 예방하다 — PR #11</div>
-    RQ-18 스펙 개정 리뷰에서 "활성 room 미정의"(major 6건 중 하나)가 적발됐다.
-    그대로 진행했다면 test-writer가 테스트를 쓸 수 없어 멈출 상태였다. 스펙도 코드처럼
-    리뷰 게이트를 통과시킨 것이 유효했다.
-  </div>
-  <div class="callout good">
-    <div class="co-title"><span class="chip acc">학습</span> 하네스가 스스로 진화하다 — 사고 → 센서 추가 루프</div>
-    Red 증거가 vitest 출력만 캡처해 테스트 파일의 타입 버그가 coder 단계에서야 발견되자,
-    test-writer 정의와 ADR-0005에 <code>tsc --noEmit</code> 증거를 의무화했다.
-    사고 → 센서 추가 → changelog 기록의 학습 루프가 실제로 작동한 사례.
-  </div>
-  <div class="callout good">
-    <div class="co-title"><span class="chip acc">효율</span> 아키텍처 결정이 구현을 대체하다 — RQ-14</div>
-    메시지 순서 보장은 ADR-0001(단일 프로세스)의 부수 효과라서 테스트 4건이 구현 0줄로
-    즉시 Green. evaluator가 11회 반복 실행으로 가드 강도를 검증했다. "요구사항 = 코드
-    추가"라는 등식을 ADR이 끊어준 사례.
-  </div>
-  <div class="callout good">
-    <div class="co-title"><span class="chip acc">신뢰</span> 완료 주장에는 항상 실행 증거</div>
-    모든 RQ의 완료 보고에 테스트 실행 출력이 첨부됐고, evaluator가 별도 세션에서
-    재실행으로 교차 확인했다 (예: RQ-18은 44/44 재검증). "된 것 같다"가 아니라
-    "이 출력이 증거다"가 기본값이 됐다.
+    골든 케이스 GA-10이 잡아 <code>socket.rooms.has</code> 검증이 추가됐다 (PR #16).
+    보안 성격의 결함이 <strong>스펙 단계에서 만든 케이스</strong>로 걸러진 사례.
+    <span class="ev"><code>docs/progress.md</code> RQ-02 행</span>
   </div>
 
-  <h3>일반화하면</h3>
-  <ul>
-    <li><strong>에이전트 신뢰성 문제를 구조로 해결</strong>: 자기 채점, 구현에 맞춘 테스트,
-      테스트 약화, 스코프 크리프 — LLM 에이전트의 전형적 실패 모드마다 대응하는 격리
-      또는 게이트가 있다. 프롬프트 지시("하지 마")가 아니라 구조(할 수 없음)로 막는다.</li>
-    <li><strong>1인 개발에 다역 검증 체계</strong>: 작성자·평가자·리뷰어를 격리 세션으로
-      분리해, 솔로 프로젝트에서도 상호 검증이 있는 팀의 형태를 재현했다.</li>
-    <li><strong>추적성</strong>: RQ-ID 하나로 스펙 문장 → 골든 케이스 → 테스트 파일 →
-      브랜치 → PR → 원장 행이 전부 연결된다. 감사·회고 비용이 낮다.</li>
-    <li><strong>속도를 해치지 않았다</strong>: 게이트가 겹겹인데도 마감 10일 전에 전
-      RQ가 끝났다. 빠른 피드백(수정 직후 1.4초 검사, check.sh 전체 3.2초)을 왼쪽에
-      배치한 설계 덕이 크다.</li>
-  </ul>
+  <div class="callout good">
+    <div class="co-title"><span class="chip good">적발</span> 독립 리뷰가 무인증 DoS를 머지 전에 잡다 — RQ-05</div>
+    reviewer가 잘못된 URL 인코딩에 서버가 크래시하는 결함(B-1, 인증 없이 원격에서
+    트리거 가능한 DoS)을 blocker로 판정했다. <strong>구현·평가 세션이 모두 놓친 것을
+    세 번째 시각이 잡았다.</strong> 지금 <code>scripts/smoke.sh</code>가
+    <em>"잘못된 요청(<code>/%</code>) 후 서버 생존"</em>을 프로덕션 스모크에 포함한다 —
+    적발이 회귀 가드까지 갔다.
+    <span class="ev"><code>docs/progress.md</code> RQ-05 행 · <code>harness/rq-coverage.json</code>
+      RQ-05 <code>why</code> · <code>scripts/smoke.sh</code></span>
+  </div>
+
+  <div class="callout good">
+    <div class="co-title"><span class="chip good">적발</span> 리뷰어가 <strong>평가자 2회를 뒤집다</strong> — RQ-18-a</div>
+    평가자는 두 번 다 PASS를 냈고 회차 1은 문제의 조치를 <em>"별도 RQ가 스코프 규율에
+    맞다"</em>고까지 적었다. 리뷰어가 <strong>이 PR이 만든 회귀</strong>를 특정했다 —
+    PR 이전에는 <code>join</code>·<code>message</code>가 둘 다 <code>sendBuffer</code>라
+    FIFO로 join이 먼저였는데, 이 PR이 join만 로컬 큐로 옮겨 message가 추월하게 됐다.
+    처방(<code>GREEN</code> 되돌림 → <code>RED</code> 회귀 잠금 → <code>GREEN</code> 재적용)을
+    그대로 밟았고, 재리뷰 APPROVE에 <strong><code>force</code> 0건 · 전이 17회</strong>가 기록됐다.
+    <span class="ev"><code>docs/progress.md</code> RQ-18-a 행</span>
+  </div>
+
+  <div class="callout good">
+    <div class="co-title"><span class="chip good">적발</span> "테스트가 있다"와 "테스트가 잠근다"의 차이 — 뮤테이션 실증 3회</div>
+    RQ-15-a에서 리뷰어가 <code>isGlobal→false</code>로 바꿔도 <strong>65/65 초록</strong>임을
+    보여 blocker를 냈다 — 골든 <code>GA-34</code>의 <code>when</code>("global을 선택한다")을
+    <strong>어느 테스트도 지나가지 않았다.</strong> 배선 통합 테스트를 세운 뒤
+    <strong>평가자·리뷰어가 각각 뮤테이션을 독립 재현</strong>해 양방향 고정을 확인했다.
+    RQ-15-b에서는 한 발 더 나가, 골든을 <strong>둘로 나눈 설계가 실측으로 값을 했다</strong> —
+    <em>"게이트 복사" 뮤테이션이 GA-36 축 2건만 죽이고 GA-35는 살렸다. GA-35만 있었으면
+    전 스위트 초록으로 통과했을 것이다.</em>
+    <span class="ev"><code>docs/progress.md</code> RQ-15-a·RQ-15-b 행</span>
+  </div>
+
+  <div class="callout good">
+    <div class="co-title"><span class="chip acc">학습</span> 게이트가 사람의 합리화를 3회 거부하다 — P11</div>
+    <code>policy-lint</code> P11이 <em>"2회 이상인데 처방이 열려 있음"</em>으로 CI를 빨갛게 만든 뒤에야
+    유예 근거를 다시 봤고, <strong>세 번 다 근거가 무너졌다</strong>(§3-10).
+    그것이 잡히지 않았다면 처방 셋이 전부 다음 PR로 밀렸을 것이고, <strong>그중 둘은 밀릴 이유가 없었다.</strong>
+  </div>
+
+  <div class="callout good">
+    <div class="co-title"><span class="chip acc">효율</span> 아키텍처 결정이 구현을 대체·억제하다 — RQ-14 · ADR-0008</div>
+    RQ-14(메시지 순서)는 ADR-0001(단일 프로세스)의 부수 효과라서 테스트 4건이
+    <strong>구현 0줄</strong>로 즉시 Green이 됐다. 반대 방향도 있다 — ADR-0008은
+    global 참여자 목록을 <strong>만들지 않기로</strong> 결정했다. 서버를 고치면
+    RQ-12(빈 room 자동 삭제)의 보장이 <em>구조에서 조건문으로</em> 한 칸 내려가기 때문이다.
+    <strong>"요구사항 = 코드 추가"라는 등식을 ADR이 양방향으로 끊었다.</strong>
+  </div>
+
+  <div class="callout good">
+    <div class="co-title"><span class="chip acc">신뢰</span> 완료 주장에는 항상 실행 증거 — 그리고 이제 가드가 요구한다</div>
+    v1 시점에는 문화였다. 지금은 <code>check_full_green</code>·<code>golden_coverage</code>·
+    <code>evaluator_pass</code> 세 가드가 <strong>실행 출력 없이는 전이 자체를 막는다.</strong>
+    RQ-15-b 완료 보고에 남은 것: <em>20파일 71/71 · 5회 연속 flake 0 ·
+    golden <code>--rq RQ-15</code> 5/5 · <code>tests/**</code> 삭제·skip 0 ·
+    전이 7회 전부 <code>forced=false</code>.</em>
+  </div>
+</section>
+
+<!-- ═══════════════════ 4-1. 한계 ═══════════════════ -->
+<section id="limits">
+  <h2>4-1. 그리고 무엇을 <strong>못</strong> 잡았나</h2>
+  <p>
+    이 저장소의 문서 문화는 명시적이다 —
+    <em>"하네스가 넷을 잡았다고 적으면 하네스가 실제보다 강해 보인다."</em>
+    센서 카탈로그가 <strong>재구성 1회분(2026-07-27)에서 실제로 무엇이 무엇을 잡았는지</strong>를
+    전수로 적어 두었다. 그 표가 이 절의 본체다.
+  </p>
+  <div class="table-wrap"><table>
+    <tr><th>#</th><th>실패</th><th>잡은 주체</th></tr>
+    <tr><td>1</td><td><code>settings.json</code>이 삭제된 훅을 참조 → <strong>세션 마비</strong></td><td>센서 아님 — 실패 자체가 시끄러웠다 (<code>exit 2</code>)</td></tr>
+    <tr><td>2</td><td><code>policy-lint</code>의 lint 위반이 저장소 게이트를 깸</td><td><strong>✅ 자동 센서</strong> (<code>check.mjs --fast</code>, PostToolUse)</td></tr>
+    <tr><td>3</td><td><code>no_pending_spec</code>의 서로게이트 패턴 (죽은 가드)</td><td>사람 — 수동 전수 실증. <strong>P8은 이 발견 <em>뒤에</em> 생겼다</strong></td></tr>
+    <tr><td>4</td><td>디스패처 배선이 경로 추출을 깸</td><td><strong>✅ 자동 센서</strong> (<code>hooks-selftest</code>) — 단 사람이 돌려서 읽어야 했다</td></tr>
+    <tr><td>5</td><td><code>node_modules</code> 파괴</td><td>훅이 잡았으나 <strong>원인을 잘못 지목</strong>했다</td></tr>
+    <tr><td>6</td><td>M8 혼동 (18은 시도이지 차단이 아니다)</td><td>사람 — 수동 검증</td></tr>
+    <tr><td>7</td><td>비대칭 경고가 자기 해제되지 않음</td><td>사람 — 자기 주장을 검증하다 발견</td></tr>
+  </table></div>
+  <p class="ev"><code>harness/sensor-catalog.md</code> "이 센서망이 실제로 잡은 것과 못 잡은 것" 절</p>
+
+  <div class="callout warn">
+    <div class="co-title">경계가 뚜렷하다 — <strong>자동 센서가 온전히 잡은 것은 2건</strong></div>
+    <p>
+      결정론적 센서가 잡은 둘은 <strong>기계적으로 관측 가능한 형태의 실패</strong>(린트 위반 ·
+      경로 추출 역전)였다. 죽은 가드 · 이름 혼동 · 자기 해제 안 되는 경고는 전부
+      <strong>의미 층위의 실패</strong>였고 <strong>판단이 잡았다.</strong>
+    </p>
+    <p style="margin-bottom:0">
+      정직한 서술은 이렇다 — <strong>하네스를 짓는 과정이 하네스가 잡아야 할 실패를 일곱 번
+      만들어냈고, 자동 센서가 잡은 것은 둘이며, 그 실패들이 규칙을 낳았다.</strong>
+      파이프라인의 상한은 여전히 <strong>추론적 센서(Opus 판정) 하나</strong>에 걸려 있고,
+      그 이상을 주장하면 거짓이다.
+    </p>
+  </div>
+
+  <h3>그리고 <strong>하네스가 스스로 멈추지 못했다</strong></h3>
+  <p>
+    이것이 가장 비싼 실패다. 기능 RQ 12개는 7/21에 끝났고 CD도 초록인데,
+    <strong>7/28 이후 83커밋 중 65가 하네스·문서·상태였고 <code>src/</code>·<code>tests/</code>를
+    건드린 것은 7개</strong>였다.
+  </p>
+  <p>
+    원인 진단이 원장에 적혀 있고, 그것이 이 보고서에서 가장 이식 가치가 높은 문장일 수 있다:
+  </p>
+  <div class="callout bad">
+    <p style="margin-bottom:0">
+      <em>"하네스에 <strong>종료 조건이 적혀 있지 않았던 것</strong>이 원인이다 —
+      게이트가 매번 실재 문제를 잡으니(R1~R12 전부 진짜였다) 다음 게이트가 항상 정당해 보인다."</em>
+      <br><br>
+      <em>"1차 동결 선언이 안 먹힌 이유: 선언은 <strong>능동적</strong> 하네스 작업만 얼렸다.
+      실제로 사이클을 돌린 것은 <strong>반응적</strong> 경로다 — 리뷰가 실재 문제를 지적하고,
+      지적이 옳으니 고치고, 고치면 재리뷰가 필요하고, 재리뷰가 또 실재 문제를 찾는다.
+      <strong>매 단계가 개별로 정당해서 멈출 지점이 없었다.</strong>"</em>
+    </p>
+  </div>
+  <p>
+    처방은 <strong>게이트가 아니라 사람이 판정하는 종료 조건 4개</strong>다 —
+    종료 규칙을 게이트로 만드는 것 자체가 하네스 작업이고, 그러면 규칙이 자기가 막으려는 것을 한다:
+  </p>
+  <ol>
+    <li><strong>이 PR이 마지막 하네스 PR이다.</strong> 이후 <code>HARNESS</code> 진입은
+      <em>사람이 명시적으로 요청할 때만</em> — 에이전트가 스스로 판단해 들어가지 않는다.</li>
+    <li><strong>재리뷰 상한 1회.</strong> 그 뒤 남은 지적은 등급과 무관하게 전부 보류표로.</li>
+    <li><strong>blocker를 좁게 정의한다.</strong> 머지를 막는 것은 둘뿐 —
+      (a) 존재하지 않는 방어를 현재형으로 단언하는 문서 (b) 실제로 틀린 판정을 내는 게이트·센서.
+      <strong>값 불일치·표식 부재·대장 기록 누락은 blocker가 아니다.</strong></li>
+    <li><strong>보류 조건이 발동해도 자동으로 작업하지 않는다.</strong>
+      발동은 <em>"사람에게 물을 때"</em>지 <em>"지금 한다"</em>가 아니다.</li>
+  </ol>
+  <p class="ev"><code>docs/progress.md</code> "하네스 엔지니어링 — 동결 (2026-08-02)" 절 + "종료 조건 (2026-08-03 · 사용자 결정)" 표.
+    <strong>위 커밋 통계는 2026-08-02 시점의 스냅샷이다</strong> — 원장이 그날 그 값을 적었고 이 문서는 다시 세지 않았다</p>
+
+  <div class="callout warn">
+    <div class="co-title">종료 조건을 정한 뒤에 실제로 무슨 일이 있었나 — <strong>조건은 종료를 만들지 않았다</strong></div>
+    2026-08-02 이후에도 하네스 PR이 <strong>세 건 더</strong> 머지됐다 —
+    <strong>#42</strong>(정션 R16 등재) · <strong>#44</strong>(P13 가드 커버리지) ·
+    <strong>#45</strong>(P14 문서 관할). 조건 1은 <em>"사람이 명시적으로 요청할 때만"</em>이지
+    <em>"더 이상 하지 않는다"</em>가 아니므로 <strong>이것이 조건 위반이라는 뜻은 아니다.</strong>
+    말할 수 있는 것은 하나다 — <strong>종료 조건은 무엇이 정당한지를 정했지 언제 멈추는지를 정하지 않았다.</strong>
+    도입하는 팀은 이 구별을 먼저 하는 게 좋다.
+    <span class="ev"><code>gh pr list --state merged</code> #42·#44·#45 (전부 <code>fix|feat(harness)</code>) ·
+      <code>.harness/state/phase.jsonl</code>의 <code>IDLE→HARNESS</code> 진입 기록</span>
+  </div>
 </section>
 
 <!-- ═══════════════════ 5. 정량 ═══════════════════ -->
 <section id="stats">
-  <h2>5. 정량 요약</h2>
+  <h2>5. 정량 요약 <span class="chip acc">2026-08-06 실측</span></h2>
   <div class="stat-grid">
-    <div class="stat"><div class="num">12 / 12</div><div class="lbl">RQ 완료 (기능 11 + 배포 1)</div></div>
-    <div class="stat"><div class="num">44 / 44</div><div class="lbl">테스트 통과 · 13개 파일 (2026-07-24 재실행, 약 2초)</div></div>
-    <div class="stat"><div class="num">32</div><div class="lbl">골든 케이스 (트랙 A 27 + B 5, 시작 13)</div></div>
-    <div class="stat"><div class="num">29</div><div class="lbl">PR 머지 — 게이트 도입(PR #1~2) 이후 독립 리뷰 경유</div></div>
-    <div class="stat"><div class="num">6</div><div class="lbl">ADR 승인 (모순 구현 0건)</div></div>
-    <div class="stat"><div class="num">D-10</div><div class="lbl">마감 7/31 대비 7/21 구현 완료</div></div>
+    <div class="stat"><div class="num">14 / 14</div><div class="lbl">RQ 완료 — 기능 11 + 배포 1 + <strong>제약 2</strong></div>
+      <div class="src"><code>grep -cE '^- \*\*RQ-[0-9]+' specs/requirements.md</code> → 14, 전부 ✅.<br>
+      제약 2건 = RQ-16(동시 100명)·RQ-17(사내망) — <code>rq-coverage.json</code>이 <code>kind: constraint</code>로 명시</div></div>
+    <div class="stat"><div class="num">+5</div><div class="lbl">마감 뒤 나온 결함 후속 RQ (전부 ✅)</div>
+      <div class="src">RQ-10-a · 13-a · 15-a · 15-b · 18-a — <code>docs/progress.md</code> 작업 원장</div></div>
+    <div class="stat"><div class="num">71 / 71</div><div class="lbl">테스트 통과 · <strong>20개 파일</strong></div>
+      <div class="src"><code>git ls-files | grep -E '\.test\.(ts|tsx)$'</code> → 20파일.<br>
+      각 파일의 <code>it(</code>/<code>test(</code> 정적 집계 합 = 71 (최근 <code>npm test</code> 출력과 일치)</div></div>
+    <div class="stat"><div class="num">43</div><div class="lbl">골든 케이스 — 트랙 A 36 + B 7 <span style="opacity:.7">(시작 15)</span></div>
+      <div class="src"><code>wc -l evals/golden/*.jsonl</code> → 36 + 7.<br>
+      시작값은 <code>git show e37ce9c:</code> → 10 + 5</div></div>
+    <div class="stat"><div class="num">6 / 6</div><div class="lbl">트랙 B 필수 케이스 통과 (GB-02는 <code>blocked</code>)</div>
+      <div class="src">최신 아티팩트 <code>544703f3….json</code>의 <code>summary</code> = <code>{total:6, pass:6, fail:0}</code></div></div>
+    <div class="stat"><div class="num">45</div><div class="lbl">PR 머지</div>
+      <div class="src"><code>gh pr list --state merged --limit 100 --json number --jq 'length'</code> → 45 (#1~#45)</div></div>
+    <div class="stat"><div class="num">8</div><div class="lbl">ADR 승인 (모순 구현 0건)</div>
+      <div class="src"><code>ls docs/adr/</code> → 0001~0008</div></div>
+    <div class="stat"><div class="num">9 · 16 · 11</div><div class="lbl">단계 · 전이 간선 · 전이 가드</div>
+      <div class="src"><code>phase-matrix.json</code>의 <code>phases</code>/<code>transitions</code>/<code>guards</code> 키 수</div></div>
+    <div class="stat"><div class="num">4 · 5</div><div class="lbl">에이전트 · 스킬</div>
+      <div class="src"><code>ls .claude/agents/</code> → 4 · <code>ls .claude/skills/</code> → 5</div></div>
+    <div class="stat"><div class="num">6</div><div class="lbl">CI 블로킹 스텝 <span style="opacity:.7">(+ 비블로킹 경고 1)</span></div>
+      <div class="src"><code>ci.yml</code>: 스펙 동결 · 검증 일괄 · 정책 린트(P1~P14) · 게이트 음성 시험 · 훅 자기검사 · 문서 신선도.<br>
+      <code>grep -c continue-on-error</code> → <strong>0</strong></div></div>
+    <div class="stat"><div class="num">0.4%</div><div class="lbl"><code>force</code> 사용률 — 1 / 255 전이</div>
+      <div class="src"><code>.harness/state/phase.jsonl</code> 전 레코드 파싱 · <code>metrics.mjs</code> 동일.<br>
+      매트릭스의 자체 경보선은 5%</div></div>
+    <div class="stat"><div class="num">70 → 17</div><div class="lbl">게이트 판정 → <strong>실제 거부</strong> (로컬 로그)</div>
+      <div class="src"><code>.harness/logs/tools.jsonl</code> <code>gate_block</code> 70건 중 <code>warn_only !== true</code> 17건.<br>
+      나머지 53건은 <strong>유예(경고) 통과</strong>다.<br>
+      <strong>이 로그는 gitignore — 이 머신 전용이다</strong></div></div>
+    <div class="stat"><div class="num">17</div><div class="lbl">반복 실패 대장 등재 행 (R1 최다 <strong>14회</strong>)</div>
+      <div class="src"><code>harness/recurrence.md</code> "## 대장" 표 — R1~R17.<br>
+      건수 정본은 <code>policy-lint --self-test</code> 출력</div></div>
+    <div class="stat"><div class="num">49</div><div class="lbl">보류표 행 — <strong>"하지 않기로 결정한 것"</strong></div>
+      <div class="src"><code>docs/progress.md</code> 보류표 데이터 행 수.<br>
+      각 행이 <em>근거</em>와 <em>되살릴 조건</em>을 짝으로 갖는다</div></div>
+    <div class="stat"><div class="num">2</div><div class="lbl">주간 회고 산출 (W31 · W32)</div>
+      <div class="src"><code>ls harness/reports/</code></div></div>
+    <div class="stat"><div class="num">127</div><div class="lbl">하네스 changelog 행 (07-16 ~ 08-06)</div>
+      <div class="src"><code>grep -c '^| 2026' docs/harness/changelog.md</code></div></div>
+    <div class="stat"><div class="num">D-10</div><div class="lbl">마감 7/31 대비 7/21 <strong>기능</strong> RQ 완료</div>
+      <div class="src"><code>docs/progress.md</code> Phase 4~5.<br>
+      단, 그 뒤 결함 5건 — 위 "+5" 타일 참조</div></div>
   </div>
-  <p style="color: var(--text-dim); font-size: 13px;">
-    테스트 수치는 이 문서 작성 시점에 <code>npm test</code>를 재실행해 확인했다.
-    메트릭 M1~M7의 "현재" 열 산정은 7/31 회고 산출물로 예정되어 있다 (6장 참조).
-  </p>
+
+  <div class="callout warn">
+    <div class="co-title">이 표에서 <strong>인용하면 안 되는 값</strong></div>
+    <code>M8a/M8b</code>와 <code>M6</code>의 원천 <code>.harness/logs</code> 아래 세션 로그는
+    <strong>gitignore이고 이 머신에서만 계산된다.</strong> 다른 머신에서 재현되지 않으므로
+    <em>"게이트가 17번 막았다"</em>를 팀에 전할 때는 <strong>어느 머신·어느 기간의 로그인지
+    함께 적어야 한다.</strong> 이것은 결함이 아니라 선택이다 — 세션 로그를 커밋하면
+    모든 커밋이 로그 변화로 더러워진다.
+    <span class="ev"><code>harness/metrics-baseline.md</code> "원천이 셋이라는 인정" 절</span>
+  </div>
 </section>
 
 <!-- ═══════════════════ 6. 남은 과제 ═══════════════════ -->
 <section id="remaining">
-  <h2>6. 남은 과제 <span class="chip warn">원장·리뷰 기록 기준</span></h2>
+  <h2>6. 남은 과제 · 아직 안 고친 것 <span class="chip warn">원장·보류표 기준</span></h2>
   <p>
-    아래는 원장(<code>docs/progress.md</code>)과 리뷰 보고서에 이미 기록된 후속 항목이다.
-    전부 머지를 막지 않는 minor로 분류된 것들이며, 잊히지 않도록 원장 행에 ⚠️로 병기돼 있다.
+    v1의 §6 6행 중 <strong>4행이 해소됐고 2행은 여전히 열려 있다.</strong>
+    아래는 v1 항목의 현재 상태 + 그 뒤에 새로 생긴 것들이다.
   </p>
+
+  <h3>v1 §6 항목의 현재</h3>
   <div class="table-wrap"><table>
-    <tr><th>과제</th><th>출처</th><th>내용</th></tr>
-    <tr><td>7/31 회고 + 메트릭 산정</td><td>metrics-baseline.md</td><td>M1~M7 "현재" 열 갱신, 베이스라인 대비 변화와 "지운 지표와 이유"까지가 L&amp;L 산출물</td></tr>
-    <tr><td>vitest fork-pool flake</td><td>RQ-12 (PR #23)</td><td>워커 크래시 flake ~1/10 (구현 무관, Red 단계에서도 관측). 별도 이슈로 해소 권고됨</td></tr>
-    <tr><td>클라이언트 배선 검증 공백</td><td>RQ-18 (PR #25)</td><td>클라 배선은 evaluator 검증 없이 review-gate(추론적 리뷰)로만 통과 — 7장 E2E 제안과 직결</td></tr>
-    <tr><td>새로고침 UX 후속</td><td>RQ-18 (PR #25)</td><td>새로고침 시 닉네임 재입력 필요, 복원된 room의 빈 패널, global 탭 렌더 정리</td></tr>
-    <tr><td>RoomList.tsx 주석 오정보</td><td>RQ-13 (PR #22)</td><td>room 디렉토리가 모달로 이동한 뒤 낡은 주석 — 사이드바 작업 시 표면 확정과 함께 갱신</td></tr>
-    <tr><td>트랙 B rubric 수동 체크</td><td>sensor-catalog.md</td><td>하네스 변경 시 사람이 rubric을 수동 확인 — 현 규모에선 충분하나 자동화 여지(7장)</td></tr>
+    <tr><th>v1 항목</th><th>현재</th></tr>
+    <tr><td>7/31 회고 + M1~M7 현재 열</td><td><span class="chip good">해소</span> W31·W32 산출 · M4 삭제 · <strong>값 열 자체를 폐지</strong>(값의 소유자는 <code>harness/reports/</code>)</td></tr>
+    <tr><td>새로고침 UX 후속 (닉네임 재입력 · 빈 패널 · global 미렌더)</td><td><span class="chip good">해소</span> 각각 RQ-10-a(#34) · RQ-15-b(#41) · RQ-18-a(#39)</td></tr>
+    <tr><td>트랙 B rubric 수동 체크</td><td><span class="chip good">해소</span> <code>eval-b.mjs</code> 자동 러너 + <code>track_b_passing</code> 가드</td></tr>
+    <tr><td>클라이언트 배선 검증 공백</td><td><span class="chip warn">부분 해소</span> RQ-15-a·RQ-18-a·RQ-15-b에서 <strong>실서버 통합 테스트</strong>로 잠갔다. <strong>Playwright는 여전히 없다</strong>(<code>package.json</code> 무)</td></tr>
+    <tr><td>vitest fork-pool flake</td><td><span class="chip bad">여전히 열림</span> 다만 진단이 정밀해졌다 — <strong>flake 베이스라인은 머신 부하에 따라 이동한다.</strong> 단독 9/10 → 동시 에이전트 5개 상태에서 <strong>미변경 원본도 7/10</strong>. <code>--pool=threads</code>는 양쪽 클린. 수용 기준을 "실패 횟수"가 아니라 <em>"단언 수준 실패 0 + 모든 실패가 워커 크래시 시그니처"</em>로 바꿨고, <strong>flake 비율은 재지 않기로 결정</strong>했다(부하 의존)</td></tr>
+    <tr><td><code>RoomList.tsx</code> 주석 오정보</td><td><span class="chip bad">여전히 열림, 더 틀렸다</span> 문구가 v1 작성 시점과 동일하고, 그중 <em>"global 조회 탭은 RQ-04 몫"</em>은 RQ-18-a 판정(<em>"RQ-04 건이 아니다 … 미충족은 RQ-18이다"</em>)에 의해 이제 <strong>명시적으로 반증됐다</strong></td></tr>
   </table></div>
+
+  <h3>새로 열린 것 — 우선순위 순</h3>
+  <div class="callout bad">
+    <div class="co-title">① <span class="chip bad">R16</span> 워크트리 정션이 <code>node_modules</code>를 파괴한다 — <strong>4회</strong></div>
+    <p>
+      워크트리에 <code>node_modules</code>를 Windows 정션으로 연결한 뒤
+      <code>git worktree remove --force</code>로 정리하면 <strong>정션을 따라가 원본을 지운다.</strong>
+      저장소의 모든 lint·test·build가 멈추고 <code>npm ci</code> 복구 비용을 문다.
+    </p>
+    <table style="min-width:0"><tr><th>호출</th><th>정션 통과</th></tr>
+      <tr><td><code>rmSync(dir, {recursive, force})</code></td><td>안 따라간다 — 원본 보존</td></tr>
+      <tr><td><code>git worktree remove --force</code></td><td><strong>따라간다 — 원본 파괴</strong></td></tr>
+      <tr><td>정션 먼저 unlink → 그 다음 remove</td><td>원본 보존</td></tr>
+    </table>
+    <p>
+      <strong>이 실측표는 1회차 직후부터 센서 카탈로그에 있었다.</strong> 그런데 4회가 났다.
+      진단이 이 절의 핵심이다:
+    </p>
+    <ul>
+      <li><strong>1·2회차 — 처방이 읽히는 자리에 없었다.</strong>
+        <code>harness/sensor-catalog.md</code>는 서브에이전트 시스템 프롬프트로 <em>로드되지 않고</em>
+        <code>.claude/agents/*.md</code>는 <em>로드된다</em>. 절차를 아는 문서와
+        그 절차가 필요한 에이전트가 <strong>다른 파일에 있었다.</strong></li>
+      <li><strong>3·4회차 — 처방이 실패한 것이 아니라 <em>도달하지 않았다</em>.</strong>
+        워크트리 규율은 <code>fix/harness-junction-r16</code> 브랜치에만 있고
+        <strong>머지되지 않았다.</strong> RQ-15-a 브랜치는 <code>main</code>에서 땄으므로
+        에이전트 정의에 그 규율이 <strong>없었다.</strong></li>
+    </ul>
+    <p style="margin-bottom:0">
+      <strong>그래서 남는 명제가 이것이다 — <em>"하네스 처방은 머지되기 전까지 존재하지 않는다."</em></strong>
+      이 PR이 파킹된 동안 같은 사고가 두 번 났다. 방증도 있다: 3회차 뒤 evaluator 프롬프트에
+      워크트리 경고를 <strong>직접 써 넣자 그 회차는 사고가 없었고</strong>, 이후 평가자와 리뷰어가
+      각각 뮤테이션 검증을 <strong>워크트리 없이</strong>(vite 트랜스폼으로 메모리 치환) 수행했다.
+      <strong>내용은 맞고 전달 경로가 문제였다.</strong>
+      <span class="ev"><code>harness/recurrence.md</code> R16 행 + "R16 상세" 절 +
+        "R16 3·4회차 — 처방이 실패한 것이 아니라 도달하지 않았다" 절</span>
+    </p>
+  </div>
+
+  <div class="callout warn">
+    <div class="co-title">② <code>DOCS-SHARE</code> — 팀 공유 문서가 저장소에 들어갈 자리가 없다 <span class="chip warn">🔄 부분 해소</span></div>
+    <p>
+      단계 모델의 <code>docs</code> 관할이 좁아
+      <code>docs/architecture.html</code>은 <strong>지금도 어느 단계의 <code>write_allow</code>에도
+      매칭되지 않는다</strong> — 합법적으로 커밋할 경로가 애초에 없었고, 그래서
+      <strong>리뷰어 5명이 각각 지적만 하고 넘어갔다.</strong>
+      W32 회고에서 <code>IDLE</code>/<code>default_deny</code> 차단 <strong>16회</strong>의
+      최대 버킷이 정확히 이 파일 쓰기였다.
+    </p>
+    <p style="margin-bottom:0">
+      <strong>2026-08-06에 절반이 닫혔다</strong> — <code>policy-lint</code> P14가
+      <em>"<code>doc-map</code>이 관할한다고 선언한 문서를 어느 단계도 쓸 수 없는 상태"</em>를
+      CI에서 차단하게 됐고, 그 과정에서 이 보고서도 <code>docs/harness/</code> 아래로 옮겨져
+      <code>HARNESS</code>에서 커밋 가능해졌다.
+      <strong>남은 절반은 등재다</strong>: <code>governed_globs</code>가 이 디렉터리의
+      <code>.md</code>만 보므로 <strong>HTML 산출물은 여전히 어떤 센서의 모집단에도 없다</strong> —
+      원장이 이것을 <em>"<code>workflow-report</code>가 낡은 진짜 뿌리"</em>로 등재해 두었다.
+      <strong>P14는 "등재된 문서에 관할이 있는가"를 보지 "등재해야 할 것이 등재됐는가"를 보지 않는다.</strong>
+      <span class="ev"><code>docs/progress.md</code> <code>DOCS-SHARE</code>·<code>DOCS-JURISDICTION</code> 행
+        + 보류표의 <em>"<code>governed_globs</code>가 <code>.md</code>만 봐서 HTML 문서는 등재 의무가 없다"</em> 행 ·
+        <code>harness/policy/phase-matrix.json</code> <code>HARNESS.write_allow</code></span>
+    </p>
+  </div>
+
+  <div class="callout warn">
+    <div class="co-title">③ 전이 그래프 구멍 3종 + <code>HARNESS→IDLE</code> 무가드</div>
+    §3-5 말미 참조. 셋 다 <strong>같은 뿌리</strong>다 — 게이트가 <em>"새 기능을 TDD로 만든다"</em>는
+    한 가지 형상만 전제하고, <strong>결함 수정 · 회귀 잠금 · 스펙 정정은 그 형상이 아니다.</strong>
+    유일한 <code>force</code> 1건이 여기서 났다.
+  </div>
+
+  <div class="callout warn">
+    <div class="co-title">④ <code>HASH_GLOBS</code>에 <code>scripts/</code>가 없다 — 채점기를 바꿔도 옛 아티팩트가 유효하다</div>
+    <p>
+      <strong>이미 한 번 실제로 발현했다</strong>: <code>cacheIsStale</code>을 워킹트리에만 둔 채
+      평가를 돌려 통과 아티팩트가 났는데, 그 아티팩트의 <code>head_sha</code>에 커밋된 엔진에는
+      <strong>그 함수가 없다.</strong> <em>"아직 실패로 관측된 적이 없다"</em>고 적었던 앞 판단이
+      <strong>틀렸다.</strong> 처방 비용은 트랙 B 전수 재실행 1회(실측 <strong>$7.21</strong>).
+    </p>
+    <p style="margin-bottom:0">
+      <strong>다만 판단은 그 뒤에 정교해졌다</strong> — 보류표가 되살릴 조건을
+      <em>"트랙 B <strong>채점에 관여하는</strong> 스크립트(<code>eval-b.mjs</code>·<code>resume-test.mjs</code>)를
+      손대는 PR 안에서 함께 넣는다"</em>로 좁혔다. 센서 전용 스크립트는 채점 경로에서
+      호출되지 않으므로 아티팩트 판정에 닿지 않는다 —
+      <strong>2026-08-03에 실제로 그 판별이 발동해 "해당 없음"으로 판정됐고,
+      재리뷰가 호출 부재를 실측으로 확인했다.</strong>
+      "1순위"가 아니라 <strong>조건부 트리거</strong>가 정확한 서술이다.
+      <span class="ev"><code>docs/progress.md</code> 보류표 <code>HASH_GLOBS</code> 행의
+        "되살릴 조건"·"발동 이력"</span>
+    </p>
+  </div>
+
+  <div class="callout warn">
+    <div class="co-title">⑤ 보류표 <strong>47행</strong> — 그 자체가 이 하네스의 가장 큰 미해소 덩어리다</div>
+    <p>
+      상당수가 <code>harness/recurrence.md</code>·스킬 문서 변경이라 <code>HASH_GLOBS</code>이고
+      <strong>한 줄 고치는 데 트랙 B 전수 재실행이 붙는다.</strong> 동결 상태에서 그 값을
+      다시 낼 근거가 없어 보류표에 있다 — <strong>"하지 않기로 결정했다"이지 "나중에 한다"가 아니다.</strong>
+    </p>
+    <p style="margin-bottom:0">
+      <strong>2026-08-06에만 여섯 행이 추가됐다.</strong> 그중 둘은 도구가 환경에 따라
+      다른 답을 내는 축이다 — ① <code>doc-freshness</code>의 존재 판정이 <em>미추적 파일도
+      살아 있는 것으로</em> 세어 <strong>로컬은 초록인데 CI는 빨갛다</strong>
+      ② 그 위에 <strong>플랫폼 의존</strong>이 하나 더 있다: 이 머신의 git은 실재하지 않는
+      <em>디렉터리</em> 경로를 무조건 "무시됨"으로 답해 <strong>죽은 디렉터리 참조를
+      로컬에서만 조용히 면제</strong>한다. <strong>실제로 PR #45가 로컬 전 센서 초록으로
+      올라가 CI에서 떨어졌다.</strong> 반복 대장 R9(<em>"센서가 환경에 따라 다른 답을 내면
+      판정에 쓸 수 없다"</em>)의 같은 뿌리이고, <strong>이 문서 역시 그 함정을 피해
+      경로를 서술로 바꿔 쓴 자리가 있다.</strong>
+      <span class="ev"><code>docs/progress.md</code> 보류표 <strong>47행</strong>(2026-08-06 기준) ·
+        같은 표의 <em>"로컬 초록이 CI 초록을 뜻하지 않는 축"</em>·<em>"C4의 gitignore 면제가
+        죽은 디렉터리 경로를 조용히 삼킨다"</em> 두 행</span>
+    </p>
+  </div>
+  <p class="ev"><code>docs/progress.md</code> "진행 중" 절 + 보류표 47행 전부</p>
 </section>
 
 <!-- ═══════════════════ 7. 보완 제안 ═══════════════════ -->
 <section id="improve">
-  <h2>7. 보완 제안 <span class="chip idea">작성자(Claude) 관점</span></h2>
+  <h2>7. 보완 제안 <span class="chip idea">작성자 관점</span></h2>
   <p>
-    운영하며 드러난 구조적 공백과 트레이드오프에 대한 제안이다. 우선순위 순.
+    v1의 제안 6건 중 <strong>③(메트릭 스크립트화)은 구현됐고</strong>,
+    <strong>①(E2E 공백)은 실행되지 않아 결함 5건으로 돌아왔다.</strong>
+    아래는 그 결과를 반영한 현재 우선순위다.
   </p>
 
   <div class="callout idea">
-    <div class="co-title">① E2E 브라우저 스모크 추가 — 검증 사각지대 해소</div>
-    현 테스트 44개 중 42개가 서버 통합 테스트이고, 클라이언트 테스트는 입장 화면
-    (EntryScreen) 렌더 1건뿐이다. 핵심 클라 배선(localStorage 토큰, 배지 렌더,
-    자동 스크롤)은 추론적 리뷰로만 검증됐고, 실제로 UI 결함(메시지 겹침·스크롤)은
-    수동 테스트에서야 발견돼 PR #29로 수정됐다. Playwright로 골든 케이스 2~3개
-    (입장→메시지→배지)만 E2E로 승격하면 이 사각지대가 닫힌다. 전체 E2E화는 과잉 —
-    스모크 수준이면 충분하다.
+    <div class="co-title">① E2E 브라우저 스모크 — <span class="chip bad">v1이 예고했고 5번 청구서가 왔다</span></div>
+    <p>
+      v1은 <em>"클라 배선(localStorage 토큰, 배지 렌더, 자동 스크롤)은 추론적 리뷰로만
+      검증됐다"</em>고 적었다. <strong>그 뒤 나온 결함 5건이 전부 그 표면이다.</strong>
+    </p>
+    <p>
+      대응은 절반 이뤄졌다 — <code>tests/integration/rq-15-a-global-participants-wiring.test.ts</code>·
+      <code>rq-18-a-global-render.test.ts</code>처럼 <strong>실서버 + 실 <code>socket.io-client</code>로
+      클라 표면을 렌더해 단언하는 통합 테스트</strong>가 생겼다.
+      RQ-15-b는 한 걸음 더 가서 <em>"UI로 실제 참여 → <code>cleanup()</code> 언마운트 → 재렌더,
+      토큰은 <code>localStorage</code>에 남는다"</em>까지 잠갔다.
+    </p>
+    <p style="margin-bottom:0">
+      <strong>남은 것은 브라우저 축이다.</strong> <code>package.json</code>에 Playwright는 없다.
+      골든 2~3개(입장→메시지→배지)만 E2E로 승격하면 닫힌다 — <strong>전체 E2E화는 과잉</strong>이고,
+      실서버 통합 테스트가 이미 상당 부분을 대체했다는 것이 지난 3주의 실측이다.
+    </p>
   </div>
+
   <div class="callout idea">
-    <div class="co-title">② RQ-16(동시 100명) 실측 증거 확보</div>
-    동시 접속 100명은 ADR-0001의 제약 조건으로만 반영됐고 측정된 적이 없다. "완료
-    주장에는 실행 증거"라는 이 프로젝트의 자체 원칙에 비추면 유일하게 증거가 없는
-    요구사항이다. socket.io-client로 100 연결 × 메시지 브로드캐스트를 도는 스크립트
-    하나면 스모크에 편입할 수 있다.
+    <div class="co-title">② 하네스 처방의 <strong>착지 경로</strong>를 만든다 — R16이 드러낸 축</div>
+    R16 3·4회차의 진단은 <em>"처방이 실패한 것이 아니라 도달하지 않았다"</em>였다.
+    <strong>하네스 PR이 파킹되는 동안 그 처방은 존재하지 않는다.</strong>
+    같은 가족이 보류표에 하나 더 있다(<em>"<code>REVIEW</code> 진입 간선이 <code>EVAL</code>·<code>HARNESS</code>뿐"</em>) —
+    <strong>고칠 수 있는데 착지시킬 경로가 좁아서 안 착지한 것</strong>이다.
+    제안: 하네스 변경 중 <strong>에이전트 정의(<code>.claude/agents/*.md</code>)처럼
+    안전 규율만 담은 것</strong>은 트랙 B 전수 재실행을 요구하지 않는 별도 착지 경로를 갖는다.
+    단, <strong>분기 기준은 재량이 아니라 명문화된 규칙이어야 한다.</strong>
   </div>
+
   <div class="callout idea">
-    <div class="co-title">③ 메트릭 수집 스크립트화</div>
-    M2(스펙-코드 동행률)·M3(테스트 선행률)·M7(골든 수)은 git log와 wc로 결정론적으로
-    계산 가능하다. 주간 수동 갱신은 회고가 밀리면 같이 밀린다 — 7/31 회고 전에 수집
-    스크립트를 만들면 회고 비용이 내려가고, 이후 프로젝트에서 재사용된다.
+    <div class="co-title">③ RQ-16(동시 100명) — <strong>측정하지 않기로 한 결정</strong>임을 표기</div>
+    v1은 이것을 <em>"유일하게 증거가 없는 요구사항"</em>이라 적었다.
+    지금은 <code>harness/rq-coverage.json</code>이 <code>kind: constraint</code>로 분류하고
+    근거 ADR을 <code>refs</code>로 대며, 센서가 그 근거 파일들이 실재하고 해당 RQ를 실제로
+    언급하는지 검사한다. <strong>즉 "빠뜨린 것"에서 "결정한 것"으로 성격이 바뀌었다.</strong>
+    다만 그 파일 자신이 경고한다 — <em>"이 매핑이 뜻하는 것은 '100명을 측정했다'가 아니라
+    '측정하지 않기로 한 결정이 ADR에 있다'이다."</em>
+    사내 실사용으로 간다면 <code>socket.io-client</code> 100 연결 스크립트 하나로
+    <code>constraint</code> → <code>smoke</code>로 옮길 수 있고, <strong>그 결정은 새 ADR이 먼저다.</strong>
   </div>
+
   <div class="callout idea">
     <div class="co-title">④ 파이프라인 비용 대비 경량 트랙</div>
-    RQ 1건당 격리 세션 3개 + 리뷰 1개(Opus 2회)는 품질 근거가 확실하지만 비용도
-    실재한다. RQ-14처럼 구현 0줄로 끝난 건에도 전체 파이프라인이 돌았다. diff 규모나
-    위험도(서버 상태 변경 유무)에 따라 evaluator를 생략하고 review-gate만 거치는 경량
-    트랙을 정의하면 비용이 내려간다. 단, 분기 기준은 에이전트 재량이 아니라 명문화된
-    규칙이어야 한다 — 재량에 맡기면 게이트 우회 통로가 된다.
+    RQ 1건당 격리 세션 3개 + 리뷰(Opus 2회)는 품질 근거가 확실하지만 비용도 실재한다.
+    트랙 B 실측이 그 규모를 보여준다 — <strong>GB-02 단일 케이스에 $5.98~$7.26</strong>,
+    전수 재실행 1회 <strong>$7.21</strong>.
+    diff 규모나 위험도에 따라 evaluator를 생략하고 review-gate만 거치는 경량 트랙을 정의하면
+    비용이 내려간다. <strong>단, 이 제안에는 반례가 있다</strong> — RQ-18-a에서
+    <strong>리뷰어가 평가자 2회를 뒤집었다</strong>. 두 층 중 하나를 빼는 설계는
+    "어느 쪽을 빼는가"가 전부다.
   </div>
+
   <div class="callout idea">
-    <div class="co-title">⑤ 하네스 템플릿화 — 프로젝트 자산에서 팀 자산으로</div>
-    원장·스펙 동결 게이트·3-세션 파이프라인·센서 카탈로그·골든 승격 루프는 채팅 앱과
-    무관한 범용 구조다. <code>.claude/</code>(agents·skills·hooks·settings)와 문서 뼈대를
-    도메인 무관 템플릿 저장소로 추출하면, 다음 프로젝트는 Deep Interview부터 시작할 수
-    있다. L&amp;L의 실질 산출물로 이것을 제안한다.
+    <div class="co-title">⑤ 하네스 템플릿화 — 그리고 <strong>템플릿에 반드시 넣어야 할 것</strong></div>
+    <p>
+      원장·단계 매트릭스·3-세션 파이프라인·센서 카탈로그·골든 승격 루프·<strong>반복 실패 대장</strong>은
+      채팅 앱과 무관한 범용 구조다. <code>.claude/</code>와 문서 뼈대를 도메인 무관 템플릿으로
+      추출할 수 있다.
+    </p>
+    <p style="margin-bottom:0">
+      <strong>그런데 템플릿에 <em>종료 조건</em>(§4-1)을 함께 넣지 않으면 위험하다.</strong>
+      이 저장소의 실측이 그렇게 말한다 — 게이트가 매번 실재 문제를 잡으니 다음 게이트가
+      항상 정당해 보이고, 그 결과 <strong>7/28 이후 83커밋 중 65가 하네스였다.</strong>
+      템플릿을 나눠 주면서 종료 조건을 빼면 받는 팀에 <strong>같은 병을 이식하는 것</strong>이다.
+    </p>
   </div>
+
   <div class="callout idea">
     <div class="co-title">⑥ 실서비스 전환 시 재결정 지점 명시</div>
     인메모리 상태(히스토리·세션·안읽음)는 스펙상 허용이지만, 단일 컨테이너 재배포 =
     전체 상태 소실이므로 배포 시마다 사용자 세션이 끊긴다. 사내 실사용으로 간다면
     ADR-0002(영속성)·ADR-0003(세션)의 재결정이 선행 조건임을 배포 문서에 명시해두는
-    것이 안전하다. 지금 고치자는 게 아니라, 미래의 논의가 ADR 절차를 타도록 입구를
-    적어두자는 제안이다.
+    것이 안전하다. <strong>지금 고치자는 게 아니라, 미래의 논의가 ADR 절차를 타도록
+    입구를 적어두자는 제안이다.</strong>
   </div>
 </section>
 
 <!-- ═══════════════════ 8. 팀 적용 ═══════════════════ -->
 <section id="team">
   <h2>8. 팀 적용 제언</h2>
+  <div class="callout bad">
+    <div class="co-title">v1의 이 절을 다시 쓴 이유</div>
+    v1은 <strong>"스펙 동결 게이트 하나만이라도 — 가장 싸고 가장 자주 발동한 가드레일이었다"</strong>를
+    도입 1순위로 권했다. <strong>그 게이트는 발동 횟수가 0이다.</strong>
+    <strong>발동한 적 없는 게이트를 "값나갔다"고 권하면 받는 쪽이 그것을 사고 우리는 근거를 잃는다.</strong>
+    아래 순서는 <em>"실제로 몇 번 막았는가 / 몇 번 뒤집었는가"</em>를 기준으로 다시 매겼다.
+  </div>
+
   <p>
-    전부를 한 번에 도입할 필요는 없다. 비용 대비 효과 순으로, 기존 팀 프로세스에
-    독립적으로 얹을 수 있는 것부터:
+    전부를 한 번에 도입할 필요는 없다. 비용 대비 <strong>실측된</strong> 효과 순으로,
+    기존 팀 프로세스에 독립적으로 얹을 수 있는 것부터:
   </p>
+
   <ol>
-    <li><strong>스펙 동결 게이트 하나만이라도</strong> — "모호한 요구사항이면 구현 도구를
-      차단"은 hook 스크립트 1개로 이식되며, 에이전트 사용 여부와 무관하게 효과가 있다.
-      가장 싸고 가장 자주 발동한 가드레일이었다.</li>
-    <li><strong>완료 주장 = 실행 증거 규칙</strong> — PR 본문에 테스트 실행 출력 첨부를
-      관례화. 도구 없이 문화로 시작할 수 있다.</li>
-    <li><strong>독립 리뷰 게이트</strong> — 사람 리뷰어가 있는 팀이라도, 사람 리뷰 전에
-      에이전트 리뷰를 1차 필터로 두면 사람의 리뷰 비용이 내려간다. 핵심은 리뷰
-      세션에 작성 맥락을 주지 않는 격리다.</li>
-    <li><strong>골든 케이스 승격 루프</strong> — 장애·리뷰 지적을 골든 케이스로 승격하고
-      정답은 사람이 쓴다는 규칙. 기존 회고 프로세스에 붙이기 쉽다.</li>
-    <li><strong>3-세션 TDD 파이프라인</strong> — 도입 비용이 가장 크므로 마지막.
-      에이전트에게 구현을 위임하는 비중이 높아질수록 투자 가치가 커진다.</li>
+    <li>
+      <p><strong>완료 주장 = 실행 증거 규칙</strong> <span class="chip good">도구 0 · 실측 근거 있음</span></p>
+      <p>
+        PR 본문에 테스트 실행 출력 첨부를 관례화한다. 도구 없이 문화로 시작할 수 있고,
+        <strong>나중에 게이트로 승격하는 경로가 자연스럽다</strong> —
+        이 저장소는 그 문화를 <code>check_full_green</code>·<code>evaluator_pass</code>
+        두 가드로 올렸다. <strong>순서가 중요하다: 문화가 먼저고 게이트가 나중이다.</strong>
+      </p>
+    </li>
+    <li>
+      <p><strong>독립 리뷰 게이트 — 작성 맥락을 <em>주지 않는</em> 것이 전부</strong>
+        <span class="chip good">평가자를 2회 뒤집은 기록 있음</span></p>
+      <p>
+        사람 리뷰어가 있는 팀이라도, 사람 리뷰 전에 에이전트 리뷰를 1차 필터로 두면
+        사람의 리뷰 비용이 내려간다. <strong>핵심은 모델이 아니라 격리다</strong> —
+        diff와 관련 스펙만 주고 <em>"왜 이렇게 했는지"</em>는 주지 않는다.
+        이 저장소에서 그 격리가 만든 최고 성과가
+        <strong>리뷰어가 평가자의 PASS 2회를 뒤집고 회귀를 특정한 것</strong>이다.
+      </p>
+      <p>
+        <strong>함께 전할 정직한 한계</strong>: GitHub은 이 게이트를 강제하지 않는다.
+        <code>required_pull_request_reviews</code>가 없으므로 <strong>규율만 있는 지점</strong>이다.
+        팀에 도입한다면 CI 스텝으로 내려 status check를 만드는 것이 첫 보강이다.
+      </p>
+    </li>
+    <li>
+      <p><strong>반복 실패 대장 — 누적을 세는 자리를 만든다</strong>
+        <span class="chip good">P11이 합리화를 3회 거부</span></p>
+      <p>
+        <em>"같은 실수 2회면 조치한다"</em>는 규칙은 대부분의 팀에 이미 있다.
+        <strong>없는 것은 세는 자리다.</strong> 이 저장소는 규칙을 알고도 하루에 같은 원인으로
+        3~9회를 반복했다 — 개별로 보면 매번 다른 파일의 사소한 오탈자로 보였기 때문이다.
+      </p>
+      <p>
+        도입 비용이 낮다: 마크다운 표 하나 + <em>"2회 이상인데 처방 칸이 비어 있으면 CI 실패"</em>
+        린터 한 줄. <strong>그 린터가 실제로 사람의 유예 합리화를 3회 거부했고 세 번 다 근거가 무너졌다</strong>는 것이
+        이 항목의 실측 근거다. <strong>주의</strong>: 상태 칸의 어휘를 <em>닫아야</em> 한다 —
+        열어 두면 목록에 없는 값이 전부 "처방됨"으로 읽히고, <strong>빈 칸이 조용히 통과한다.</strong>
+      </p>
+    </li>
+    <li>
+      <p><strong>골든 케이스 승격 루프 — 정답은 사람이 쓴다</strong>
+        <span class="chip good">15 → 43, 승격 사례 다수</span></p>
+      <p>
+        장애·리뷰 지적을 골든 케이스로 승격하고, <strong>에이전트가 자기 정답을 쓰는 순환을
+        구조로 막는다.</strong> 이 저장소의 현재 방어는 permissions가 아니라
+        <strong>단계 매트릭스</strong>다 — 정답지는 <code>SPEC</code>에서만 열리고
+        구현·평가·리뷰 중에는 닫혀 있다.
+        (원래 <code>permissions: ask</code>였는데 <strong>매 편집마다 사람에게 묻는 것은
+        실전에서 지속되지 않아</strong> 층을 옮겼다. 이 실패 자체가 이식할 정보다.)
+      </p>
+      <p>
+        <strong>함께 전할 것</strong>: <em>분모를 골든이 아니라 요구사항에 둔다.</em>
+        분모가 골든이면 <strong>골든이 없는 요구사항은 실패할 수조차 없고</strong>,
+        센서가 <code>27/27 통과</code>를 내면서 3개 RQ가 미커버인 상태가 성립한다.
+      </p>
+    </li>
+    <li>
+      <p><strong>단계 × 경로 쓰기 경계</strong> <span class="chip good">판정 70건 · 실제 거부 17건</span></p>
+      <p>
+        <em>"하지 마"</em>를 <em>"할 수 없음"</em>으로 바꾸는 가장 싼 자리다.
+        최소 형태는 두 칸이면 된다 — <strong>테스트 쓰는 단계에서 구현 경로를 막고,
+        구현하는 단계에서 테스트 경로를 막는다.</strong>
+      </p>
+      <p>
+        <strong>근거를 정확히 적으면</strong>: 이 층은 <strong>판정 70건</strong>을 냈고
+        그중 <strong>17건이 실제 거부</strong>다. <strong>거부 17건의 실질은
+        "에이전트가 상태 파일·정책 파일·골든 정답지를 직접 고치려는 시도"</strong>였다(§3-8).
+        구현 코드를 하네스 PR에 섞으려는 시도 15건은 <strong>유예 구간의 경고였지 거부가 아니다</strong> —
+        그 사실까지 적어야 받는 쪽이 자기 저장소에서 무엇을 기대할지 안다.
+      </p>
+      <p>
+        <strong>함께 전할 세 가지 한계</strong>:
+        ① <strong>매트릭스는 <em>도구</em>를 막지 <em>셸</em>을 막지 않는다</strong> —
+        <code>echo x &gt; tests/foo.test.ts</code>는 통과한다(실측: Bash exit 0 / Write 도구 차단).
+        셸 리다이렉트는 별도 목록(<code>deny_redirect</code>)이 <em>탐지</em>하는데,
+        <strong>실제 거부 17건 중 11건이 그 목록이었다</strong> — 즉 없으면 큰 구멍이다.
+        ② 첫 주에는 일부 단계를 <code>warn_only</code>로 유예하라 —
+        <strong>전면 차단으로 시작하면 <code>force</code>가 습관이 되고 그 순간 게이트가 죽는다.</strong>
+        ③ <strong>일반 문서가 살 자리를 먼저 정하라</strong> — 이 저장소는 그것을 안 정해서
+        팀 공유 문서가 몇 주째 커밋되지 못했고, 그 지연이 이 보고서가 낡은 원인의 절반이다.
+      </p>
+    </li>
+    <li>
+      <p><strong>3-세션 TDD 파이프라인</strong> <span class="chip warn">도입 비용 최대 — 마지막</span></p>
+      <p>
+        에이전트에게 구현을 위임하는 비중이 높아질수록 투자 가치가 커진다.
+        <strong>비용을 정직하게 적으면</strong>: 판정 세션 1회에 $6~7 수준이고,
+        RQ-14처럼 구현 0줄로 끝난 건에도 전체 파이프라인이 돌았다.
+      </p>
+    </li>
   </ol>
+
+  <div class="callout warn">
+    <div class="co-title">도입하는 팀이 <strong>같이 가져가야 할 경고 3개</strong></div>
+    <ul style="margin-bottom:0">
+      <li><strong>종료 조건을 함께 넣어라.</strong> 게이트가 매번 실재 문제를 잡으면
+        다음 게이트가 항상 정당해 보인다 — 이 저장소는 그래서 7/28 이후 83커밋 중 65가
+        하네스였다. 종료 조건은 <strong>게이트가 아니라 사람이 판정</strong>해야 한다.</li>
+      <li><strong>워크트리 병렬화에는 알려진 파괴적 실패 모드가 있다.</strong>
+        Windows에서 <code>node_modules</code>를 정션으로 걸고
+        <code>git worktree remove --force</code>로 정리하면 <strong>원본이 지워진다</strong>(4회 발생).
+        그리고 그 경고는 <strong>에이전트가 실제로 읽는 파일</strong>(<code>.claude/agents/*.md</code>)에
+        있어야 한다 — 센서 카탈로그에 적어 두면 서브에이전트는 그것을 읽지 않는다.</li>
+      <li><strong>센서의 <em>모집단</em>을 먼저 보라 — 제외 목록이 아니라.</strong>
+        이 보고서의 v1이 12일 동안 조용히 낡은 구조적 이유는
+        <strong>어떤 신선도 센서에도 <em>등재된 적이 없다</em>는 것</strong>이다.
+        처음엔 <em>"제외 목록에 잡혀 있어서"</em>라고 진단했고 <strong>그것이 틀렸다</strong> —
+        그 제외 목록은 실효 0인 죽은 설정이었고, <strong>죽은 설정이 판단의 흔적처럼 읽혀
+        다시 판단하지 않게 만들었다</strong>(그래서 삭제했다).
+        <strong>물어야 할 질문은 "무엇이 제외됐나"가 아니라 "무엇이 모집단에 들어왔나"다.</strong>
+        허용목록 방식이면 등재되지 않은 문서는 조용히 밖에 있고, 아무도 그것을 결정한 적이 없다.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══════════════════ A. 측정 방법 ═══════════════════ -->
+<section id="method">
+  <h2>A. 이 문서의 측정 방법 · 확인 불가 항목</h2>
+  <p>
+    이 판의 모든 수치는 <strong>2026-08-06 저장소에서 직접 측정</strong>했다.
+    v1의 값도, 감사 보고서의 값도 그대로 옮기지 않았다 — 둘 다 남이 잰 것이기 때문이다.
+  </p>
+  <h3>측정 기준</h3>
+  <ul>
+    <li><strong>"X가 Y를 막는다" 형태의 문장</strong>은 X가 실재하고 blocking인지 확인한 것만 남겼다.
+      CI는 <code>continue-on-error</code> 유무, 전이 가드는 <code>phase-matrix.json</code>의
+      <code>guards</code>/<code>transitions</code>, 권한은 <code>.claude/settings.json</code>으로 판정했다.</li>
+    <li><strong>테스트 수는 실행하지 않고 정적으로 셌다</strong> — 백그라운드에서 트랙 B 평가가
+      돌고 있어 부하를 주지 않기 위해서다. 20개 테스트 파일의 <code>it(</code>/<code>test(</code>
+      선언을 합산해 71을 얻었고, 이는 최근 <code>npm test</code> 출력(<em>71 passed / 20 files</em>)과 일치한다.</li>
+    <li><strong>발동 횟수 없이 "값나갔다"고 적지 않았다.</strong> 게이트마다
+      "실제로 몇 번 막았는가"를 <code>tools.jsonl</code>·<code>phase.jsonl</code>·주간 리포트에서 확인했다.</li>
+  </ul>
+
+  <h3>확인하지 못한 것 — 그리고 왜</h3>
+  <div class="table-wrap"><table>
+    <tr><th>항목</th><th>왜 확인 못 했나</th><th>대신 확인한 것</th></tr>
+    <tr><td><strong>"머지된 PR 전건이 독립 리뷰를 경유했다"</strong></td><td>PR별 reviewer 보고서는 세션 작업 폴더의 리뷰 보고서에 있고 그 경로는 gitignore다. GitHub 쪽 리뷰 레코드는 0건(리뷰가 로컬 스킬 산출물이라 원격에 없다)</td><td><strong>머지 수 45는 확인했다.</strong> 리뷰 판정은 원장·changelog에 <em>기록된 건</em>만 §3-7 표에 적었다 — <strong>전수 주장은 하지 않는다</strong></td></tr>
+    <tr><td>v1의 시간 수치 (<em>"1.4초"</em> · <em>"3.2초"</em>)</td><td>작성 시점의 머신·<code>.eslintcache</code> 상태·13파일 규모를 재현할 수 없다</td><td>지금 이 머신 값은 <code>--fast</code> 0.13초(대상 0건) / 전체 5.7초(20파일 71테스트). <strong>벽시계 값은 머신 의존이라 v2 본문에서 뺐다</strong> — <code>metrics-baseline.md</code>가 <em>"예산이 있는 값은 적고 개수는 적지 않는다"</em>고 규정하는데, <code>--fast</code>는 ADR-0005 결정5의 5초 예산 안이므로 설계 결정은 깨지지 않았다</td></tr>
+    <tr><td>RQ-05 B-1 리뷰 <strong>원문</strong></td><td>세션 작업 폴더의 리뷰 보고서 미접근 (다른 에이전트가 사용 중)</td><td><strong>정황은 전부 일치</strong> — 원장이 <em>"리뷰 B-1(잘못된 URL 인코딩 크래시=무인증 DoS) 수정"</em>으로 기록하고, <code>rq-coverage.json</code>·<code>scripts/smoke.sh</code>가 실제로 그 검사를 갖는다</td></tr>
+    <tr><td>"evaluator가 11회 반복 실행으로 가드 강도를 검증"(RQ-14)</td><td>원 실행 로그가 세션 작업 폴더(gitignore)</td><td>원장 기록과 일치: <em>"evaluator PASS(11회 클린 재현, 가드 강도 확인)"</em></td></tr>
+    <tr><td>트랙 B 최신 상태의 <em>재실행</em></td><td><strong>의도적으로 실행하지 않았다</strong> — 이 문서 작성 중 백그라운드 평가가 돌고 있었고 <code>GB-06</code>은 시간 예산이 있다</td><td>커밋된 아티팩트 <strong>47건</strong>의 <code>summary</code> 필드를 직접 파싱했다(최신 = 6/6)</td></tr>
+    <tr><td><strong>"머지된 PR 45건 중 <em>몇 건</em>이 REQUEST_CHANGES를 받았나"</strong>의 전수</td><td>리뷰 판정은 로컬 스킬 산출물이라 GitHub에 레코드가 없고, 보고서 원문은 gitignore다</td><td><strong>기록이 남은 8건만</strong> §3-7 표에 적었다. 추가로 <code>.harness/state/phase.jsonl</code>의 <code>REVIEW→IDLE</code> 되돌림으로 <strong>회차 수는</strong> 교차 확인했다 — 단 이 로그는 단계 모델 도입(2026-07-27) <em>이후</em>의 작업만 덮는다</td></tr>
+    <tr><td><strong>PR #45 1·2차 리뷰의 blocker 원문</strong></td><td>같은 이유 — 세션 작업 폴더의 리뷰 보고서는 gitignore이고 이번 작업 지시가 그 디렉터리를 건드리지 말 것이었다</td><td><strong>원장·changelog의 요약과 전이 로그의 회차가 일치한다</strong>: 되돌림 2회 후 3회차 APPROVE, blocker 서술은 전부 스코프·절차 위생 축이다. <strong>"설계는 통과"라는 판정 자체는 원문을 못 봤다</strong></td></tr>
+  </table></div>
+</section>
+
+<!-- ═══════════════════ B. 정정 이력 ═══════════════════ -->
+<section id="corrections">
+  <h2>B. v1 → v2 정정 요약</h2>
+  <p>
+    상세 대조는 세션 작업 폴더의 <code>report-fixes.md</code>에 있다(저장소 밖 · gitignore).
+    여기는 요지만 적는다.
+  </p>
+
+  <h3>거짓 3건 — 존재하지 않는 방어를 단언 (R1 형상)</h3>
+  <div class="table-wrap"><table>
+    <tr><th>v1이 적은 것</th><th>실측</th><th>v2에서</th></tr>
+    <tr><td>스펙 동결 게이트가 <em>"가장 싸고 <strong>가장 자주 발동한</strong> 가드레일"</em></td><td><strong>발동 0회.</strong> 🟡은 <code>src/</code>가 생기기 전에 이미 0이었고, 훅은 2026-07-27 삭제</td><td>§3-1 정정 콜아웃 + §8에서 도입 1순위 자리를 뺐다. 실제 하중을 받은 층(단계×경로, 실제 차단 17건)으로 대체</td></tr>
+    <tr><td><em>"테스트-코드 동행 검사"</em>가 <strong>PR 머지 게이트</strong></td><td>당시 <code>::warning::</code>뿐이라 막지 않았고, <strong>지금은 스텝 자체가 삭제</strong>됐다(grep 프록시는 순서를 못 본다)</td><td>§3-8에 blocking 열을 신설해 <strong>6개 블로킹 / 1개 경고</strong>를 구분. M3는 <code>phase.jsonl</code>이 정본임을 명시</td></tr>
+    <tr><td><em>"파일 수정 직후 <strong>lint+typecheck</strong>"</em></td><td><code>--fast</code>는 <strong>eslint 단독</strong>. 스크립트 헤더 자신이 그렇게 적는다</td><td>§3-8 정정 콜아웃. typecheck가 <strong>전이 가드 <code>red_evidence</code>로 옮겨간 것</strong>과 그 계기(RQ-01 타입 버그 사고)를 함께 적었다</td></tr>
+  </table></div>
+
+  <h3>틀림 3건 — 작성 당시에도 참이 아니었다</h3>
+  <ul>
+    <li>골든 시작값 <strong>13 → 15</strong> (트랙 A 10 + B 5, <code>e37ce9c</code>). 원천(<code>metrics-baseline.md</code> M7 칸)이 틀렸고 문서가 인용했다.</li>
+    <li><strong>PR #11 오귀속</strong> → 리뷰 지적은 PR #11(디자인 인터뷰)에서 나왔고,
+      RQ-18 스펙 v1.1 개정과 ADR-0003 "활성 room" 정의는 <strong>PR #12</strong>다.
+      두 PR을 하나로 뭉갰다.</li>
+    <li><strong>"12 / 12" → "14 / 14"</strong>. RQ-16·17이 말없이 분모 밖으로 밀려 있었고,
+      하필 RQ-16은 v1 자신이 <em>"유일하게 증거가 없는 요구사항"</em>이라 지목한 항목이다.</li>
+  </ul>
+
+  <h3>낡은 수치 (일부)</h3>
+  <div class="table-wrap"><table>
+    <tr><th>항목</th><th>v1</th><th>v2 (실측)</th></tr>
+    <tr><td>골든 케이스</td><td>32 (A 27 + B 5)</td><td><strong>43</strong> (A 36 + B 7)</td></tr>
+    <tr><td>테스트</td><td>44 / 13파일</td><td><strong>71 / 20파일</strong></td></tr>
+    <tr><td>ADR</td><td>6</td><td><strong>8</strong></td></tr>
+    <tr><td>PR 머지</td><td>29</td><td><strong>45</strong></td></tr>
+    <tr><td>지표</td><td>M1~M7</td><td><strong>M1·M2·M3·M5·M6·M7·M8a·M8b</strong> (M4 삭제)</td></tr>
+    <tr><td>트랙 B</td><td>5케이스 · <em>"정식 실행 기록 없음"</em></td><td><strong>7케이스 · 필수 6 · 자동 러너 · 커밋된 아티팩트 47건 · 전이 가드가 요구</strong></td></tr>
+    <tr><td>골든 정답 방어</td><td>permissions <code>ask</code></td><td><strong>단계 매트릭스</strong> (permissions는 <code>allow</code>)</td></tr>
+    <tr><td>센서 카탈로그</td><td>Guide / Sensor 2분류</td><td><strong>Guides / Boundary / Sensors 3층</strong> · 우선순위 구조&gt;게이트&gt;센서&gt;Guide</td></tr>
+  </table></div>
+
+  <h3>신설한 절</h3>
+  <p>
+    §3-4 9단계 상태 머신 · §3-5 전이 가드 11종 · §3-10 반복 실패 대장 R1~R17 ·
+    §3-11 주간 회고 · §4-1 <em>"무엇을 못 잡았나"</em> + 하네스 종료 조건 ·
+    §A 측정 방법과 확인 불가 항목. <strong>v1에서 <code>grep phase|IDLE|RELEASE</code>가 0건이었다</strong> —
+    이 프로젝트 워크플로우의 본체가 보고서에 없었다.
+  </p>
+
+  <h3>초안(작성 당일 아침) 대비 추가로 고친 것</h3>
+  <p>
+    이 판은 <strong>같은 날 오후에 머지된 PR #45</strong> 뒤에 다시 실측했다.
+    그 사이에 저장소가 움직여 <strong>초안의 수치 여덟 가지가 이미 낡아 있었다</strong> —
+    그 자체가 이 문서가 반복해서 말하는 명제의 실물 증거다.
+  </p>
+  <div class="table-wrap"><table>
+    <tr><th>항목</th><th>초안</th><th>이 판 (재실측)</th></tr>
+    <tr><td><code>policy-lint</code> 범위</td><td>P1~P13</td><td><strong>P1~P14</strong> (P14 = 문서 관할)</td></tr>
+    <tr><td>R1 누적 회차</td><td>13</td><td><strong>14</strong></td></tr>
+    <tr><td><code>force</code> 비율</td><td>1 / 233</td><td><strong>1 / 255</strong></td></tr>
+    <tr><td>PR 머지</td><td>43</td><td><strong>45</strong></td></tr>
+    <tr><td>커밋된 트랙 B 아티팩트</td><td>45</td><td><strong>47</strong></td></tr>
+    <tr><td>changelog 행</td><td>124</td><td><strong>127</strong></td></tr>
+    <tr><td><strong><code>HARNESS</code>의 <code>src/**</code> 15회</strong></td><td><em>"실제 차단 17건 중 최대 버킷"</em></td><td><strong>거짓이었다</strong> — 15건 전부 <code>warn_only: true</code>(유예 구간의 경고)이고, <strong>실제 거부 17건에 <code>src/**</code>는 0건</strong>이다. 초안이 M8a(시도)와 M8b(거부)를 뭉갰다</td></tr>
+    <tr><td><strong>이 문서가 낡은 원인</strong></td><td><em>"제외 목록(<code>exclude_globs</code>)에 잡혀 있었다"</em></td><td><strong>원인이 틀렸다</strong> — 제외가 아니라 <strong>미등재</strong>다. 그 제외 목록은 실효 0인 죽은 설정이었고 같은 날 삭제됐다</td></tr>
+  </table></div>
+  <p>
+    <strong>일곱 번째 줄이 이 표에서 가장 중요하다.</strong> 초안은 감사 보고서를
+    베끼지 않겠다고 선언하고도 <strong>주간 리포트의 M8a 분해를 M8b로 읽어</strong>
+    §8 도입 권고의 근거 칩에 <em>"실제 차단 17건 중 15건"</em>이라고 적었다.
+    <strong>v1이 발동 0회를 "가장 자주 발동"으로 판 것과 같은 종의 오류</strong>이고,
+    같은 자리(팀 도입 권고)에서 났다. 잡은 것은 새 실측이지 새 규칙이 아니다.
+  </p>
+
   <hr class="sep">
   <p style="color: var(--text-dim); font-size: 13px;">
-    작성: Claude (Fable 5) · 근거 자료: docs/progress.md, docs/harness/changelog.md,
-    harness/sensor-catalog.md, harness/metrics-baseline.md, specs/requirements.md,
-    docs/adr/, .claude/skills/, evals/ · 테스트 수치는 작성 시점 재실행으로 확인.
+    <strong>실측 기준</strong>: 2026-08-06(PR #45 머지 이후), 브랜치 <code>docs/handbook-and-report</code>.
+    근거 자료: <code>specs/requirements.md</code>, <code>docs/adr/</code>, <code>docs/progress.md</code>,
+    <code>docs/harness/changelog.md</code>, <code>harness/policy/phase-matrix.json</code>,
+    <code>harness/recurrence.md</code>, <code>harness/sensor-catalog.md</code>,
+    <code>harness/metrics-baseline.md</code>, <code>harness/reports/</code>,
+    <code>harness/rq-coverage.json</code>, <code>evals/</code>,
+    <code>.github/workflows/</code>, <code>.claude/</code>, <code>scripts/check.mjs</code>,
+    <code>.harness/state/phase.jsonl</code>, <code>.harness/logs/tools.jsonl</code>(로컬 전용),
+    <code>gh pr list</code> · <code>gh api …/branches/main/protection</code>.
+    <br><br>
+    <strong>이 판이 낡을 때 알아보는 법 — 그리고 지금은 아무도 알려주지 않는다</strong>:
+    위 근거 파일 중 하나라도 바뀌면 이 문서의 해당 수치는 낡는다.
+    <strong>이 판은 <code>docs/harness/</code> 아래에 있어 <code>HARNESS</code> 단계에서
+    합법적으로 커밋된다</strong>(2026-08-06 P14 PR이 연 관할이다).
+    <strong>그러나 <code>doc-map.json</code>에는 아직 등재되지 않았다</strong> —
+    <code>governed_globs</code>가 이 디렉터리의 <code>.md</code>만 보므로
+    <strong>HTML은 어떤 검사의 모집단에도 들어가지 않는다.</strong>
+    등재를 미룬 이유도 기록돼 있다: <em>내용이 낡은 것을 알면서 등재하면 C2가 정당하게 막고,
+    그것을 면제로 뚫으면 "낡지 않았다"는 거짓을 기록하게 된다</em> —
+    <strong>등재와 내용 수정은 나눌 수 없다.</strong> 이 판이 내용을 고쳤으므로
+    <strong>다음 결정은 등재다.</strong> 등재하지 않으면
+    <strong>이 문서는 v1과 정확히 같은 방식으로 다시 낡는다.</strong>
+    <span class="ev"><code>harness/doc-map.json</code>의 <code>_deferred_registration</code> 주석 ·
+      <code>docs/progress.md</code> 보류표 <em>"<code>governed_globs</code>가 <code>.md</code>만 봐서
+      HTML 문서는 등재 의무가 없다"</em> 행</span>
   </p>
 </section>
 
@@ -666,22 +1943,41 @@
 </div>
 
 <script>
-  // 스크롤 위치에 따라 좌측 내비 활성화
-  const links = Array.from(document.querySelectorAll('nav.sidebar a'));
-  const sections = links
-    .map(a => document.querySelector(a.getAttribute('href')))
-    .filter(Boolean);
-  const byId = new Map(links.map(a => [a.getAttribute('href').slice(1), a]));
-  const observer = new IntersectionObserver(entries => {
-    entries.forEach(e => {
-      if (e.isIntersecting) {
-        links.forEach(a => a.classList.remove('active'));
-        const link = byId.get(e.target.id);
-        if (link) link.classList.add('active');
+  // 테마 토글 — prefers-color-scheme 위에 data-theme 오버라이드
+  (function () {
+    var root = document.documentElement;
+    var btn = document.getElementById('themeBtn');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      var current = root.getAttribute('data-theme');
+      if (!current) {
+        var prefersDark = window.matchMedia &&
+          window.matchMedia('(prefers-color-scheme: dark)').matches;
+        current = prefersDark ? 'dark' : 'light';
       }
+      root.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
     });
-  }, { rootMargin: '-10% 0px -70% 0px' });
-  sections.forEach(s => observer.observe(s));
+  })();
+
+  // 스크롤 위치에 따라 좌측 내비 활성화
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('nav.sidebar a'));
+    var sections = links
+      .map(function (a) { return document.querySelector(a.getAttribute('href')); })
+      .filter(Boolean);
+    var byId = new Map(links.map(function (a) { return [a.getAttribute('href').slice(1), a]; }));
+    if (!('IntersectionObserver' in window)) return;
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          links.forEach(function (a) { a.classList.remove('active'); });
+          var link = byId.get(e.target.id);
+          if (link) link.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-10% 0px -70% 0px' });
+    sections.forEach(function (s) { observer.observe(s); });
+  })();
 </script>
 </body>
 </html>
