@@ -33,7 +33,6 @@
         "specs/**",
         "docs/adr/**",
         "docs/design/**",
-        "docs/architecture.html",
         "docs/progress.md",
         "evals/golden/**",
         "_workspace/**"

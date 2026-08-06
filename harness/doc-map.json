@@ -105,9 +105,14 @@
           "why": "같은 강등이 tool-risk.json 의 R2/R1 배열을 옮기고 policy/README.md 를 재생성했다. 이 문서가 policy 에서 옮겨 적는 것은 등급의 정의와 강제 주체이지 어느 명령이 어느 등급인가의 목록이 아니다 — 그 목록은 README.md 가 생성물로 갖고 policy-lint --print 가 JSON 에서 유도한다. 값을 두 곳에 적지 않는 것이 그 생성물의 존재 이유이므로, 이 문서에 그 값이 없는 것이 정상이다."
         },
         {
-          "dep": "scripts/**",
+          "dep": "scripts/policy-lint.mjs",
           "sha": "0747b68",
-          "why": "policy-lint 에 P14 를 더하고 doc-freshness 에서 죽은 exclude_globs 참조를 뺀 변경이다. 카탈로그의 정책 정합성 행을 같은 커밋에서 P1~P14 로 고치고 P13·P14 설명을 넣었으므로 이 문서가 이 변경에 대해 낡은 문장을 갖지 않는다. doc-freshness 행은 C1~C6 체계를 서술하고 exclude_globs 를 근거로 쓰지 않는다(grep 확인)."
+          "why": "policy-lint 에 P14 를 더하고 doc-freshness 에서 죽은 exclude_globs 참조를 뺀 변경이다. 카탈로그의 정책 정합성 행을 같은 커밋에서 P1~P14 로 고치고 P13·P14 설명을 넣었으므로 낡은 문장이 없다. doc-freshness 행은 C1~C6 체계를 서술하고 exclude_globs 를 근거로 쓰지 않는다(grep 확인). 주의: 이 항목을 처음엔 scripts/** 글롭으로 적었는데 judgeC2Ack 은 움직인 파일과 정확 일치만 보므로 발화하지 않았다 — 리뷰 M-1."
+        },
+        {
+          "dep": "scripts/doc-freshness.mjs",
+          "sha": "0747b68",
+          "why": "policy-lint 에 P14 를 더하고 doc-freshness 에서 죽은 exclude_globs 참조를 뺀 변경이다. 카탈로그의 정책 정합성 행을 같은 커밋에서 P1~P14 로 고치고 P13·P14 설명을 넣었으므로 낡은 문장이 없다. doc-freshness 행은 C1~C6 체계를 서술하고 exclude_globs 를 근거로 쓰지 않는다(grep 확인). 주의: 이 항목을 처음엔 scripts/** 글롭으로 적었는데 judgeC2Ack 은 움직인 파일과 정확 일치만 보므로 발화하지 않았다 — 리뷰 M-1."
         }
       ],
       "edit_policy": {
@@ -184,18 +189,6 @@
         }
       ],
       "review_every_days": 90
-    },
-    {
-      "path": "docs/harness/handbook.html",
-      "tier": 2,
-      "purpose": "팀 공유 핸드북 — 제품(무엇을 만들었나)과 하네스(어떻게 만드나)를 한 페이지에. L&L 배포물.",
-      "_doc_why_registered": "저장소 밖으로 읽히는 문서라 낡으면 거짓이 전파된다. 등재하지 않으면 어떤 센서도 안 본다 — workflow-report.html 이 정확히 그렇게 13일을 낡았고 팀 도입 권고 자리에 거짓 3건을 담게 됐다(2026-08-06 문서 감사). 원본이던 architecture.html·harness-structure.html 은 이 문서에 흡수됐다: 같은 사실을 말하는 문서가 둘이면 하나는 반드시 낡는다.",
-      "depends_on": [
-        "specs/requirements.md",
-        "harness/policy/phase-matrix.json",
-        "harness/sensor-catalog.md"
-      ],
-      "review_every_days": 30
     },
     {
       "path": "evals/README.md",
@@ -407,5 +400,5 @@
       "_doc": "tier ≤2 문서의 🟡/TODO(가 14일을 넘으면 경고. 센서 카탈로그의 죽은 🟡과 ci.yml의 스테일 TODO가 이 검사의 발단이다."
     }
   },
-  "_deferred_registration": "docs/harness/workflow-report.html 은 아직 등재하지 않는다. 내용이 낡은 것을 알고 있는 상태(2026-08-06 문서 감사: 팀 도입 권고 자리에 거짓 3건)에서 등재하면 C2 가 정당하게 차단하고, 그것을 _c2_reviewed 로 면제하면 '낡지 않았다' 는 거짓을 기록하는 것이 된다. 갱신본 PR 에서 내용과 함께 등재한다 — 등재와 내용 수정은 나눌 수 없다(등재만 하면 CI 가 빨개지고, 내용만 고치면 다음에 또 낡는다). 관할은 이 PR 이 이미 열었다: claudedocs/ 에서 docs/harness/ 로 옮겨 HARNESS 단계가 쓸 수 있다."
+  "_deferred_registration": "문서 두 건의 등재를 미뤘다. ① docs/harness/workflow-report.html — 내용이 낡은 것을 알고 있는 상태(2026-08-06 문서 감사: 팀 도입 권고 자리에 거짓 3건)에서 등재하면 C2 가 정당하게 차단하고, 그것을 _c2_reviewed 로 면제하면 '낡지 않았다' 는 거짓을 기록하는 것이 된다. ② 팀 공유 핸드북 — 이 PR 에 넣었다가 리뷰가 blocker 로 되돌렸다: 핸드북 §03 이 write_allow 를 그대로 재서술하는데 그 값을 바꾸는 것이 바로 이 PR 이라 머지 시점에 이미 거짓이었고, C2 는 시각만 보므로(doc-freshness.mjs judgeC2) 나중 커밋인 핸드북을 원리적으로 못 잡는다. 둘 다 같은 규칙이다: 등재와 내용 수정은 나눌 수 없다 — 등재만 하면 CI 가 빨개지고 내용만 고치면 다음에 또 낡는다. 관할은 이 PR 이 이미 열었다(claudedocs/ → docs/harness/, HARNESS 단계가 쓸 수 있다). 문서 PR 은 P14 머지 뒤에 온다 — 순서가 거꾸로면 재서술한 값이 또 낡는다."
 }
