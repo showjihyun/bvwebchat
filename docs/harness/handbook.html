@@ -463,7 +463,7 @@
       <h4 style="margin-top:0">운영 특성</h4>
       <div class="ops-item"><b class="ops-icon">01</b><div><strong>단일 컨테이너</strong><span>빌드된 정적 파일과 Socket.IO 서버가 같은 프로세스·같은 포트를 쓴다 (ADR-0006).</span></div></div>
       <div class="ops-item"><b class="ops-icon">02</b><div><strong>서버 소유 식별</strong><span>닉네임 충돌을 서버가 해소하고 불투명 세션 토큰(<code>randomUUID</code>)으로 재연결을 처리한다.</span></div></div>
-      <div class="ops-item"><b class="ops-icon">03</b><div><strong>입력 검증</strong><span>모든 소켓 이벤트 페이로드를 서버가 타입 검사하고 비어 있지 않은지 본다(<code>validation.ts</code>). <em>상한은 없다</em> — 길이·빈도·채널 수 제한을 두지 않았다. 사내 신뢰 경계 안이라는 전제이고, 그 대가는 P6 에 적었다.</span></div></div>
+      <div class="ops-item"><b class="ops-icon">03</b><div><strong>입력 검증</strong><span>소켓 이벤트의 <strong>이름 필드</strong>(<code>nickname</code>·<code>room</code>·<code>token</code>)를 서버가 타입 검사하고 비어 있지 않은지 본다(<code>validation.ts</code>). <strong><code>message</code> 의 본문은 서버가 검사하지 않는다</strong> — 비어 있지 않음을 보는 것은 클라이언트뿐이다(<code>Composer.tsx</code>). <em>상한은 없다</em> — 길이·빈도·채널 수 제한을 두지 않았다. 사내 신뢰 경계 안이라는 전제이고, 그 대가는 P6 에 적었다.</span></div></div>
       <div class="ops-item"><b class="ops-icon">04</b><div><strong>인메모리 상태</strong><span>영속 저장소가 없다. 재시작하면 이력과 세션이 사라진다 — 사내 공유 용도에 맞춘 선택이다.</span></div></div>
     </div>
   </div>
@@ -538,7 +538,7 @@
   <div class="grid g4">
     <div class="card"><div style="font:600 11px var(--mono);color:var(--prod);margin-bottom:8px">INPUT</div>
       <div style="font-size:15px;font-weight:600;margin-bottom:6px">문자열 길이 <em>상한 없음</em></div>
-      <p style="margin:0;color:var(--ink-2);font-size:12.8px">닉네임 · room 이름 · 메시지 본문에 길이 제한이 <strong>없다</strong>. 검사는 타입과 공백 거부 수준이다(예약 room 이름 차단과 닉네임 충돌 해소는 별도로 있다). 긴 본문 하나가 그대로 전파된다.</p></div>
+      <p style="margin:0;color:var(--ink-2);font-size:12.8px">닉네임 · room 이름 · 메시지 본문에 길이 <strong>상한이 없다</strong>. 검사는 타입과 공백 거부 수준이다(예약 room 이름 차단과 닉네임 충돌 해소는 별도로 있다). 클라이언트는 닉네임 최소 2자를 본다(<code>DESIGN.md</code> §5). 긴 본문 하나가 그대로 전파된다.</p></div>
     <div class="card"><div style="font:600 11px var(--mono);color:var(--prod);margin-bottom:8px">RATE</div>
       <div style="font-size:15px;font-weight:600;margin-bottom:6px">메시지 빈도 <em>제한 없음</em></div>
       <p style="margin:0;color:var(--ink-2);font-size:12.8px">전송 빈도를 <strong>제한하지 않는다</strong>. 루프를 도는 클라이언트 하나가 채널을 채울 수 있다.</p></div>
@@ -1352,7 +1352,7 @@
   <table>
     <thead><tr><th class="nowrap">ID</th><th>원인</th><th class="nowrap">횟수</th><th class="nowrap">처방</th></tr></thead>
     <tbody>
-      <tr><td><b>R1</b></td><td>문서가 <b>존재하지 않는 방어를 현재형으로 단언</b></td><td><b>14</b></td><td><span class="pill warn">센서 · 사각지대</span></td></tr>
+      <tr><td><b>R1</b></td><td>문서가 <b>존재하지 않는 방어를 현재형으로 단언</b></td><td><b>15</b></td><td><span class="pill warn">센서 · 사각지대</span></td></tr>
       <tr><td><b>R2</b></td><td><b>분류는 옳은데 집행이 0이고 아무도 검사하지 않음</b></td><td>5</td><td><span class="pill warn">센서</span></td></tr>
       <tr><td><b>R3</b></td><td><b>커밋 오염</b> — pathspec 없는 커밋이 남의 스테이징을 함께 싣는다</td><td>3</td><td><span class="pill ok">구조</span></td></tr>
       <tr><td><b>R4</b></td><td>전이가 체크포인트를 만드는데 <b>커밋하지 않고 평가를 돌림</b></td><td>4</td><td><span class="pill ok">게이트</span></td></tr>
