@@ -559,7 +559,7 @@
       2026-07-16부터 매 하네스 변경마다 한 행씩(<code>grep -c '^| 2026' docs/harness/changelog.md</code> 이 정본이다). 이 동행은 이제 문화가 아니라
       전이 가드 <code>changelog_updated</code>가 강제한다.</li>
   </ul>
-  <p class="ev"><code>wc -l docs/progress.md</code> → 216행 ·
+  <p class="ev"><code>wc -l docs/progress.md</code> → <span data-verify="progress-lines">217</span>행 ·
     <code>grep -c '^| 2026' docs/harness/changelog.md</code> 의 출력이 정본이다 ·
     <code>phase-matrix.json</code> <code>guards.changelog_updated</code></p>
 
@@ -889,7 +889,7 @@
     <tr><td>정책 린트 <strong>P1~P14</strong></td><td>CI</td><td><code>node scripts/policy-lint.mjs</code></td><td><span class="chip good">차단</span> <strong>P11이 사람의 합리화를 3회 거부했다</strong> · P14는 2026-08-06 신설</td></tr>
     <tr><td>게이트 음성 시험</td><td>CI</td><td><code>policy-lint --self-test</code> + <code>eval-b --self-test</code> + <code>phase.py self-test</code></td><td><span class="chip good">차단</span></td></tr>
     <tr><td>훅 자기검사</td><td>CI</td><td><code>node scripts/hooks-selftest.mjs</code> — 게이트가 실제로 allow/deny를 내는지</td><td><span class="chip good">차단</span></td></tr>
-    <tr><td>문서 신선도 C1~C6</td><td>CI</td><td><code>node scripts/doc-freshness.mjs --pr</code> — <strong>이 PR이 만든 낡음만</strong></td><td><span class="chip good">차단</span> <strong>단 <code>doc-map</code>에 등재된 문서만</strong></td></tr>
+    <tr><td>문서 신선도 C1~C7</td><td>CI</td><td><code>node scripts/doc-freshness.mjs --pr</code> — <strong>이 PR이 만든 낡음만</strong></td><td><span class="chip good">차단</span> <strong>단 <code>doc-map</code>에 등재된 문서만</strong></td></tr>
     <tr><td>스펙-코드 동행 (M2)</td><td>CI</td><td><code>::warning::</code>만 출력</td><td><span class="chip bad">막지 않는다</span></td></tr>
     <tr><td>골든 정답 수정 방어</td><td><code>evals/golden/**</code> 쓰기</td><td><strong>단계 매트릭스</strong> — <code>SPEC</code>에서만 열리고 <code>RED·GREEN·EVAL·REVIEW</code>에서 deny. <strong>permissions는 <code>allow</code>다</strong></td><td><span class="chip good">차단</span> 방어가 <strong>권한에서 단계로</strong> 옮겨갔다</td></tr>
     <tr><td>독립 평가 · 독립 리뷰</td><td>구현 직후 / 머지 전</td><td><code>evaluator_pass</code>·<code>reviewer_approve</code> 가드 (로컬)</td><td><span class="chip warn">로컬만</span> GitHub은 승인 0을 요구한다</td></tr>
@@ -1401,14 +1401,14 @@
     <div class="stat"><div class="num">71 / 71</div><div class="lbl">테스트 통과 · <strong>20개 파일</strong></div>
       <div class="src"><code>git ls-files | grep -E '\.test\.(ts|tsx)$'</code> → 20파일.<br>
       각 파일의 <code>it(</code>/<code>test(</code> 정적 집계 합 = 71 (최근 <code>npm test</code> 출력과 일치)</div></div>
-    <div class="stat"><div class="num">43</div><div class="lbl">골든 케이스 — 트랙 A 36 + B 7 <span style="opacity:.7">(시작 15)</span></div>
+    <div class="stat"><div class="num" data-verify="golden-total">43</div><div class="lbl">골든 케이스 — 트랙 A 36 + B 7 <span style="opacity:.7">(시작 15)</span></div>
       <div class="src"><code>wc -l evals/golden/*.jsonl</code> → 36 + 7.<br>
       시작값은 <code>git show e37ce9c:</code> → 10 + 5</div></div>
     <div class="stat"><div class="num">6 / 6</div><div class="lbl">트랙 B 필수 케이스 통과 (GB-02는 <code>blocked</code>)</div>
       <div class="src">최신 아티팩트(<code>ls -t evals/results/track-b/</code> 첫 줄)의 <code>summary</code> = <code>{total:6, pass:6, fail:0}</code></div></div>
     <div class="stat"><div class="num">45</div><div class="lbl">PR 머지</div>
       <div class="src"><code>gh pr list --state merged --limit 100 --json number --jq 'length'</code> → 45 (#1~#45)</div></div>
-    <div class="stat"><div class="num">8</div><div class="lbl">ADR 승인 (모순 구현 0건)</div>
+    <div class="stat"><div class="num" data-verify="adr-approved">8</div><div class="lbl">ADR 승인 (모순 구현 0건)</div>
       <div class="src"><code>ls docs/adr/</code> → 0001~0008</div></div>
     <div class="stat"><div class="num">9 · 16 · 11</div><div class="lbl">단계 · 전이 간선 · 전이 가드</div>
       <div class="src"><code>phase-matrix.json</code>의 <code>phases</code>/<code>transitions</code>/<code>guards</code> 키 수</div></div>
@@ -1424,15 +1424,15 @@
       <div class="src"><code>.harness/logs/tools.jsonl</code> <code>gate_block</code> 70건 중 <code>warn_only !== true</code> 17건.<br>
       나머지 53건은 <strong>유예(경고) 통과</strong>다.<br>
       <strong>이 로그는 gitignore — 이 머신 전용이다</strong></div></div>
-    <div class="stat"><div class="num">17</div><div class="lbl">반복 실패 대장 등재 행 (R1 최다 <strong>15회</strong>)</div>
+    <div class="stat"><div class="num" data-verify="recurrence-rows">17</div><div class="lbl">반복 실패 대장 등재 행 (R1 최다 <strong data-verify="recurrence-R1">15</strong>회)</div>
       <div class="src"><code>harness/recurrence.md</code> "## 대장" 표 — R1~R17.<br>
       건수 정본은 <code>policy-lint --self-test</code> 출력</div></div>
-    <div class="stat"><div class="num">50</div><div class="lbl">보류표 행 — <strong>"하지 않기로 결정한 것"</strong></div>
+    <div class="stat"><div class="num" data-verify="pending-rows">51</div><div class="lbl">보류표 행 — <strong>"하지 않기로 결정한 것"</strong></div>
       <div class="src"><code>docs/progress.md</code> 보류표 데이터 행 수.<br>
       각 행이 <em>근거</em>와 <em>되살릴 조건</em>을 짝으로 갖는다</div></div>
     <div class="stat"><div class="num">2</div><div class="lbl">주간 회고 산출 (W31 · W32)</div>
       <div class="src"><code>ls harness/reports/</code></div></div>
-    <div class="stat"><div class="num">128</div><div class="lbl">하네스 changelog 행 (07-16 ~ 08-06)</div>
+    <div class="stat"><div class="num" data-verify="changelog-rows">128</div><div class="lbl">하네스 changelog 행 (07-16 ~ <span data-verify="changelog-last-date">2026-08-06</span>)</div>
       <div class="src"><code>grep -c '^| 2026' docs/harness/changelog.md</code></div></div>
     <div class="stat"><div class="num">D-10</div><div class="lbl">마감 7/31 대비 7/21 <strong>기능</strong> RQ 완료</div>
       <div class="src"><code>docs/progress.md</code> Phase 4~5.<br>

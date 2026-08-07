@@ -1128,7 +1128,7 @@
 
   <div class="grid g2">
     <div class="card">
-      <h4 style="margin-top:0"><code>doc-freshness.mjs</code> — 문서 신선도 C1–C6</h4>
+      <h4 style="margin-top:0"><code>doc-freshness.mjs</code> — 문서 신선도 C1–C7</h4>
       <table style="box-shadow:none;border:0"><tbody>
         <tr><td class="nowrap"><b>C1</b></td><td>레지스트리 완결성 — 등록 누락</td></tr>
         <tr><td class="nowrap"><b>C2</b></td><td>결합 낡음 — 의존이 문서보다 새로우면 발화. 검토 기록 축이 있고 <code>sha</code> 가 현재 의존 커밋과 일치할 때만 면제된다</td></tr>
@@ -1357,7 +1357,7 @@
   <table>
     <thead><tr><th class="nowrap">ID</th><th>원인</th><th class="nowrap">횟수</th><th class="nowrap">처방</th></tr></thead>
     <tbody>
-      <tr><td><b>R1</b></td><td>문서가 <b>존재하지 않는 방어를 현재형으로 단언</b></td><td><b>15</b></td><td><span class="pill warn">센서 · 사각지대</span></td></tr>
+      <tr><td><b>R1</b></td><td>문서가 <b>존재하지 않는 방어를 현재형으로 단언</b></td><td><b data-verify="recurrence-R1">15</b></td><td><span class="pill warn">센서 · 사각지대</span></td></tr>
       <tr><td><b>R2</b></td><td><b>분류는 옳은데 집행이 0이고 아무도 검사하지 않음</b></td><td>5</td><td><span class="pill warn">센서</span></td></tr>
       <tr><td><b>R3</b></td><td><b>커밋 오염</b> — pathspec 없는 커밋이 남의 스테이징을 함께 싣는다</td><td>3</td><td><span class="pill ok">구조</span></td></tr>
       <tr><td><b>R4</b></td><td>전이가 체크포인트를 만드는데 <b>커밋하지 않고 평가를 돌림</b></td><td>4</td><td><span class="pill ok">게이트</span></td></tr>
@@ -1480,7 +1480,7 @@
 <b>scripts/</b>
 ├─ check.mjs                        lint+tsc+vitest · --fast · --red --rq · --repeat N
 ├─ policy-lint.mjs                  P1–P14 · --print(README 생성) · --self-test
-├─ doc-freshness.mjs                C1–C6 · --digest | --pr | --full
+├─ doc-freshness.mjs                C1–C7 · --digest | --pr | --full
 ├─ hooks-selftest.mjs               settings.json 커맨드 문자열 그대로 검증
 ├─ golden-coverage.mjs              테스트의 <i>존재 여부</i>를 묻는다
 ├─ eval-b.mjs                       하네스 회귀 평가 (7케이스 · 필수 6)
