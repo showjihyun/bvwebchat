@@ -1036,7 +1036,8 @@
   <ul>
     <li><strong>7케이스 중 필수 6</strong> — <code>GB-02</code>만 <code>blocked</code>다.</li>
     <li>러너 <code>scripts/eval-b.mjs</code>가 격리 워크트리에서 실행하고,
-      아티팩트 <strong>47건</strong>이 <code>evals/results/track-b</code> 아래에 커밋돼 있다.</li>
+      아티팩트가 <strong>매 실행</strong> <code>evals/results/track-b</code> 아래에 커밋된다
+      (건수는 <code>git ls-files evals/results/track-b/ | wc -l</code> 이 정본이다).</li>
     <li><strong><code>HARNESS→REVIEW</code>의 <code>track_b_passing</code> 가드가 이것을
       차단 조건으로 요구한다</strong> — 하네스를 바꾸면 회귀 평가를 돌리지 않고는
       리뷰로 나갈 수 없다.</li>
@@ -1431,7 +1432,7 @@
       각 행이 <em>근거</em>와 <em>되살릴 조건</em>을 짝으로 갖는다</div></div>
     <div class="stat"><div class="num">2</div><div class="lbl">주간 회고 산출 (W31 · W32)</div>
       <div class="src"><code>ls harness/reports/</code></div></div>
-    <div class="stat"><div class="num">128</div><div class="lbl">하네스 changelog 행 (07-16 ~ 08-07)</div>
+    <div class="stat"><div class="num">128</div><div class="lbl">하네스 changelog 행 (07-16 ~ 08-06)</div>
       <div class="src"><code>grep -c '^| 2026' docs/harness/changelog.md</code></div></div>
     <div class="stat"><div class="num">D-10</div><div class="lbl">마감 7/31 대비 7/21 <strong>기능</strong> RQ 완료</div>
       <div class="src"><code>docs/progress.md</code> Phase 4~5.<br>
@@ -1567,7 +1568,8 @@
       다시 낼 근거가 없어 보류표에 있다 — <strong>"하지 않기로 결정했다"이지 "나중에 한다"가 아니다.</strong>
     </p>
     <p style="margin-bottom:0">
-      <strong>2026-08-06에만 여섯 행이 추가됐다.</strong> 그중 둘은 도구가 환경에 따라
+      <strong>2026-08-06 하루에 보류표가 배 이상으로 늘었다</strong>(전날 23행 → 그날 밤 48행 —
+      행 수는 §5 타일의 재현 명령이 정본이다). 그중 둘은 도구가 환경에 따라
       다른 답을 내는 축이다 — ① <code>doc-freshness</code>의 존재 판정이 <em>미추적 파일도
       살아 있는 것으로</em> 세어 <strong>로컬은 초록인데 CI는 빨갛다</strong>
       ② 그 위에 <strong>플랫폼 의존</strong>이 하나 더 있다: 이 머신의 git은 실재하지 않는
@@ -1831,7 +1833,7 @@
     <tr><td>v1의 시간 수치 (<em>"1.4초"</em> · <em>"3.2초"</em>)</td><td>작성 시점의 머신·<code>.eslintcache</code> 상태·13파일 규모를 재현할 수 없다</td><td>지금 이 머신 값은 <code>--fast</code> 0.13초(대상 0건) / 전체 5.7초(20파일 71테스트). <strong>벽시계 값은 머신 의존이라 v2 본문에서 뺐다</strong> — <code>metrics-baseline.md</code>가 <em>"예산이 있는 값은 적고 개수는 적지 않는다"</em>고 규정하는데, <code>--fast</code>는 ADR-0005 결정5의 5초 예산 안이므로 설계 결정은 깨지지 않았다</td></tr>
     <tr><td>RQ-05 B-1 리뷰 <strong>원문</strong></td><td>세션 작업 폴더의 리뷰 보고서 미접근 (다른 에이전트가 사용 중)</td><td><strong>정황은 전부 일치</strong> — 원장이 <em>"리뷰 B-1(잘못된 URL 인코딩 크래시=무인증 DoS) 수정"</em>으로 기록하고, <code>rq-coverage.json</code>·<code>scripts/smoke.sh</code>가 실제로 그 검사를 갖는다</td></tr>
     <tr><td>"evaluator가 11회 반복 실행으로 가드 강도를 검증"(RQ-14)</td><td>원 실행 로그가 세션 작업 폴더(gitignore)</td><td>원장 기록과 일치: <em>"evaluator PASS(11회 클린 재현, 가드 강도 확인)"</em></td></tr>
-    <tr><td>트랙 B 최신 상태의 <em>재실행</em></td><td><strong>의도적으로 실행하지 않았다</strong> — 이 문서 작성 중 백그라운드 평가가 돌고 있었고 <code>GB-06</code>은 시간 예산이 있다</td><td>커밋된 아티팩트 <strong>47건</strong>의 <code>summary</code> 필드를 직접 파싱했다(최신 = 6/6)</td></tr>
+    <tr><td>트랙 B 최신 상태의 <em>재실행</em></td><td><strong>의도적으로 실행하지 않았다</strong> — 이 문서 작성 중 백그라운드 평가가 돌고 있었고 <code>GB-06</code>은 시간 예산이 있다</td><td><strong>작성 시점</strong>에 커밋돼 있던 아티팩트 <strong>47건</strong>의 <code>summary</code> 필드를 직접 파싱했다(최신 = 6/6). 그 뒤로 늘었다 — 지금 건수는 §5 재현 명령이 정본이다</td></tr>
     <tr><td><strong>"머지된 PR 45건 중 <em>몇 건</em>이 REQUEST_CHANGES를 받았나"</strong>의 전수</td><td>리뷰 판정은 로컬 스킬 산출물이라 GitHub에 레코드가 없고, 보고서 원문은 gitignore다</td><td><strong>기록이 남은 8건만</strong> §3-7 표에 적었다. 추가로 <code>.harness/state/phase.jsonl</code>의 <code>REVIEW→IDLE</code> 되돌림으로 <strong>회차 수는</strong> 교차 확인했다 — 단 이 로그는 단계 모델 도입(2026-07-27) <em>이후</em>의 작업만 덮는다</td></tr>
     <tr><td><strong>PR #45 1·2차 리뷰의 blocker 원문</strong></td><td>같은 이유 — 세션 작업 폴더의 리뷰 보고서는 gitignore이고 이번 작업 지시가 그 디렉터리를 건드리지 말 것이었다</td><td><strong>원장·changelog의 요약과 전이 로그의 회차가 일치한다</strong>: 되돌림 2회 후 3회차 APPROVE, blocker 서술은 전부 스코프·절차 위생 축이다. <strong>"설계는 통과"라는 판정 자체는 원문을 못 봤다</strong></td></tr>
   </table></div>
