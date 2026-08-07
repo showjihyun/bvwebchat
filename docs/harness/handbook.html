@@ -538,7 +538,7 @@
   <div class="grid g4">
     <div class="card"><div style="font:600 11px var(--mono);color:var(--prod);margin-bottom:8px">INPUT</div>
       <div style="font-size:15px;font-weight:600;margin-bottom:6px">문자열 길이 <em>상한 없음</em></div>
-      <p style="margin:0;color:var(--ink-2);font-size:12.8px">닉네임 · room 이름 · 메시지 본문에 길이 <strong>상한이 없다</strong>. 검사는 타입과 공백 거부 수준이다(예약 room 이름 차단과 닉네임 충돌 해소는 별도로 있다). 클라이언트는 닉네임 최소 2자를 본다(<code>DESIGN.md</code> §5). 긴 본문 하나가 그대로 전파된다.</p></div>
+      <p style="margin:0;color:var(--ink-2);font-size:12.8px">닉네임 · room 이름 · 메시지 본문에 길이 <strong>상한이 없다</strong>. 이름 필드의 검사도 타입과 비어 있지 않음 수준이다 — <strong>닉네임만 공백을 거부하고 room 이름은 공백도 통과한다</strong>(<code>isNonBlankString</code> 대 <code>isNonEmptyString</code>). 본문은 §P3 대로 서버 검사가 없다. 예약 room 이름 차단과 닉네임 충돌 해소는 별도로 있다. 클라이언트는 닉네임 최소 2자를 본다(<code>DESIGN.md</code> §5). 긴 본문 하나가 그대로 전파된다.</p></div>
     <div class="card"><div style="font:600 11px var(--mono);color:var(--prod);margin-bottom:8px">RATE</div>
       <div style="font-size:15px;font-weight:600;margin-bottom:6px">메시지 빈도 <em>제한 없음</em></div>
       <p style="margin:0;color:var(--ink-2);font-size:12.8px">전송 빈도를 <strong>제한하지 않는다</strong>. 루프를 도는 클라이언트 하나가 채널을 채울 수 있다.</p></div>
@@ -854,8 +854,13 @@
     <strong>보호 경로 · 리다이렉트 차단.</strong>
     <code>.harness/state/</code> <code>evals/golden/</code> <code>.claude/settings.json</code> <code>harness/policy/</code> 에 대한
     셸 리다이렉트를 <b>탐지</b>한다.
-    예방이 아니다 — <code>node -e "fs.writeFileSync(…)"</code> 같은 우회는 문자열 파싱으로 막을 수 없고,
-    사후 대조는 <code>scripts/phase-audit.mjs</code> 가 git 이력에서 독립적으로 수행한다.
+    예방이 아니다 — <code>node -e "fs.writeFileSync(…)"</code> 같은 우회는 문자열 파싱으로 막을 수 없다.
+    사후 대조 경로로 <code>scripts/phase-audit.mjs</code> 가 git 이력에서 단계 순서를 독립 재유도하지만
+    <b>어디에도 배선돼 있지 않다</b> — CI·훅 어느 쪽도 부르지 않으므로 사람이 직접 실행할 때만 돈다
+    (<code>harness/sensor-catalog.md</code> 가 <em>CI 미배선</em>으로 기록한다. 커밋 <code>2bcaa28</code> 한 건으로
+    <code>exit 1</code> 이고 그것을 예외로 덮지 않기로 결정했다).
+    즉 <b>이 우회에 대한 자동 탐지는 0</b>이고 남는 것은 <code>harness/policy/tool-risk.json</code> 의
+    deny 목록과 리뷰어의 diff 둘뿐이며 <b>둘 다 사후</b>다.
   </div>
 </section>
 
@@ -1129,7 +1134,7 @@
         <tr><td class="nowrap"><b>C2</b></td><td>결합 낡음 — 의존이 문서보다 새로우면 발화. 검토 기록 축이 있고 <code>sha</code> 가 현재 의존 커밋과 일치할 때만 면제된다</td></tr>
         <tr><td class="nowrap"><b>C3</b></td><td>나이 초과</td></tr>
         <tr><td class="nowrap"><b>C4</b></td><td>링크·경로 무결성 — <b>gitignore 대상은 판정에서 빼고 뺀 것을 출력</b>한다</td></tr>
-        <tr><td class="nowrap"><b>C5</b></td><td>진입점 예산 — <code>CLAUDE.md</code> 100줄 상한</td></tr>
+        <tr><td class="nowrap"><b>C5</b></td><td>진입점 예산 — <code>CLAUDE.md</code> 100줄 · <code>tdd-workflow/SKILL.md</code> 150줄 상한</td></tr>
         <tr><td class="nowrap"><b>C6</b></td><td>열린 마커 낡음</td></tr>
       </tbody></table>
       <p class="cap">모드: <code>--digest</code>(세션 시작 · <b>항상 exit 0</b>) ·

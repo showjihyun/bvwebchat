@@ -556,11 +556,11 @@
     <li><strong>보류표</strong>가 별도로 있다 — <em>"하지 않기로 결정한 것"</em>과
       <em>"되살릴 조건"</em>을 짝으로 적는다. "나중에 한다"와 구별하는 것이 요점이다.</li>
     <li>하네스 자체의 변경도 별도 원장(<code>docs/harness/changelog.md</code>)으로 추적한다 —
-      2026-07-16부터 2026-08-06까지 <strong>127행</strong>. 이 동행은 이제 문화가 아니라
+      2026-07-16부터 매 하네스 변경마다 한 행씩(<code>grep -c '^| 2026' docs/harness/changelog.md</code> 이 정본이다). 이 동행은 이제 문화가 아니라
       전이 가드 <code>changelog_updated</code>가 강제한다.</li>
   </ul>
   <p class="ev"><code>wc -l docs/progress.md</code> → 216행 ·
-    <code>grep -c '^| 2026' docs/harness/changelog.md</code> → <strong>127</strong> ·
+    <code>grep -c '^| 2026' docs/harness/changelog.md</code> 의 출력이 정본이다 ·
     <code>phase-matrix.json</code> <code>guards.changelog_updated</code></p>
 
   <div class="callout">
@@ -651,13 +651,14 @@
     이 매트릭스가 틀렸다는 신호다."</em>
   </p>
   <p>
-    <strong>실측 <code>force</code> 비율은 1 / 255 = 0.4%</strong>다. 5% 기준의 12분의 1이고,
+    <strong>실측 <code>force</code> 는 전 이력에 <b>1건</b></strong>이고 5% 기준에 한참 못 미친다.
     그 1건은 사유가 <code>phase.jsonl</code>에 박제돼 있으며 <code>permissions.ask</code>가
-    사람 승인을 거치게 한다.
+    사람 승인을 거치게 한다. <strong>분자는 고정이고 분모만 전이마다 늘어난다</strong> —
+    그래서 비율을 여기 적지 않는다.
     <span class="ev"><code>.harness/state/phase.jsonl</code> 전 레코드를 파싱해
-      <code>forced === true</code>를 셈 → 1 / 255 ·
+      <code>forced === true</code>를 센 것이 정본이다 ·
       <code>node scripts/metrics.mjs</code> 헤더도 같은 값을 낸다.
-      주간 리포트 W32는 같은 축을 <strong>1/229</strong>로 적었다 — 그 뒤 전이가 26회 늘었을 뿐 분자는 그대로다</span></p>
+      주간 리포트 W32는 같은 축을 <strong>1/229</strong>로 적었다 — 분모가 그 뒤로 계속 늘었을 뿐 분자는 그대로다</span></p>
   <p>
     다만 정직하게 적을 것이 하나 있다. <strong>그 <code>force</code> 1건의 사유문에 거짓이 하나 들어 있었다</strong> —
     존재하지 않는 우회로를 <em>"원칙상 거절했다"</em>고 자찬한 문장이다(파이프라인 뒤
@@ -881,7 +882,7 @@
     <tr><th>가드레일</th><th>배치 시점</th><th>강제 수단</th><th>blocking?</th></tr>
     <tr><td><strong>단계 × 경로 쓰기 경계</strong></td><td>모든 Write/Edit/Bash <em>직전</em></td><td>PreToolUse <code>hook.py gate_phase</code> → <code>gate_phase.py</code> (서브프로세스 0, 예산 ≤150ms)</td><td><span class="chip good">차단</span> 판정 <strong>70건 중 17건 실제 거부</strong></td></tr>
     <tr><td>Bash 리다이렉트 차단</td><td>같은 훅</td><td><code>tool-risk.json</code> <code>deny_redirect</code> — <code>.harness/state/**</code>·<code>evals/golden/**</code> 등</td><td><span class="chip warn">부분</span> <em>탐지이지 예방이 아니다 — <code>node -e fs.write…</code>는 못 막는다</em></td></tr>
-    <tr><td><strong>전이 가드 11종</strong></td><td>단계 전이 시</td><td><code>harness/phase.py enter</code> — 합법 간선이어도 가드가 거부</td><td><span class="chip good">차단</span> 우회는 <code>force</code>(<code>ask</code> + 박제) 1/255</td></tr>
+    <tr><td><strong>전이 가드 11종</strong></td><td>단계 전이 시</td><td><code>harness/phase.py enter</code> — 합법 간선이어도 가드가 거부</td><td><span class="chip good">차단</span> 우회는 <code>force</code>(<code>ask</code> + 박제) — 전 이력에 1건</td></tr>
     <tr><td>파일 수정 직후 빠른 검사</td><td>수정 직후</td><td>PostToolUse <code>hook.py post_observe</code> → <code>check.mjs --fast</code> = <strong>eslint 단독</strong> (예산 5초, ADR-0005 결정5)</td><td><span class="chip warn">경고</span> 훅은 판정을 내지 않는다</td></tr>
     <tr><td>전체 검증 (lint + tsc + vitest)</td><td>CI · <code>GREEN→EVAL</code></td><td><code>ci.yml</code> → <code>bash scripts/check.sh</code> → <code>check.mjs</code> · 가드 <code>check_full_green</code></td><td><span class="chip good">차단</span></td></tr>
     <tr><td>스펙 동결 (CI 축)</td><td>CI</td><td><code>ci.yml</code> 스텝 — <code>grep -cE '^- \*\*RQ-[0-9]+\*\* 🟡'</code> → <code>exit 1</code></td><td><span class="chip good">차단</span> <strong>단 실전 발동 0회</strong></td></tr>
@@ -1039,14 +1040,13 @@
     <li><strong><code>HARNESS→REVIEW</code>의 <code>track_b_passing</code> 가드가 이것을
       차단 조건으로 요구한다</strong> — 하네스를 바꾸면 회귀 평가를 돌리지 않고는
       리뷰로 나갈 수 없다.</li>
-    <li>최신 아티팩트 <code>544703f3…</code>는 <strong>6/6 pass</strong>.
+    <li>최신 아티팩트는 <strong>6/6 pass</strong> (파일명은 <code>ls -t evals/results/track-b/</code> 의 첫 줄이 정본이다).
       <strong>과거 실행 중 5 pass · 1 fail이었던 회차의 실패 아티팩트도 커밋돼 있다</strong> —
       실패를 지우지 않는 것이 이 저장소의 규약이다.</li>
   </ul>
   <p class="ev"><code>evals/golden/track-b-harness.jsonl</code> 각 케이스 <code>status</code> ·
-    커밋된 아티팩트 <strong>47건</strong>(디스크에는 미커밋 3건 포함 50건) ·
-    아티팩트 <code>summary</code> 필드 직접 파싱(최신 <code>544703f3</code> =
-    <code>{total:6, pass:6, fail:0}</code>) ·
+    커밋된 아티팩트는 <code>git ls-files evals/results/track-b/ | wc -l</code> 이 정본이다(디스크에는 미커밋분이 더 있다) ·
+    아티팩트 <code>summary</code> 필드 직접 파싱(최신 = <code>{total:6, pass:6, fail:0}</code>) ·
     <code>phase-matrix.json</code> <code>guards.track_b_passing</code></p>
 
   <div class="callout warn">
@@ -1206,7 +1206,7 @@
   </table></div>
   <p class="ev"><code>harness/reports/2026-W32.md</code> 지표 표 + "회고 판단(사람이 쓴 부분)" 절.
     <strong>위 값은 W32 시점이다</strong> — 이 문서 작성 시점(2026-08-06 후반)에 다시 재면
-    <code>force</code> <strong>1/255</strong> · M8a <strong>70</strong> / M8b <strong>17</strong> ·
+    <code>force</code> <strong>1건</strong>(분모는 계속 는다) · M8a <strong>70</strong> / M8b <strong>17</strong> ·
     M5 <strong>38%</strong>다. 회고 값과 본문 값이 다르면 <strong>회고는 그 주의 스냅샷이고 본문은 지금</strong>이다</p>
 
   <div class="callout good">
@@ -1390,7 +1390,7 @@
 
 <!-- ═══════════════════ 5. 정량 ═══════════════════ -->
 <section id="stats">
-  <h2>5. 정량 요약 <span class="chip acc">2026-08-06 실측</span></h2>
+  <h2>5. 정량 요약 <span class="chip acc">2026-08-07 실측</span></h2>
   <div class="stat-grid">
     <div class="stat"><div class="num">14 / 14</div><div class="lbl">RQ 완료 — 기능 11 + 배포 1 + <strong>제약 2</strong></div>
       <div class="src"><code>grep -cE '^- \*\*RQ-[0-9]+' specs/requirements.md</code> → 14, 전부 ✅.<br>
@@ -1404,7 +1404,7 @@
       <div class="src"><code>wc -l evals/golden/*.jsonl</code> → 36 + 7.<br>
       시작값은 <code>git show e37ce9c:</code> → 10 + 5</div></div>
     <div class="stat"><div class="num">6 / 6</div><div class="lbl">트랙 B 필수 케이스 통과 (GB-02는 <code>blocked</code>)</div>
-      <div class="src">최신 아티팩트 <code>544703f3….json</code>의 <code>summary</code> = <code>{total:6, pass:6, fail:0}</code></div></div>
+      <div class="src">최신 아티팩트(<code>ls -t evals/results/track-b/</code> 첫 줄)의 <code>summary</code> = <code>{total:6, pass:6, fail:0}</code></div></div>
     <div class="stat"><div class="num">45</div><div class="lbl">PR 머지</div>
       <div class="src"><code>gh pr list --state merged --limit 100 --json number --jq 'length'</code> → 45 (#1~#45)</div></div>
     <div class="stat"><div class="num">8</div><div class="lbl">ADR 승인 (모순 구현 0건)</div>
@@ -1416,7 +1416,7 @@
     <div class="stat"><div class="num">6</div><div class="lbl">CI 블로킹 스텝 <span style="opacity:.7">(+ 비블로킹 경고 1)</span></div>
       <div class="src"><code>ci.yml</code>: 스펙 동결 · 검증 일괄 · 정책 린트(P1~P14) · 게이트 음성 시험 · 훅 자기검사 · 문서 신선도.<br>
       <code>grep -c continue-on-error</code> → <strong>0</strong></div></div>
-    <div class="stat"><div class="num">0.4%</div><div class="lbl"><code>force</code> 사용률 — 1 / 255 전이</div>
+    <div class="stat"><div class="num">1건</div><div class="lbl"><code>force</code> 사용 — 전체 전이 중 유일. 비율은 아래 명령의 출력이 정본이다(분모가 전이마다 움직인다)</div>
       <div class="src"><code>.harness/state/phase.jsonl</code> 전 레코드 파싱 · <code>metrics.mjs</code> 동일.<br>
       매트릭스의 자체 경보선은 5%</div></div>
     <div class="stat"><div class="num">70 → 17</div><div class="lbl">게이트 판정 → <strong>실제 거부</strong> (로컬 로그)</div>
@@ -1426,12 +1426,12 @@
     <div class="stat"><div class="num">17</div><div class="lbl">반복 실패 대장 등재 행 (R1 최다 <strong>15회</strong>)</div>
       <div class="src"><code>harness/recurrence.md</code> "## 대장" 표 — R1~R17.<br>
       건수 정본은 <code>policy-lint --self-test</code> 출력</div></div>
-    <div class="stat"><div class="num">49</div><div class="lbl">보류표 행 — <strong>"하지 않기로 결정한 것"</strong></div>
+    <div class="stat"><div class="num">50</div><div class="lbl">보류표 행 — <strong>"하지 않기로 결정한 것"</strong></div>
       <div class="src"><code>docs/progress.md</code> 보류표 데이터 행 수.<br>
       각 행이 <em>근거</em>와 <em>되살릴 조건</em>을 짝으로 갖는다</div></div>
     <div class="stat"><div class="num">2</div><div class="lbl">주간 회고 산출 (W31 · W32)</div>
       <div class="src"><code>ls harness/reports/</code></div></div>
-    <div class="stat"><div class="num">127</div><div class="lbl">하네스 changelog 행 (07-16 ~ 08-06)</div>
+    <div class="stat"><div class="num">128</div><div class="lbl">하네스 changelog 행 (07-16 ~ 08-07)</div>
       <div class="src"><code>grep -c '^| 2026' docs/harness/changelog.md</code></div></div>
     <div class="stat"><div class="num">D-10</div><div class="lbl">마감 7/31 대비 7/21 <strong>기능</strong> RQ 완료</div>
       <div class="src"><code>docs/progress.md</code> Phase 4~5.<br>
@@ -1560,7 +1560,7 @@
   </div>
 
   <div class="callout warn">
-    <div class="co-title">⑤ 보류표 <strong>47행</strong> — 그 자체가 이 하네스의 가장 큰 미해소 덩어리다</div>
+    <div class="co-title">⑤ 보류표 그 자체가 이 하네스의 <strong>가장 큰 미해소 덩어리</strong>다</div>
     <p>
       상당수가 <code>harness/recurrence.md</code>·스킬 문서 변경이라 <code>HASH_GLOBS</code>이고
       <strong>한 줄 고치는 데 트랙 B 전수 재실행이 붙는다.</strong> 동결 상태에서 그 값을
@@ -1576,12 +1576,12 @@
       올라가 CI에서 떨어졌다.</strong> 반복 대장 R9(<em>"센서가 환경에 따라 다른 답을 내면
       판정에 쓸 수 없다"</em>)의 같은 뿌리이고, <strong>이 문서 역시 그 함정을 피해
       경로를 서술로 바꿔 쓴 자리가 있다.</strong>
-      <span class="ev"><code>docs/progress.md</code> 보류표 <strong>47행</strong>(2026-08-06 기준) ·
+      <span class="ev"><code>docs/progress.md</code> 보류표 — 행 수는 §5 타일과 그 재현 명령이 정본이다 ·
         같은 표의 <em>"로컬 초록이 CI 초록을 뜻하지 않는 축"</em>·<em>"C4의 gitignore 면제가
         죽은 디렉터리 경로를 조용히 삼킨다"</em> 두 행</span>
     </p>
   </div>
-  <p class="ev"><code>docs/progress.md</code> "진행 중" 절 + 보류표 47행 전부</p>
+  <p class="ev"><code>docs/progress.md</code> "진행 중" 절 + 보류표 전 행</p>
 </section>
 
 <!-- ═══════════════════ 7. 보완 제안 ═══════════════════ -->
@@ -1871,7 +1871,7 @@
     <tr><td>ADR</td><td>6</td><td><strong>8</strong></td></tr>
     <tr><td>PR 머지</td><td>29</td><td><strong>45</strong></td></tr>
     <tr><td>지표</td><td>M1~M7</td><td><strong>M1·M2·M3·M5·M6·M7·M8a·M8b</strong> (M4 삭제)</td></tr>
-    <tr><td>트랙 B</td><td>5케이스 · <em>"정식 실행 기록 없음"</em></td><td><strong>7케이스 · 필수 6 · 자동 러너 · 커밋된 아티팩트 47건 · 전이 가드가 요구</strong></td></tr>
+    <tr><td>트랙 B</td><td>5케이스 · <em>"정식 실행 기록 없음"</em></td><td><strong>7케이스 · 필수 6 · 자동 러너 · 아티팩트가 매 실행 커밋된다 · 전이 가드가 요구</strong></td></tr>
     <tr><td>골든 정답 방어</td><td>permissions <code>ask</code></td><td><strong>단계 매트릭스</strong> (permissions는 <code>allow</code>)</td></tr>
     <tr><td>센서 카탈로그</td><td>Guide / Sensor 2분류</td><td><strong>Guides / Boundary / Sensors 3층</strong> · 우선순위 구조&gt;게이트&gt;센서&gt;Guide</td></tr>
   </table></div>
@@ -1893,11 +1893,11 @@
   <div class="table-wrap"><table>
     <tr><th>항목</th><th>초안</th><th>이 판 (재실측)</th></tr>
     <tr><td><code>policy-lint</code> 범위</td><td>P1~P13</td><td><strong>P1~P14</strong> (P14 = 문서 관할)</td></tr>
-    <tr><td>R1 누적 회차</td><td>13</td><td><strong>14</strong></td></tr>
-    <tr><td><code>force</code> 비율</td><td>1 / 233</td><td><strong>1 / 255</strong></td></tr>
+    <tr><td>R1 누적 회차</td><td>13</td><td><strong>15</strong> (이 PR 이 한 건 더 만들었다)</td></tr>
+    <tr><td><code>force</code> 건수</td><td>1 / 233 전이</td><td><strong>1건</strong> — 분자는 그대로이고 분모만 늘었다. 비율은 §5 재현 명령이 정본이다</td></tr>
     <tr><td>PR 머지</td><td>43</td><td><strong>45</strong></td></tr>
-    <tr><td>커밋된 트랙 B 아티팩트</td><td>45</td><td><strong>47</strong></td></tr>
-    <tr><td>changelog 행</td><td>124</td><td><strong>127</strong></td></tr>
+    <tr><td>커밋된 트랙 B 아티팩트</td><td>45</td><td>늘었다 — 건수는 §5 재현 명령이 정본이다</td></tr>
+    <tr><td>changelog 행</td><td>124</td><td>늘었다 — 건수는 §5 재현 명령이 정본이다</td></tr>
     <tr><td><strong><code>HARNESS</code>의 <code>src/**</code> 15회</strong></td><td><em>"실제 차단 17건 중 최대 버킷"</em></td><td><strong>거짓이었다</strong> — 15건 전부 <code>warn_only: true</code>(유예 구간의 경고)이고, <strong>실제 거부 17건에 <code>src/**</code>는 0건</strong>이다. 초안이 M8a(시도)와 M8b(거부)를 뭉갰다</td></tr>
     <tr><td><strong>이 문서가 낡은 원인</strong></td><td><em>"제외 목록(<code>exclude_globs</code>)에 잡혀 있었다"</em></td><td><strong>원인이 틀렸다</strong> — 제외가 아니라 <strong>미등재</strong>다. 그 제외 목록은 실효 0인 죽은 설정이었고 같은 날 삭제됐다</td></tr>
   </table></div>
