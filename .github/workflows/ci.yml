@@ -69,5 +69,5 @@ jobs:
       #
       # `--pr` 인 이유: 저장소 전체 낡음을 걸면 첫날부터 모든 PR 이 빨개지고 게이트는
       # 그날로 무시된다. "이 PR 이 건드린 의존만 책임진다"가 게이트를 살려둔다.
-      - name: 문서 신선도 (C1·C2·C4·C5 — 이 PR 이 만든 낡음만)
+      - name: 문서 신선도 (C1·C2·C4·C5·C7 — 이 PR 이 만든 낡음만)
         run: node scripts/doc-freshness.mjs --pr --base origin/${{ github.base_ref || 'main' }}

@@ -1,0 +1,53 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "docs/handbook-and-report",
+  "edge_legal": true,
+  "exit_hint": "작업을 시작하려면: python harness/phase.py enter PLAN  (또는 SPEC / HARNESS)",
+  "forced": false,
+  "from": "REVIEW",
+  "guards": [],
+  "head_sha": "9c0b87807c602e5fca4241068739cb49212f811b",
+  "reason": null,
+  "rq": "DOCS-SHARE",
+  "schema": 1,
+  "seq": 262,
+  "session": {
+    "acceptance": [
+      "workflow-report 의 거짓 3건·틀림 3건이 실측값으로 교체된다",
+      "핸드북의 거짓 6건이 P14 머지 후 값으로 교체된다",
+      "둘 다 doc-map 에 등재돼 C2 가 다음 낡음을 잡는다 — 내용 수정과 같은 PR 이다"
+    ],
+    "done": [
+      "P13 가드 커버리지 머지 (PR 44, squash afe42dc) — 전이 가드 11종 전부 등재 판정. 가드를 추가하며 카탈로그에 안 적으면 CI 가 막는다",
+      "감사 발견은 검사 실패가 아니라 검사가 안 보는 자리에서 나왔다 — 점검 9종이 전부 초록인 상태에서 방향 2 대조를 기계로 돌려 가드 3종 누락을 실측했다. Guide 를 게이트로 한 칸 올렸다",
+      "P14 신설·머지(#45) — doc-map 이 관할하는 문서가 최소 한 단계에서 쓰기 가능한지 검사한다. 고아 3건(README.md · docs/deploy.md · docs/design/handoff-brief.md)을 두 정책 JSON 대조로 실측. 순수 함수 judgeDocJurisdiction + 음성 시험 13건. 이것으로 docs/harness/** 관할이 열려 두 문서를 고칠 수 있게 됐다",
+      "지운 것 셋 — exclude_globs 5건(governed_globs 가 허용목록이라 실효 0, 교집합 0건 실측) · claudedocs 디렉토리(docs/harness 로 이동) · 좁은 지정 DESIGN.md 를 docs/design/** 로 대체",
+      "팀 공유 핸드북을 저장소로 옮겼다 — 스크래치패드에만 있어 사라질 상태였다. 원본 둘을 흡수해 한 문서로 만들었다",
+      "CI gate 가 로컬이 원리적으로 못 보는 것을 잡았다 — C4 의 gitignore 면제가 로컬 git 2.51.0.windows 에서 존재하지 않는 디렉터리 경로를 전부 ignored 로 답해 죽은 경로를 조용히 삼킨다. 갈리는 것이 트리가 아니라 git 바이너리라 git archive 재현으로도 안 잡힌다",
+      "workflow-report 전면 갱신 — 거짓 3건과 갱신본 초안이 만든 새 거짓 1건(src/** 15건이 전부 warn_only 였다)을 실측으로 교체",
+      "핸드북 16건 정정 — 무거운 것은 존재하지 않는 입력 방어 3종이고 recurrence.md 에 R1 15회차로 등재했다. 드리프트가 아니라 날조라 C2 가 원리적으로 못 잡는다",
+      "두 문서를 doc-map 에 등재했다 — 내용 수정과 같은 커밋이다. 등재와 내용 수정은 나눌 수 없다",
+      "보류표 등재 — doc-freshness 에 --as-ci 재현 명령이 없는 것 · inputs_hash 가 워킹트리 바이트를 해싱해 브랜치 전환만으로 아티팩트가 무효가 되는 것 · C4 센서 결함 · 역추적 대상이 제안서로 고정된 것 · 판별식이 유예에만 걸리고 편입에 안 걸리는 것",
+      "트랙 B 3회 전부 6 pass / 0 fail · 아티팩트 검증 통과(inputs_hash 일치). 최근 회차는 GB-06 만 재실행하고 5건 이월",
+      "리뷰 3회가 전부 REQUEST_CHANGES 였고 blocker 는 매번 이 PR 이 만든 것이었다 — 핸드북을 이 PR 에 넣은 것(R11 9회차) → 정정의 근거 문장 자체가 틀린 것 → 수치 인용이 안 따라온 것",
+      "3차 재리뷰에서 닫힌 것 — handbook.html:509 의 빈도 제한 단언(state.ts:18 MAX_ROOM_HISTORY=50 과 일치하고 throttle|rateLimit|cooldown 은 0건) · validation.ts 근거 문장 4곳이 코드 전수 대조로 참 판정",
+      "남은 blocker 2건 — recurrence.md:64 의 R1 회차 15 를 인용 쪽 3곳이 14 로 들고 있다(handbook.html:1355 표 · workflow-report.html:338 · :1426). 그리고 message.body 는 서버 검사가 0건인데(room.ts:104 가 검사 없이 emit) handbook.html:466 이 모든 소켓 이벤트 페이로드를 타입 검사한다고 단언한다"
+    ],
+    "goal": "저장소에 커밋된 팀 공유 문서 둘이 거짓을 담고 있고 저장소 밖으로 읽힌다. workflow-report 는 팀 도입 권고 1순위에 발동 0회인 게이트를 올렸고, 핸드북은 코드에 없는 입력 방어 3종을 현재형으로 단언했다. 내용을 고치는 것만으로는 다시 낡으므로 doc-map 등재를 같은 PR 에 넣는다 — 등재와 내용 수정은 나눌 수 없다",
+    "next": [
+      "handbook.html:1355 표 · workflow-report.html:338 · :1426 의 R1 회차를 recurrence.md:64 의 15 에 맞춘다 — 정본은 안 움직였고 인용 쪽만 14 로 남았다",
+      "handbook.html:466 의 전칭을 이름 필드(nickname·room·token)로 좁히고 message.body 무검사를 명시한다 — 열거에서 빼는 것만으로는 검사한다는 인상이 남는다",
+      "handbook.html:541 의 '길이 제한' 을 '상한' 으로 좁히고 클라 최소 2자(EntryScreen.tsx MIN_NICKNAME=2 · DESIGN.md 5절)를 한 절 적는다",
+      "doc-freshness --pr 재실행 후 REVIEW 로 전이해 재리뷰"
+    ],
+    "open_questions": [
+      "수치 인용 어긋남이 recurrence.md 갱신 때마다 3회 연속 났는데 등재와 기계 검사를 후속으로 미뤘다 — 손으로 고치는 4회차라 또 샐 수 있다. 두 방향 대조(grep 으로 14 와 15 를 함께) 없이는 한 방향 grep 이 계속 놓친다"
+    ]
+  },
+  "to": "IDLE",
+  "ts": "2026-08-07T02:24:13.051Z",
+  "write_allow": [
+    "_workspace/**",
+    "docs/progress.md"
+  ]
+}

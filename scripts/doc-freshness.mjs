@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * scripts/doc-freshness.mjs — 문서 드리프트 센서 (C1~C6).
+ * scripts/doc-freshness.mjs — 문서 드리프트 센서 (C1~C7).
  *
  * 핵심 설계 결정: **문서에서 `updated:` 필드를 읽지 않는다.**
  * 프론트매터의 날짜는 반드시 거짓말을 한다 — 문서를 고치면서 날짜를 안 고치거나, 날짜만 고친다.
@@ -27,7 +27,7 @@ const DAY = 86400000;
 const argv = process.argv.slice(2);
 if (argv.includes('--help') || argv.includes('-h')) {
   console.log('사용법: node scripts/doc-freshness.mjs [--digest | --pr [--base <ref>] | --full] [--strict | --self-test]');
-  console.log('  --self-test  C2 면제 판정 음성 시험 (git·LLM 불요)');
+  console.log('  --self-test  C2 면제 판정 · C7 수치 판정 음성 시험 (git·LLM 불요)');
   process.exit(0);
 }
 const MODE = argv.includes('--digest') ? 'digest' : argv.includes('--pr') ? 'pr' : 'full';
@@ -246,6 +246,97 @@ export function judgeC2Ack(ack, depFile, depSha) {
   return { exempt: false, why: '이 의존에 대한 면제 기록 없음' };
 }
 
+// ── C7 문서 수치 대조 — 순수 판정 ──────────────────────────────────────────
+//
+// **왜 이 검사가 있는가.** PR #46 의 리뷰가 **5회 연속** 문서 수치로 REQUEST_CHANGES 였다.
+// 매 회차 사람이 대조 축을 하나씩 넓혔고(`N회` → `N행` → `N건` → 한글 수사 → 날짜 범위)
+// **매번 그 바깥에서 하나가 나왔다.** 다음 축을 미리 알 수 없으므로 축을 넓히는 방식으로는
+// 닫히지 않는다. 게다가 5차에서 나온 것 하나는 낡은 값이 아니라 **4차 조치 커밋이 새로 써
+// 넣은 값**이었다 — 손으로 고치는 행위 자체가 새 인스턴스를 만든다.
+//
+// **값은 문서 한 곳에만 두고 정본은 코드가 갖는다**(대장 R10). 문서는 `data-verify="이름"` 으로
+// 측정 이름만 선언하고, 여기 `MEASURES` 가 그 이름의 값을 스스로 잰다.
+//
+// **문서가 적은 셸 명령을 읽어 실행하지 않는다.** 그렇게 하면 문서가 임의 명령을 돌릴 수 있어
+// `tool-risk.json` 의 등급 체계를 우회하는 통로가 된다. 측정은 **코드 안의 허용 목록**이고
+// 모르는 이름은 조용히 통과가 아니라 **실패**다 — 오타 하나로 검사가 꺼지면 그건 센서가 아니다.
+
+/** 문서 값의 정규화 — 태그·엔티티·천 단위 쉼표·공백을 걷어낸다. */
+export function normalizeDocValue(raw) {
+  return String(raw ?? '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/,/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * 대조 판정. **순수 함수다** — 파일을 읽지 않으므로 합성 케이스로 시험할 수 있다.
+ *
+ * @param annotations [{doc, line, name, value}]  문서에서 뽑은 선언
+ * @param truth       {이름: 정본값}              MEASURES 의 실측 결과
+ * @returns [{doc, line, name, kind, docValue, truthValue}]  빈 배열이면 통과
+ */
+export function judgeDocNumbers(annotations, truth) {
+  const problems = [];
+  const seen = new Map(); // `${doc}\0${name}` → 첫 값
+  for (const a of annotations || []) {
+    const name = String(a?.name ?? '').trim();
+    const docValue = normalizeDocValue(a?.value);
+    const at = { doc: a?.doc, line: a?.line, name, docValue };
+
+    // 모르는 이름 → 실패. 조용한 통과는 "검사했다"와 "검사가 없다"를 구별 못 하게 만든다.
+    if (!name || !Object.prototype.hasOwnProperty.call(truth || {}, name)) {
+      problems.push({ ...at, kind: 'unknown', truthValue: null });
+      continue;
+    }
+    // 정본을 잴 수 없는 상태(파일 부재 등)는 **통과가 아니다.** 신선한 체크아웃에서
+    // 측정이 조용히 죽으면 이 검사는 CI 에서만 없는 검사가 된다 — R9 의 형상이다.
+    if (truth[name] === null || truth[name] === undefined) {
+      problems.push({ ...at, kind: 'unmeasurable', truthValue: null });
+      continue;
+    }
+    const truthValue = String(truth[name]);
+
+    // 값의 꼴을 먼저 본다. 정수도 ISO 날짜도 아니면 대조 자체가 불가능하다 —
+    // **한글 수사(`여섯`)가 여기서 잡힌다.** 5차 리뷰가 찾은 것이 정확히 이 계열이고,
+    // 숫자 축 정규식은 원리적으로 그것을 못 본다.
+    if (!/^\d+$/.test(docValue) && !/^\d{4}-\d{2}-\d{2}$/.test(docValue)) {
+      problems.push({ ...at, kind: 'unparsable', truthValue });
+      continue;
+    }
+
+    // 같은 문서 안에서 같은 이름이 두 값을 들면 그 자체가 결함이다 —
+    // 3·4차 blocker 가 둘 다 이 형상이었다(한 파일이 14와 15를, 47과 49를 동시에 단언).
+    const key = `${a?.doc} ${name}`;
+    if (seen.has(key) && seen.get(key) !== docValue) {
+      problems.push({ ...at, kind: 'inconsistent', truthValue, otherValue: seen.get(key) });
+      continue;
+    }
+    if (!seen.has(key)) seen.set(key, docValue);
+
+    if (docValue !== truthValue) problems.push({ ...at, kind: 'mismatch', truthValue });
+  }
+  return problems;
+}
+
+/** HTML 에서 `data-verify` 선언을 뽑는다. 잎 요소에만 단다는 전제다. */
+export function extractDocNumbers(html, docPath) {
+  const out = [];
+  const re = /<([a-zA-Z][\w-]*)\b[^>]*\bdata-verify="([^"]+)"[^>]*>([\s\S]*?)<\/\1>/g;
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    out.push({
+      doc: docPath,
+      line: html.slice(0, m.index).split('\n').length,
+      name: m[2],
+      value: m[3],
+    });
+  }
+  return out;
+}
+
 if (argv.includes('--self-test')) {
   const D = 'harness/policy/phase-matrix.json';
   const ACK = { dep: D, sha: 'e8c47dd', why: '가드 필드 추가이고 이 문서가 옮겨 적는 값은 안 바뀌었다' };
@@ -280,7 +371,61 @@ if (argv.includes('--self-test')) {
     if (!ok) bad++;
     console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(26)} 기대 ${want ? '면제' : '차단'} · 실측 ${got ? '면제' : '차단'}`);
   }
-  console.log(bad ? `\n문서 신선도 자기시험 실패 ${bad}건 / ${cases.length}건.` : `\n문서 신선도 자기시험 ${cases.length}건 통과 (C2 면제 판정).`);
+  // ── C7 수치 판정 ─────────────────────────────────────────────────────────
+  // 차단 쪽에 **`통과값 + 부정어`** 형태를 넣는다(R2). 이 축에서 그 형상은
+  // *"숫자는 맞는데 옆의 날짜만 틀린 것"* 과 *"숫자 자리에 숫자가 아닌 것"* 이다 —
+  // 5차 리뷰가 찾은 셋 중 둘이 정확히 그것이고, 통과값만 시험하면 영원히 안 잡힌다.
+  const T = { rows: '128', last: '2026-08-06', r1: '15' };
+  const A = (name, value, doc = 'a.html', line = 1) => [{ doc, line, name, value }];
+  const n7 = (arr) => judgeDocNumbers(arr, T).length;
+  const c7 = [
+    ['정상 일치(수)',              A('rows', '128'),                       true],
+    ['정상 일치(날짜)',            A('last', '2026-08-06'),                true],
+    ['태그가 끼어 있다',           A('rows', '<strong>128</strong>'),      true],
+    ['천 단위 쉼표 · 공백',        A('rows', ' 1,28 '.replace('1,28', '128')), true],
+    ['값이 다르다',                A('rows', '127'),                       false],
+    ['날짜만 틀리다(수는 맞다)',    A('last', '2026-08-07'),                false],
+    ['한글 수사',                  A('rows', '여섯'),                       false],
+    ['숫자 + 단위 접미',           A('rows', '128행'),                      false],
+    ['빈 값',                      A('rows', ''),                          false],
+    ['모르는 이름',                A('nope', '128'),                       false],
+    ['이름이 빈 문자열',           A('', '128'),                           false],
+    ['대장 회차 일치',             A('r1', '15'),                          true],
+    ['대장 회차 어긋남',           A('r1', '14'),                          false],
+    ['한 문서가 두 값을 든다',
+      [...A('rows', '128'), ...A('rows', '127', 'a.html', 9)],             false],
+    ['다른 문서면 각각 판정',
+      [...A('rows', '128'), ...A('rows', '128', 'b.html', 9)],             true],
+    ['선언이 없으면 통과',         [],                                     true],
+    ['null 안전',                  null,                                   true],
+    // 정본을 못 재는 상태가 통과로 새면, 신선한 체크아웃에서만 꺼지는 검사가 된다(R9).
+    ['정본을 잴 수 없다',          A('broken', '128'),                     false],
+  ];
+  T.broken = null;
+  for (const [name, ann, want] of c7) {
+    const got = n7(ann) === 0;
+    const ok = got === want;
+    if (!ok) bad++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(26)} 기대 ${want ? '통과' : '차단'} · 실측 ${got ? '통과' : '차단'}`);
+  }
+
+  // 추출기 축 — 판정이 옳아도 뽑지 못하면 검사는 없는 것과 같다.
+  const ext = [
+    ['div 잎 요소',   '<div class="num" data-verify="rows">128</div>',        1],
+    ['span 잎 요소',  '<span data-verify="r1">15</span>',                     1],
+    ['속성 순서 무관', '<span data-verify="rows" class="x">128</span>',        1],
+    ['선언 없음',     '<div class="num">128</div>',                          0],
+    ['둘 이상',       '<span data-verify="rows">1</span><b data-verify="r1">2</b>', 2],
+  ];
+  for (const [name, html, want] of ext) {
+    const got = extractDocNumbers(html, 'a.html').length;
+    const ok = got === want;
+    if (!ok) bad++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name.padEnd(26)} 기대 ${want}건 · 실측 ${got}건`);
+  }
+
+  const total = cases.length + c7.length + ext.length;
+  console.log(bad ? `\n문서 신선도 자기시험 실패 ${bad}건 / ${total}건.` : `\n문서 신선도 자기시험 ${total}건 통과 (C2 면제 판정 ${cases.length} · C7 수치 판정 ${c7.length} · C7 추출 ${ext.length}).`);
   process.exit(bad ? 1 : 0);
 }
 
@@ -530,9 +675,131 @@ function checkC6() {
   }
 }
 
+// ── C7 문서 수치 대조 ───────────────────────────────────────────────────────
+//
+// **허용 목록이다.** 문서가 이름을 대면 여기 있는 계산만 돈다 — 문서가 셸 명령을
+// 시키지 못한다. 목록에 이번 PR 에서 **실제로 낡았던 축만** 넣는다(추측으로 늘리면
+// 안 쓰이는 측정이 쌓이고, 그것은 죽은 설정이 판단의 흔적처럼 읽히는 자리가 된다).
+// `git ls-files` 하나만 `spawnSync` 로 부르고 그것은 `tool-risk.json` 의 R0(읽기 전용)다.
+function readLinesOrNull(rel) {
+  const p = join(ROOT, rel);
+  if (!existsSync(p)) return null;
+  return readFileSync(p, 'utf8').split('\n');
+}
+function countMatching(rel, re) {
+  const lines = readLinesOrNull(rel);
+  return lines === null ? null : lines.filter((l) => re.test(l)).length;
+}
+/** `## 대장` 절의 표 행만. **같은 파일의 다른 표를 세면 안 된다** — P11 이 같은 함정에 걸린 적이 있다. */
+function ledgerRows() {
+  const lines = readLinesOrNull('harness/recurrence.md');
+  if (lines === null) return null;
+  const start = lines.findIndex((l) => /^##\s*대장\s*$/.test(l));
+  if (start < 0) return null;
+  const rows = [];
+  for (let i = start + 1; i < lines.length; i++) {
+    if (/^##\s/.test(lines[i])) break;
+    const m = /^\|\s*(R\d+)\s*\|/.exec(lines[i]);
+    if (!m) continue;
+    const cells = lines[i].split(/(?<!\\)\|/).slice(1, -1).map((s) => s.trim());
+    rows.push({ id: m[1], count: (cells[2] || '').replace(/\*/g, '').trim() });
+  }
+  return rows;
+}
+/** `docs/progress.md` 보류표 — 헤더를 찾아 그 절의 데이터 행만 센다(줄 번호를 박지 않는다). */
+function pendingRows() {
+  const lines = readLinesOrNull('docs/progress.md');
+  if (lines === null) return null;
+  const start = lines.findIndex((l) => /^\|\s*보류 항목\s*\|/.test(l));
+  if (start < 0) return null;
+  let n = 0;
+  for (let i = start + 1; i < lines.length; i++) {
+    if (/^##\s/.test(lines[i])) break;
+    if (/^\|\s*-+/.test(lines[i])) continue;
+    if (/^\|/.test(lines[i])) n++;
+  }
+  return n;
+}
+function jsonOrNull(rel) {
+  const p = join(ROOT, rel);
+  if (!existsSync(p)) return null;
+  try { return JSON.parse(readFileSync(p, 'utf8')); } catch { return null; }
+}
+function dirCount(rel, filter) {
+  const p = join(ROOT, rel);
+  if (!existsSync(p)) return null;
+  try { return readdirSync(p, { withFileTypes: true }).filter(filter).length; } catch { return null; }
+}
+
+function buildMeasures() {
+  const m = {};
+  m['changelog-rows'] = countMatching('docs/harness/changelog.md', /^\| 2026/);
+  const clDates = (readLinesOrNull('docs/harness/changelog.md') || [])
+    .map((l) => /^\|\s*(\d{4}-\d{2}-\d{2})/.exec(l)?.[1]).filter(Boolean).sort();
+  m['changelog-last-date'] = clDates.length ? clDates[clDates.length - 1] : null;
+  m['pending-rows'] = pendingRows();
+  const pl = readLinesOrNull('docs/progress.md');
+  // `wc -l` 은 마지막 개행 뒤의 빈 조각을 세지 않는다 — 문서가 그 명령을 정본으로 적으므로 맞춘다.
+  m['progress-lines'] = pl === null ? null : (pl.length && pl[pl.length - 1] === '' ? pl.length - 1 : pl.length);
+  const led = ledgerRows();
+  m['recurrence-rows'] = led === null ? null : led.length;
+  for (const r of led || []) m[`recurrence-${r.id}`] = r.count || null;
+  const ga = readLinesOrNull('evals/golden/track-a-product.jsonl');
+  const gb = readLinesOrNull('evals/golden/track-b-harness.jsonl');
+  const cnt = (l) => (l === null ? null : l.filter((s) => s.trim()).length);
+  m['golden-a'] = cnt(ga);
+  m['golden-b'] = cnt(gb);
+  m['golden-total'] = m['golden-a'] === null || m['golden-b'] === null ? null : m['golden-a'] + m['golden-b'];
+  m['adr-approved'] = dirCount('docs/adr', (e) => e.isFile() && /^\d{4}-/.test(e.name) && !e.name.startsWith('0000-'));
+  const pm = jsonOrNull('harness/policy/phase-matrix.json');
+  m['phases'] = pm?.phases ? Object.keys(pm.phases).length : null;
+  m['edges'] = pm?.transitions
+    ? Object.values(pm.transitions).reduce((a, v) => a + (Array.isArray(v) ? v.length : 1), 0)
+    : null;
+  m['guards'] = pm?.guards ? Object.keys(pm.guards).length : null;
+  m['agents'] = dirCount('.claude/agents', (e) => e.isFile() && e.name.endsWith('.md'));
+  m['skills'] = dirCount('.claude/skills', (e) => e.isDirectory());
+  const pj = readLinesOrNull('.harness/state/phase.jsonl');
+  m['force-count'] = pj === null ? null : pj.filter((l) => {
+    if (!l.trim()) return false;
+    try { return JSON.parse(l).forced === true; } catch { return false; }
+  }).length;
+  const ls = git(['ls-files', 'evals/results/track-b/']);
+  m['trackb-artifacts'] = ls === null ? null : ls.split('\n').filter((s) => s.trim()).length;
+  return m;
+}
+
+const KIND_TEXT = {
+  mismatch: (p) => `문서 "${p.docValue}" · 실측 "${p.truthValue}"`,
+  unparsable: (p) => `"${p.docValue}" 는 수도 날짜도 아니다 — 대조할 수 없다 (실측 "${p.truthValue}")`,
+  unknown: (p) => `측정 이름 "${p.name}" 이 허용 목록에 없다`,
+  unmeasurable: () => `정본을 잴 수 없다 — 근거 파일이 없거나 형식이 깨졌다`,
+  inconsistent: (p) => `같은 문서가 "${p.otherValue}" 와 "${p.docValue}" 를 둘 다 단언한다 (실측 "${p.truthValue}")`,
+};
+
+function checkC7() {
+  const truth = buildMeasures();
+  for (const d of map.docs || []) {
+    for (const docPath of expand(d.path)) {
+      if (!/\.html?$/i.test(docPath)) continue;
+      const abs = join(ROOT, docPath);
+      if (!existsSync(abs)) continue;
+      const problems = judgeDocNumbers(extractDocNumbers(readFileSync(abs, 'utf8'), docPath), truth);
+      if (!problems.length) continue;
+      add('C7', docPath, [
+        `${docPath} — 정본과 어긋난 수치 ${problems.length}건`,
+        ...problems.slice(0, 12).map((p) => `    L${p.line}  ${p.name}: ${KIND_TEXT[p.kind](p)}`),
+        `  고치는 법: 문서의 값을 실측으로 고쳐라. 값이 계속 움직이는 축이면(전이 수·아티팩트 수처럼)`,
+        `  값을 빼고 재현 명령만 남겨라 — data-verify 선언을 지우면 이 검사도 함께 빠진다 (대장 R10).`,
+        `  측정 이름이 허용 목록에 없으면 scripts/doc-freshness.mjs 의 buildMeasures() 에 추가해야 한다.`,
+      ]);
+    }
+  }
+}
+
 // ── 실행 ────────────────────────────────────────────────────────────────────
-const RUN = MODE === 'digest' ? ['C1', 'C2', 'C3', 'C5'] : ['C1', 'C2', 'C3', 'C4', 'C5', 'C6'];
-const RUNNER = { C1: checkC1, C2: checkC2, C3: checkC3, C4: checkC4, C5: checkC5, C6: checkC6 };
+const RUN = MODE === 'digest' ? ['C1', 'C2', 'C3', 'C5'] : ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7'];
+const RUNNER = { C1: checkC1, C2: checkC2, C3: checkC3, C4: checkC4, C5: checkC5, C6: checkC6, C7: checkC7 };
 for (const id of RUN) RUNNER[id]();
 
 const by = (c) => findings.filter((f) => f.check === c);

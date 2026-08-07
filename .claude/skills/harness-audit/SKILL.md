@@ -55,7 +55,7 @@ pathspec 을 좁게 쓸수록 상태 파일이 자동으로 빠진다. 그래서
 
 | # | 명령 | 무엇을 답하는가 | 실패 시 |
 |---|---|---|---|
-| 1 | `node scripts/doc-freshness.mjs --full` | 문서가 코드보다 낡았는가 (C1~C6) | blocking: C1·C2·C4·C5 |
+| 1 | `node scripts/doc-freshness.mjs --full` | 문서가 코드보다 낡았는가 (C1~C7) | blocking: C1·C2·C4·C5·C7 |
 | 1-1 | `node scripts/doc-freshness.mjs --pr --base origin/main` | **이 PR 이 만든 낡음** — `--full` 에서 C2 는 advisory 라 이 모드가 아니면 **선행 점검이 C2 를 구조적으로 못 본다** | blocking (CI 에도 배선됨) |
 | 2 | `node scripts/policy-lint.mjs` | 정책이 자기모순인가 (P1~P14 — 도달 불가 단계·빈 allow-set·끊긴 전이 그래프·매칭 불가 패턴·`enforced_by` 대조·**반복 대장 미처방**·**바깥 라벨**·**가드 커버리지**·**문서 관할**) | blocking |
 | 2-1 | `node scripts/policy-lint.mjs --self-test` | **P11 파서 · P9 줄바꿈 · P12 바깥 라벨 · P13 가드 커버리지** | blocking |

@@ -1,0 +1,63 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "docs/handbook-and-report",
+  "edge_legal": true,
+  "exit_hint": "APPROVE면 → python harness/phase.py enter RELEASE / REQUEST_CHANGES면 → enter GREEN",
+  "forced": false,
+  "from": "HARNESS",
+  "guards": [
+    {
+      "ms": 250,
+      "name": "track_b_passing",
+      "ok": true
+    },
+    {
+      "ms": 78,
+      "name": "changelog_updated",
+      "ok": true
+    }
+  ],
+  "head_sha": "9a12549a00aea534cedfc7fac0ca5035bdd0954d",
+  "reason": null,
+  "rq": "DOCS-SHARE",
+  "schema": 1,
+  "seq": 270,
+  "session": {
+    "acceptance": [
+      "workflow-report 의 거짓 3건·틀림 3건이 실측값으로 교체된다",
+      "핸드북의 거짓 6건이 P14 머지 후 값으로 교체된다",
+      "둘 다 doc-map 에 등재돼 C2 가 다음 낡음을 잡는다 — 내용 수정과 같은 PR 이다"
+    ],
+    "done": [
+      "P13 가드 커버리지 머지 (PR 44, squash afe42dc) — 전이 가드 11종 전부 등재 판정",
+      "P14 신설·머지(#45) — doc-map 관할 문서가 최소 한 단계에서 쓰기 가능한지 검사. 고아 3건(README.md · docs/deploy.md · docs/design/handoff-brief.md) 실측. 이것으로 docs/harness/** 관할이 열려 두 문서를 고칠 수 있게 됐다",
+      "팀 공유 핸드북을 저장소로 옮겼다 — 스크래치패드에만 있어 사라질 상태였다. workflow-report 는 전면 갱신했다(거짓 3건 + 초안이 만든 새 거짓 1건). 두 문서를 doc-map 에 등재했고 내용 수정과 같은 커밋이다",
+      "CI gate 가 로컬이 원리적으로 못 보는 것을 잡았다 — C4 의 gitignore 면제가 로컬 git 2.51.0.windows 에서 존재하지 않는 디렉터리 경로를 전부 ignored 로 답한다. 갈리는 것이 트리가 아니라 git 바이너리라 git archive 재현으로도 안 잡힌다",
+      "리뷰 5회가 전부 REQUEST_CHANGES 였고 blocker 는 매번 이 PR 이 만든 것이었다 — 핸드북 편입(R11 9회차) → 정정의 근거 문장 자체가 틀림 → 수치 인용이 안 따라옴 → 그 조치의 범위가 이름보다 좁음 → 그 범위 주장 자체가 반증됨",
+      "5차 blocker 3건 조치 — 6절 5항의 한글 수사(실측 전날 23행 → 그날 48행) · 아티팩트 47건(실측 48, 같은 카드의 근거 span 은 고치고 9줄 위 본문을 남긴 것) · changelog 행 범위 끝을 근거 없이 08-07 로 올린 것(마지막 행은 2026-08-06 이고 이 커밋이 새로 써 넣은 거짓이었다)",
+      "등급이 다른 것은 수치가 아니라 기록이었다 — changelog 와 원장이 '전수 대조했다 · 같은 처리를 했다' 고 완료를 적었는데 거짓이었다. 서술을 사실로 한정했다",
+      "harness-audit 선행 절차를 밟았다 — 점검 10종 전원 통과(자기시험 doc-freshness 40 · policy-lint 78 · eval-b 42 · phase.py 25 · check 10 · hooks 23/23). 보고서는 _workspace/harness-audit/2026-08-07.md, 제안은 정확히 1건",
+      "doc-freshness C7 신설 — 문서가 data-verify='이름' 으로 측정 이름만 선언하고 센서가 정본을 스스로 잰다. 값은 문서 한 곳에만 있고(R10) 문서가 적은 셸 명령을 읽어 실행하지 않는다. 허용 목록에 없는 이름은 조용한 통과가 아니라 실패다. 순수 함수 judgeDocNumbers + 음성 시험 40건",
+      "배선을 실증했다 — 자기시험은 배선을 증명하지 못하므로 실제 문서에 드리프트 3건을 주입해 셋 다 잡고 exit 1, 원복하면 exit 0 인 것을 확인했다. 그리고 이 커밋 자신이 보류표에 행을 더하자 C7 이 즉시 pending-rows 50→51 과 progress-lines 216→217 을 잡았다",
+      "속성 이름 충돌을 잡았다 — 처음 쓴 data-count 는 architecture-2026.html 의 카운터 애니메이션이 이미 쓰고 있어 무관한 문서에서 오발화했다. R9 가 '배선의 값어치는 센서 자신의 결함을 드러내는 것에 있다' 로 이름 붙인 자리다",
+      "감사 Phase 4-0(커밋 후 재검사)이 세 번 값을 했다 — C7 커밋이 만든 C2 2건 · 면제 커밋이 만든 C2 1건 · changelog 산문의 죽은 경로 1건. 그 단계가 없었으면 전부 CI 에서야 나왔다",
+      "면제로 닫으려다 순환에 걸려 의존을 좁혔다 — changelog 는 하네스 변경마다 움직이는데 면제 sha 가 그것을 쫓아가야 하고 sha 를 고치는 커밋이 changelog 를 함께 실으면 즉시 재무장한다. 재서술하는 두 값이 이제 C7 대조 대상이라 처방 2번이 맞다",
+      "트랙 B 전수 재실행 6 pass / 0 fail(b58aac2d). 부분 실행을 쓰지 않았다 — inputs_hash 가 바뀐 재실행에 carried_from 을 쓸 근거가 없다. GB-06 은 cold 5/5 · 파일 4/7 · 1.76분",
+      "감사 발견 F-2(스펙-코드 동행 검사 M2 스텝이 센서 카탈로그에 행 없음)는 어느 가드도 막지 않아 묶을 판별식이 성립하지 않으므로 보류표로 보냈다",
+      "최종 게이트 전원 초록 — check.mjs 20파일 71테스트 · policy-lint P1~P14 · doc-freshness --pr 차단 0 · 훅 자기검사 23/23 · 아티팩트 검증 통과 · 미커밋 추적 파일 0"
+    ],
+    "goal": "저장소에 커밋된 팀 공유 문서 둘이 거짓을 담고 있고 저장소 밖으로 읽힌다. workflow-report 는 팀 도입 권고 1순위에 발동 0회인 게이트를 올렸고, 핸드북은 코드에 없는 입력 방어 3종을 현재형으로 단언했다. 내용을 고치는 것만으로는 다시 낡으므로 doc-map 등재를 같은 PR 에 넣는다 — 등재와 내용 수정은 나눌 수 없다",
+    "next": [
+      "6차 재리뷰를 받는다 — 5차 blocker 3건이 닫혔는지, 그리고 C7 이 표방한 것을 실제로 하는지",
+      "APPROVE 면 RELEASE 로 전이하고 머지한다"
+    ],
+    "open_questions": [
+      "gate_phase.py 의 차단 메시지가 CI 의 phase-audit 이 사후 대조한다 고 같은 거짓을 말한다 — .claude/hooks/** 는 HASH_GLOBS 라 고치면 트랙 B 전수 재실행이 붙어 이 문서 PR 에 넣지 않았다. 수치 인용의 기계 검사도 사용자 결정으로 후속이다 — 손으로 고친 마지막 회차여야 한다"
+    ]
+  },
+  "to": "REVIEW",
+  "ts": "2026-08-07T05:24:24.629Z",
+  "write_allow": [
+    "_workspace/**"
+  ]
+}

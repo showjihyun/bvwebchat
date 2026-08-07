@@ -1,0 +1,68 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "docs/handbook-and-report",
+  "edge_legal": true,
+  "exit_hint": "하네스 변경 후 → python harness/phase.py enter REVIEW  (가드: 트랙 B 회귀 평가 아티팩트, changelog 동행)",
+  "forced": false,
+  "from": "IDLE",
+  "guards": [],
+  "head_sha": "c9c2d9b5c3afd57896ce2cd982a906e0f1501133",
+  "reason": null,
+  "rq": "DOCS-SHARE",
+  "schema": 1,
+  "seq": 266,
+  "session": {
+    "acceptance": [
+      "workflow-report 의 거짓 3건·틀림 3건이 실측값으로 교체된다",
+      "핸드북의 거짓 6건이 P14 머지 후 값으로 교체된다",
+      "둘 다 doc-map 에 등재돼 C2 가 다음 낡음을 잡는다 — 내용 수정과 같은 PR 이다"
+    ],
+    "done": [
+      "P13 가드 커버리지 머지 (PR 44, squash afe42dc) — 전이 가드 11종 전부 등재 판정. 가드를 추가하며 카탈로그에 안 적으면 CI 가 막는다",
+      "감사 발견은 검사 실패가 아니라 검사가 안 보는 자리에서 나왔다 — 점검 9종이 전부 초록인 상태에서 방향 2 대조를 기계로 돌려 가드 3종 누락을 실측했다. Guide 를 게이트로 한 칸 올렸다",
+      "P14 신설·머지(#45) — doc-map 이 관할하는 문서가 최소 한 단계에서 쓰기 가능한지 검사한다. 고아 3건(README.md · docs/deploy.md · docs/design/handoff-brief.md)을 두 정책 JSON 대조로 실측. 순수 함수 judgeDocJurisdiction + 음성 시험 13건. 이것으로 docs/harness/** 관할이 열려 두 문서를 고칠 수 있게 됐다",
+      "지운 것 셋 — exclude_globs 5건(governed_globs 가 허용목록이라 실효 0, 교집합 0건 실측) · claudedocs 디렉토리(docs/harness 로 이동) · 좁은 지정 DESIGN.md 를 docs/design/** 로 대체",
+      "팀 공유 핸드북을 저장소로 옮겼다 — 스크래치패드에만 있어 사라질 상태였다. 원본 둘을 흡수해 한 문서로 만들었다",
+      "CI gate 가 로컬이 원리적으로 못 보는 것을 잡았다 — C4 의 gitignore 면제가 로컬 git 2.51.0.windows 에서 존재하지 않는 디렉터리 경로를 전부 ignored 로 답해 죽은 경로를 조용히 삼킨다. 갈리는 것이 트리가 아니라 git 바이너리라 git archive 재현으로도 안 잡힌다",
+      "workflow-report 전면 갱신 — 거짓 3건과 갱신본 초안이 만든 새 거짓 1건(src/** 15건이 전부 warn_only 였다)을 실측으로 교체",
+      "핸드북 16건 정정 — 무거운 것은 존재하지 않는 입력 방어 3종이고 recurrence.md 에 R1 15회차로 등재했다. 드리프트가 아니라 날조라 C2 가 원리적으로 못 잡는다",
+      "두 문서를 doc-map 에 등재했다 — 내용 수정과 같은 커밋이다. 등재와 내용 수정은 나눌 수 없다",
+      "보류표 등재 — doc-freshness 에 --as-ci 재현 명령이 없는 것 · inputs_hash 가 워킹트리 바이트를 해싱해 브랜치 전환만으로 아티팩트가 무효가 되는 것 · C4 센서 결함 · 역추적 대상이 제안서로 고정된 것 · 판별식이 유예에만 걸리고 편입에 안 걸리는 것",
+      "트랙 B 3회 전부 6 pass / 0 fail · 아티팩트 검증 통과(inputs_hash 일치). docs/harness/** 는 HASH_GLOBS 밖이라 이번 내용 수정은 재실행이 불필요하다",
+      "리뷰 3회가 전부 REQUEST_CHANGES 였고 blocker 는 매번 이 PR 이 만든 것이었다 — 핸드북을 이 PR 에 넣은 것(R11 9회차) → 정정의 근거 문장 자체가 틀린 것 → 수치 인용이 안 따라온 것",
+      "3차 재리뷰에서 닫힌 것 — handbook.html:509 의 빈도 제한 단언(state.ts:18 MAX_ROOM_HISTORY=50 과 일치하고 throttle|rateLimit|cooldown 은 0건) · validation.ts 근거 문장 4곳이 코드 전수 대조로 참 판정",
+      "3차 blocker 2건 + major 1건 조치(8edd2d2). recurrence.md:64 의 R1 15 를 인용 쪽 3곳(handbook.html 발췌 표 · workflow-report.html 본문·stat 타일)에 맞췄다. 2차 리뷰가 15회 한 방향만 grep 해 놓친 자리라 이번엔 14 와 15 를 함께 세고 발췌 표 12행을 대장과 전수 대조해 불일치 0을 확인했다",
+      "handbook.html:466 의 전칭을 좁혔다 — message 의 본문은 서버 검사가 0건이다(room.ts:104 가 검사 없이 emit, src/server 안 .body 참조가 그 한 줄, 스키마 계층 0). 비어 있지 않음을 보는 것은 Composer.tsx 뿐이라는 것을 명시했다. handbook.html:541 은 길이 제한을 상한으로 좁히고 클라 최소 2자(EntryScreen.tsx MIN_NICKNAME=2)를 적었다",
+      "검사 전부 초록 — check.mjs 20파일 71테스트 · policy-lint P1~P14 · doc-freshness --pr 차단 0(advisory 4건은 기존 C6 마커)",
+      "4차 재리뷰 요청(HEAD c9c2d9b). 두 방향 대조를 처음 적용했다 — 옛 값과 새 값을 함께 세는 것. 3회 연속 샌 원인이 한 방향 grep 이었다",
+      "4차 재리뷰 — 3차 지적 3건은 전부 닫혔다(실측 확인: 14회 잔존 0 · 발췌 표 12행 일치 · P3 이름 필드 집합이 코드 검사 대상과 정확히 일치). 새 blocker 2건은 이전 회차가 못 본 자리다",
+      "자기참조 수치를 세어 봤다 — handbook.html 30개소 · workflow-report.html 237개소. 매 회차가 이 중 표본을 잡아 틀린 것을 찾아냈고 나는 지적된 것만 고쳐 왔다. 3차 조치에 쓴 '두 방향 대조' 는 N회 축에만 해당했는데 커밋 메시지는 더 넓게 읽히게 썼다 — 4차 blocker 가 그 직접 결과다"
+    ],
+    "goal": "저장소에 커밋된 팀 공유 문서 둘이 거짓을 담고 있고 저장소 밖으로 읽힌다. workflow-report 는 팀 도입 권고 1순위에 발동 0회인 게이트를 올렸고, 핸드북은 코드에 없는 입력 방어 3종을 현재형으로 단언했다. 내용을 고치는 것만으로는 다시 낡으므로 doc-map 등재를 같은 PR 에 넣는다 — 등재와 내용 수정은 나눌 수 없다",
+    "next": [
+      "보류표 행 수를 R10 처방대로 처리한다 — workflow-report.html 본문 3곳의 47행 을 숫자 없이 재현 명령으로 바꾸고 stat 타일만 실측값(현재 50)을 든다. 값을 두 곳에 적으면 반드시 다시 낡는다",
+      "handbook.html 의 phase-audit.mjs 서술에 미배선을 명시한다 — ci.yml 호출 0 · 훅 0 이고 sensor-catalog.md 가 CI 미배선으로 기록한다. 자동 탐지가 0이고 남는 것은 tool-risk.json 의 deny 목록과 리뷰어 diff 둘뿐이다",
+      "두 문서의 자기참조 수치를 N회·N행·N건·sha 네 축으로 전수 대조한다. 표본이 아니라 전수여야 같은 계열이 다음 회차에 안 남는다"
+    ],
+    "open_questions": [
+      "핸드북 등재의 depends_on 에 서버 코드 축이 없어 validation.ts 에 상한이 들어와도 C2 가 침묵한다. src/** 전체를 걸면 모든 구현 PR 에서 발화해 게이트가 무시되는 방향으로 간다 — 범위 설계 판단이지 한 줄 수정이 아니다"
+    ]
+  },
+  "to": "HARNESS",
+  "ts": "2026-08-07T03:30:12.951Z",
+  "write_allow": [
+    ".claude/**",
+    "harness/**",
+    "scripts/**",
+    ".github/**",
+    "docs/harness/**",
+    "docs/deploy.md",
+    "README.md",
+    "evals/*.md",
+    "evals/results/**",
+    "_workspace/**",
+    "docs/progress.md",
+    ".gitignore",
+    "CLAUDE.md"
+  ]
+}

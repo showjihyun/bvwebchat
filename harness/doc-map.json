@@ -139,6 +139,11 @@
       "path": "harness/recurrence.md",
       "tier": 2,
       "purpose": "반복 실패 대장 — 같은 원인이 2회째면 등재하고, 3회 이상 미처방이면 policy-lint P11 이 차단한다. 운영 규칙 3은 '2회 반복 시 센서 또는 Guide'를 요구했는데 누적을 세는 자리가 없어 하루에 같은 원인으로 3~9회를 반복했다.",
+      "_c2_reviewed": {
+        "dep": ".claude/skills/harness-audit/SKILL.md",
+        "sha": "8989afc",
+        "why": "2026-08-07 C7 신설. 그 커밋이 이 스킬에서 고친 것은 Phase 1 표의 검사 열거 한 칸(C1~C6 → C1~C7)뿐이고, 이 문서는 그 열거를 옮겨 적지 않는다 — 감사 스킬을 참조하는 자리가 R17 행(Phase 4 에 0번 단계 신설)과 R2 상세(변경 제안 규칙)와 R11(Phase 3) 셋인데 전부 절차의 이름을 가리킬 뿐 검사 목록을 재서술하지 않는다. 실측: 이 파일에 C1~C6 문자열이 0건이다. 의존 자체는 지우지 않는다 — 감사 스킬의 Phase 3·4 가 바뀌면 이 문서의 R17·R11 행은 실제로 낡는다."
+      },
       "depends_on": [
         "scripts/policy-lint.mjs",
         ".claude/skills/harness-audit/SKILL.md"
@@ -180,7 +185,7 @@
         {
           "dep": "harness/sensor-catalog.md",
           "sha": "0747b68",
-          "why": "카탈로그의 정책 정합성 행을 P1~P13 → P1~P14 로 넓히고 축 열거를 지운 변경이다. 이 설계서는 P 번호 범위를 단언하지 않고(grep: P1~P1x 일치 0건) 카탈로그에서 옮겨 적는 것은 3층 모델과 가드 개수뿐이다."
+          "why": "P1~P13 → P1~P14 변경에 대한 검토다. 이 설계서는 P 번호 범위를 단언하지 않는다 — 반증 명령: rg -n 'P1[~-–]P1[0-9]' docs/harness/architecture-2026.html → 0건. ⚠️ 2026-08-07 정정: 이 항목을 C7 신설(8989afc)까지 넓혔던 면제를 **철회했다**. 그 면제문은 '이 설계서는 검사 열거를 옮겨 적지 않는다' 고 썼는데 **거짓이었다** — :1787-1794 가 여섯 검사를 ID·이름·판정 등급·예시 버그까지 표로 옮겨 적고 :1503·:1769 는 '6종 검사' 라고 개수까지 단언한다. 근거로 댄 '이 파일에 C1~C6 문자열 0건' 은 **판별력이 없는 grep** 이었다: 그 표는 <td><b>C1</b></td> 마크업이라 리터럴 C1~C6 이 나올 수 없다 — 통과하도록 고른 근거다. 이 저장소가 이미 이름 붙인 함정이고(전칭 주장을 쓰려면 그것을 반증할 rg 한 줄을 같은 자리에 적어라) 네 번째 위반이었다. **면제가 진짜 양성을 껐다** — 리뷰가 그것을 실측으로 보였다. 지금은 설계서를 7종으로 고쳐 C2 가 정당하게 통과한다."
         },
         {
           "dep": "harness/policy/README.md",
@@ -194,6 +199,34 @@
         }
       ],
       "review_every_days": 90
+    },
+    {
+      "path": "docs/harness/workflow-report.html",
+      "tier": 2,
+      "purpose": "팀 공유 — AI 워크플로우 적용 보고서. 이 하네스가 무엇을 왜 하는지와 무엇이 안 됐는지를 팀에 설명한다.",
+      "_doc_why_registered": "2026-07-24 판이 13일간 낡아 팀 도입 권고 자리에 거짓 3건을 담게 됐다 — 그중 하나는 발동 0회인 게이트를 1순위로 권했다. 원인은 'exclude_globs 라 센서가 안 본다' 가 아니라 미등재였다(그 진단이 틀렸다는 것 자체가 죽은 설정의 대가다). 등재를 PR #45 에서 미룬 이유는 낡은 걸 알면서 등재하면 C2 가 정당하게 막고 면제로 뚫으면 거짓을 기록하기 때문이다 — 내용을 고친 지금 그 사유가 해소됐고, 등재와 내용 수정을 같은 PR 에 넣는 것이 그 규칙의 정확한 이행이다.",
+      "_doc_depends": "docs/harness/changelog.md 를 depends_on 에서 뺐다(2026-08-07, C7 신설). 판별 규칙(재서술하면 의존, 포인터로만 참조하면 비의존)을 적용했다 — 이 보고서가 changelog 에서 옮겨 적는 값은 둘뿐이고(행 수·마지막 행 날짜) 그 둘은 이제 data-verify 로 C7 의 기계 대조 대상이다. 시각 비교(C2)보다 강한 검사가 같은 축을 물고 있고, 값이 어긋나면 C7 이 blocking 으로 잡는다. 산문 축에서는 재서술이 없다 — 인용하는 자리가 '하네스 변경마다 한 행씩' 이라는 관행 서술 하나다. 면제(_c2_reviewed)로 두지 않은 이유: changelog 는 하네스 변경마다 움직이는데 면제 sha 는 그것을 쫓아가야 하고, sha 를 고치는 커밋이 changelog 를 함께 실으면 즉시 재무장한다 — 실제로 한 번 걸렸다. 면제가 구조적으로 낡는 자리에서는 의존을 좁히는 것이 맞다.",
+      "depends_on": [
+        "harness/policy/phase-matrix.json",
+        "harness/sensor-catalog.md",
+        "harness/recurrence.md"
+      ],
+      "review_every_days": 30
+    },
+    {
+      "path": "docs/harness/handbook.html",
+      "tier": 2,
+      "purpose": "팀 공유 핸드북 — 제품(무엇을 만들었나)과 하네스(어떻게 만드나)를 한 페이지에. L&L 배포물.",
+      "_doc_why_registered": "§03 이 phase-matrix 의 write_allow 를 그대로 재서술하므로 그 파일이 움직이면 거짓이 된다 — 실제로 PR #45 가 움직여 리뷰가 blocker 로 잡았다. 등재하지 않으면 C2 가 다음 번을 못 잡는다. 원본이던 제품 아키텍처 문서와 하네스 구조 문서를 흡수했다: 같은 사실을 말하는 문서가 여럿이면 나머지는 반드시 낡는다. 주의 — 등재는 드리프트만 막는다. 이 문서가 2026-08-06 에 든 거짓 3건은 코드에 없는 입력 방어를 단언한 날조였고 C2 는 그 계열을 구조적으로 못 잡는다(R1 15회차, docs/progress.md 보류표). 서버 코드 축을 뒤늦게 넣었다 — Part I 이 validation.ts 의 함수 구성과 state.ts 의 MAX_ROOM_HISTORY·상한 부재를 그대로 옮겨 적는데 그 축에 의존이 하나도 없어, 길이 상한이 들어와도 C2 가 침묵할 자리였다. 넓게 src/** 를 걸지 않은 이유: 모든 구현 PR 에서 발화하면 게이트가 무시되는 방향으로 간다 — 값을 실제로 옮겨 적은 두 파일만 건다. 한계 기록: 이 항목에 실제로 적용되는 검사는 C2(blocking) · C3(advisory) · C7(blocking) 셋이다. C4·C6 는 .md 만 보고(scripts/doc-freshness.mjs), C5 는 max_lines 미설정이라 미적용이며, C1 은 governed_globs 가 전부 .md 라 HTML 을 모집단에 넣지 않는다. C7 은 2026-08-07 에 생겼고 HTML 을 보지만 옵트인이다 — data-verify 선언이 붙은 수치만 대조하므로 이 문서의 나머지 수치 주장은 여전히 기계 밖이다.",
+      "depends_on": [
+        "harness/policy/phase-matrix.json",
+        "harness/recurrence.md",
+        "scripts/policy-lint.mjs",
+        "specs/requirements.md",
+        "src/server/chat/validation.ts",
+        "src/server/chat/state.ts"
+      ],
+      "review_every_days": 30
     },
     {
       "path": "evals/README.md",
@@ -403,7 +436,13 @@
       "marker_pattern": "(\\ud83d\\udfe1|TODO\\()",
       "stale_after_days": 14,
       "_doc": "tier ≤2 문서의 🟡/TODO(가 14일을 넘으면 경고. 센서 카탈로그의 죽은 🟡과 ci.yml의 스테일 TODO가 이 검사의 발단이다."
+    },
+    "C7": {
+      "name": "문서 수치 대조",
+      "severity": "blocking",
+      "scope": "repo",
+      "_doc": "문서가 data-verify=\"이름\" 으로 측정을 선언하면 doc-freshness 가 정본을 스스로 재서 대조한다. 값은 문서 한 곳에만 두고 정본은 코드가 갖는다(대장 R10). 발단: PR #46 리뷰가 5회 연속 문서 수치로 REQUEST_CHANGES 였고, 매 회차 사람이 대조 축을 넓혔는데(N회 → N행 → N건 → 한글 수사 → 날짜 범위) 매번 그 바깥에서 하나가 나왔다 — 다음 축을 미리 알 수 없으므로 축을 넓히는 방식으로는 닫히지 않는다. 옵트인이다: data-verify 가 없는 수치는 대상이 아니므로 기존 문서를 빨갛게 만들지 않는다. 대신 이름이 허용 목록(buildMeasures)에 없으면 조용히 통과가 아니라 실패다 — 오타 하나로 꺼지는 검사는 센서가 아니다."
     }
   },
-  "_deferred_registration": "문서 두 건의 등재를 미뤘다. ① docs/harness/workflow-report.html — 내용이 낡은 것을 알고 있는 상태(2026-08-06 문서 감사: 팀 도입 권고 자리에 거짓 3건)에서 등재하면 C2 가 정당하게 차단하고, 그것을 _c2_reviewed 로 면제하면 '낡지 않았다' 는 거짓을 기록하는 것이 된다. ② 팀 공유 핸드북 — 이 PR 에 넣었다가 리뷰가 blocker 로 되돌렸다: 핸드북 §03 이 write_allow 를 그대로 재서술하는데 그 값을 바꾸는 것이 바로 이 PR 이라 머지 시점에 이미 거짓이었고, C2 는 시각만 보므로(doc-freshness.mjs judgeC2) 나중 커밋인 핸드북을 원리적으로 못 잡는다. 둘 다 같은 규칙이다: 등재와 내용 수정은 나눌 수 없다 — 등재만 하면 CI 가 빨개지고 내용만 고치면 다음에 또 낡는다. 관할은 이 PR 이 이미 열었다(claudedocs/ → docs/harness/, HARNESS 단계가 쓸 수 있다). 문서 PR 은 P14 머지 뒤에 온다 — 순서가 거꾸로면 재서술한 값이 또 낡는다."
+  "_registration_note": "2026-08-06: 팀 공유 HTML 2건을 등재했다. 등재와 내용 수정을 같은 PR 에 넣은 것이 핵심이다 — PR #45 가 등재만 먼저 하려다 '낡은 걸 알면서 등재하면 면제가 거짓이 된다' 는 벽에 부딪혔다. 남은 구멍: governed_globs 가 docs/harness/*.md 라 .md 만 보므로 이 디렉터리의 다른 HTML 은 여전히 C1 의 등재 의무 밖이다(docs/progress.md 보류표 — 다음 감사 단일 제안 1순위). 그리고 등재는 드리프트만 막는다 — 날조 계열은 C2 가 구조적으로 못 잡는다(R1 15회차)."
 }

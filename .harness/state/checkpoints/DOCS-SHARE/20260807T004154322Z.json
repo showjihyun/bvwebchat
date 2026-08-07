@@ -1,0 +1,78 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "docs/handbook-and-report",
+  "edge_legal": true,
+  "exit_hint": "하네스 변경 후 → python harness/phase.py enter REVIEW  (가드: 트랙 B 회귀 평가 아티팩트, changelog 동행)",
+  "forced": false,
+  "from": "IDLE",
+  "guards": [],
+  "head_sha": "a8d4d99f1e1426d0468e09f16f93e1ebf91b01f4",
+  "reason": null,
+  "rq": "DOCS-SHARE",
+  "schema": 1,
+  "seq": 257,
+  "session": {
+    "acceptance": [
+      "workflow-report 의 거짓 3건·틀림 3건이 실측값으로 교체된다",
+      "핸드북의 거짓 6건이 P14 머지 후 값으로 교체된다",
+      "둘 다 doc-map 에 등재돼 C2 가 다음 낡음을 잡는다 — 내용 수정과 같은 PR 이다"
+    ],
+    "done": [
+      "P13 가드 커버리지 머지 완료 (PR 44, squash afe42dc). main 에서 실동작 확인 — 전이 가드 11종 전부 등재 판정. 이제 가드를 추가하며 카탈로그에 안 적으면 CI 가 막는다",
+      "감사 발견은 검사 실패가 아니라 검사가 안 보는 자리에서 나왔다 — 점검 9종 전부 초록이었고 방향 2 대조를 기계로 돌려 가드 3종 누락을 실측했다. F-1 의 재발이라 Guide 를 게이트로 한 칸 올렸다",
+      "리뷰 blocker 2건 둘 다 내 것이었고 조치했다. 그 중 하나의 구조 원인을 R17 로 등재하고 감사 스킬 Phase 4 에 커밋 후 재검사 단계를 신설했다",
+      "GB-06 이 세 번 떨어졌고 매번 원인이 달랐다. 두 번째는 재리뷰가 채점기 쪽 원인으로 판정했다 — 내 조치가 폐기된 규칙의 재적용이라 얻은 것이 점수뿐이었다. 트리거와 함께 등재했다",
+      "재스탬프에 세는 규칙을 처음 정의했다 — A→IDLE 직후 IDLE→A 인 같은 단계 복귀 왕복. 전수 19건 · 이 PR 2건. 이전엔 같은 사실이 세 곳에서 달랐다",
+      "우선순위를 실측으로 정했다 — 보류표 36건 중 12건이 오늘 들어왔고 감사는 1회 1건만 뽑는다. 유입이 처리의 12배다",
+      "P14 신설 — doc-map 이 관할하는 문서가 최소 한 단계에서 쓰기 가능한지 검사한다. 두 정책 파일이 서로 반대를 말하던 자리이고 고아 3건(README.md · docs/deploy.md · docs/design/handoff-brief.md)을 실측했다. 순수 함수 judgeDocJurisdiction + 음성 시험 13건",
+      "지운 것 셋 — exclude_globs 5건(governed_globs 가 허용목록이라 실효 0, 교집합 0건 실측) · claudedocs 디렉토리(docs/harness 로 이동) · 좁은 지정 docs/design/DESIGN.md 를 docs/design/** 로 대체",
+      "팀 공유 핸드북을 저장소로 옮겼다 — 스크래치패드에만 있어 사라질 상태였다. 원본 둘을 흡수해 한 문서로 만들었다",
+      "P14 신설 — doc-map 이 관할하는 문서가 최소 한 단계에서 쓰기 가능한지 검사한다. 고아 3건(README.md · docs/deploy.md · docs/design/handoff-brief.md)을 두 정책 JSON 대조로 실측했다. 순수 함수 judgeDocJurisdiction + 음성 시험 13건",
+      "지운 것 셋 — exclude_globs 5건(governed_globs 가 허용목록이라 실효 0, 교집합 0건 실측) · claudedocs 디렉토리(docs/harness 로 이동) · 좁은 지정 DESIGN.md 를 docs/design/** 로 대체",
+      "팀 공유 핸드북을 저장소로 옮겼다 — 스크래치패드에만 있어 사라질 상태였다. 원본 둘을 흡수했다",
+      "제안이 실행 중에 두 번 반증됐다 — workflow-report 등재를 뺐다(낡은 걸 아는 문서를 등재하면 면제가 거짓이 된다) · F-3 진단이 좁았다(저장소에 아예 없는 배포물은 git status 로 안 보인다)",
+      "트랙 B 전수 6 pass / 0 fail · 아티팩트 커밋 완료",
+      "리뷰 REQUEST_CHANGES — blocker 3건 전부 핸드북을 이 PR 에 넣은 데서 나왔다. 리뷰어가 판별식을 재보니 어느 방향으로도 막는 가드가 없어 R11 9회차였고, 그 직접 결과로 핸드북이 이 PR 이 바꾼 write_allow 값을 재서술한 채 거짓 6건을 실었다",
+      "리뷰 blocker 3건 조치 완료 — 핸드북을 PR 에서 분리(diff 2292→870줄) · docs/architecture.html 배정 철회(생성물이 죽은 경로를 렌더링해 C4 로 CI 를 막았다) · 면제 dep 을 글롭에서 정확 경로로",
+      "리뷰 지적을 절차의 구멍으로 옮겨 보류표 3건 등재 — 역추적 대상이 제안서로 고정된 것 · 판별식이 유예에만 걸리고 편입에 안 걸린 것 · C2 가 시각만 봐서 새 문서를 원리적으로 못 잡는 것",
+      "트랙 B 2회차 6 pass / 0 fail · 아티팩트 검증 통과(inputs_hash 일치)",
+      "재리뷰 REQUEST_CHANGES — 1차 blocker 2건은 닫혔고 B-1 자리에서 새 blocker 3건이 났다. 셋 다 내가 감사 보고서에 처방을 적어 놓고 그 커밋에서 안 지킨 데서 나왔다",
+      "재리뷰 blocker 3건 조치 — 면제 sha 를 정책 파일의 현재 마지막 커밋으로 맞추고 이 커밋이 정책 파일을 안 건드리게 배치했다(안 그러면 또 재무장한다) · 죽은 인용 3곳을 서술·경로 분할로 · 원장 두 행의 모순 해소",
+      "CI 체크아웃 조건을 git archive 로 재현해 검증했다 — 로컬 초록은 이 축을 구조적으로 못 본다(checkC4 가 미추적을 살아 있는 것으로 센다). 재현 절차를 감사 보고서 10절에 남겼다",
+      "doc-freshness --as-ci 를 보류표에 등재 — 증상은 원장이 알고 있었는데 재현 명령이 없어 같은 함정에 다시 걸렸다. R9 와 같은 형상이고 답은 배선이다",
+      "CI gate 가 로컬이 못 보는 것을 잡았다 — C4 의 gitignore 면제가 로컬 git 2.51.0.windows 에서 존재하지 않는 디렉터리 경로를 전부 ignored 로 답해 죽은 경로를 조용히 삼킨다. 갈리는 것이 트리가 아니라 git 바이너리라 git archive 재현으로도 안 잡힌다",
+      "CI 가 잡은 죽은 경로 2건 조치 + 센서 결함을 보류표에 등재. 리뷰 APPROVE 이후 바뀐 것은 산문의 죽은 경로 표기와 보류표 1행뿐이고 P14 로직·음성 시험·정책 파일은 무변경이다",
+      "P14 가 머지됐다(#45). docs/harness/** 관할이 열려 있고 두 문서를 여기서 고칠 수 있다",
+      "workflow-report 를 전면 갱신했다 — 거짓 3건과 갱신본 초안이 만든 새 거짓 1건(src/** 15건이 전부 warn_only 였다)을 실측으로 교체",
+      "핸드북 16건 정정 — 그중 무거운 것은 존재하지 않는 입력 방어 3종이고 R1 15회차로 등재했다(드리프트가 아니라 날조라 C2 가 못 잡는다)",
+      "두 문서를 doc-map 에 등재했다. 내용 수정과 같은 커밋이다",
+      "inputs_hash 가 워킹트리 바이트를 해싱해 브랜치 전환만으로 아티팩트가 무효가 되는 것을 실측하고 보류표에 등재했다"
+    ],
+    "goal": "저장소에 커밋된 팀 공유 문서 둘이 거짓을 담고 있고 저장소 밖으로 읽힌다. workflow-report 는 팀 도입 권고 1순위에 발동 0회인 게이트를 올렸고, 핸드북은 코드에 없는 입력 방어 3종을 현재형으로 단언했다. 내용을 고치는 것만으로는 다시 낡으므로 doc-map 등재를 같은 PR 에 넣는다 — 등재와 내용 수정은 나눌 수 없다",
+    "next": [
+      "트랙 B 를 재실행하고 아티팩트를 커밋한다",
+      "review-gate 스킬로 독립 리뷰를 받는다",
+      "PR 을 올린다"
+    ],
+    "open_questions": [
+      "핸드북의 입력 방어 정정이 정확한지 — src/server/chat 에서 상한 상수가 둘뿐임을 확인했지만 내가 못 본 검증이 있으면 정정 자체가 새 거짓이 된다"
+    ]
+  },
+  "to": "HARNESS",
+  "ts": "2026-08-07T00:41:54.320Z",
+  "write_allow": [
+    ".claude/**",
+    "harness/**",
+    "scripts/**",
+    ".github/**",
+    "docs/harness/**",
+    "docs/deploy.md",
+    "README.md",
+    "evals/*.md",
+    "evals/results/**",
+    "_workspace/**",
+    "docs/progress.md",
+    ".gitignore",
+    "CLAUDE.md"
+  ]
+}
