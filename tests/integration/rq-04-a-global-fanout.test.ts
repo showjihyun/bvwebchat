@@ -55,6 +55,22 @@ import { GLOBAL_ROOM, type ChatMessage } from '../../src/shared/types';
  *            fanOutUnread를 그 room-B 사본에도 그대로 적용하면 이 단언이
  *            깨진다 — **전달과 집계를 분리해야 통과한다**(ADR-0009 결정5).
  *
+ *   GA-41 (2026-08-07 추가 — SPEC 재방문으로 신설, ADR-0009 결정4 집행)
+ *     given: alice가 room-A에 참여 중이다. bob이 room-A에 보낸 일반
+ *            메시지와 carol이 global에 보낸 메시지는 본문·발신 닉네임이
+ *            동일하다.
+ *     when : 두 메시지가 모두 alice에게 room-A 태그로 도착한다.
+ *     then : alice는 둘을 구별할 수 있다 — global에서 팬아웃된 사본에는
+ *            출처가 global임을 나타내는 표시가 실려 있고 room-A 원본에는
+ *            없다.
+ *     note : GA-37~40 어느 then에도 "구분"·"출처" 요구가 없어(실측 0건)
+ *            결정4가 검증되지 않은 채 머지될 수 있었다 — 이 파일 작성
+ *            세션이 그 구멍을 보고했고(§"범위 밖" 참고) SPEC 재방문으로
+ *            이 케이스가 채택됐다. **구현 방식을 지정하지 않는다** —
+ *            골든이 필드 이름을 박지 않으므로 판정은 "본문·닉네임·room이
+ *            같은 두 payload가 관측 가능하게 다른가"로 한다(아래 서버
+ *            계약 신설 5) 참고).
+ *
  * ── 서버 계약 — 기존 (변경 없음, 이 파일이 재사용만 한다) ──
  *   identify(payload:{nickname}, ack) → 세션 토큰 발급(ADR-0003). global 발신
  *     처럼 room에 join하지 않고 nickname만 필요할 때 이 경로를 쓴다(RQ-18
@@ -89,6 +105,12 @@ import { GLOBAL_ROOM, type ChatMessage } from '../../src/shared/types';
  * 4) 안 읽음 분리: 각 사본의 전달은 **그 room의 안 읽음을 올리지 않는다**.
  *    GLOBAL_ROOM 자체에 대한 기존 fanOutUnread(RQ-18)만 그대로 동작한다
  *    (GA-40, ADR-0009 결정5).
+ * 5) 시각적 구분 표시(2026-08-07 추가, GA-41): 각 사본은 room 원본과
+ *    관측 가능하게 구별되는 표시를 싣는다. 원본에 있는 모든 필드는 사본에
+ *    그대로 보존되어야 하고(사본이 원본의 상위집합), 사본에는 원본에 없는
+ *    무언가가 추가로 실려 있어야 한다. **필드 이름·표시 방식은 이 계약이
+ *    규정하지 않는다** — `_workspace/RQ-04-a/plan.md` §2-4가 제안한
+ *    `ChatMessage.origin?: 'global'`은 설계 제안이지 스펙이 아니다.
  *
  * ── 현재 구현(2026-08-07, 이 파일 작성 시점)과의 차이 ──
  *   `src/server/chat/room.ts:89` handleMessage는 `payload.room`
@@ -112,6 +134,14 @@ import { GLOBAL_ROOM, type ChatMessage } from '../../src/shared/types';
  *   테스트 결함이지 구현 결함이 아니다. origin 자체의 존재·값 검증은 이
  *   골든 세트의 범위가 아니므로 이 파일은 검증하지 않는다(coder/evaluator가
  *   plan.md 기준으로 별도 판단).
+ *
+ *   **2026-08-07 추가**: 위 문단은 GA-37~40 네 테스트 자체의 판단 근거로는
+ *   여전히 유효하다(그 네 테스트는 지금도 origin 유무를 검증하지 않는다).
+ *   다만 "골든 없는 acceptance criterion"이라는 파일 전체 차원의 결론은
+ *   더 이상 참이 아니다 — 그 구멍이 SPEC 재방문으로 GA-41로 채워졌다
+ *   (아래 GA-41 절, 그리고 새 `describe` 블록 참고). GA-41도 필드 이름은
+ *   고정하지 않는다 — "원본에 없는 무언가가 사본에 있는가"만 관측 가능하게
+ *   판정한다.
  *
  * 부정 단언 공통 원칙(ADR-0005): "받지 않는다"는 무한 대기가 아니라 짧은
  * 상한(기본 300ms) 내 이벤트 미도착으로 확인한다.
@@ -512,6 +542,86 @@ describe('RQ-04-a / GA-40: room 안의 global 사본은 그 room의 안 읽음�
       await expect(roomBReceivesMessage).resolves.toMatchObject(expectedRoomBMessage);
 
       await expect(roomBNeverIncrementsUnread).resolves.toBeUndefined();
+    }
+  );
+});
+
+describe('RQ-04-a / GA-41: room 안 global 사본은 room 원본과 관측 가능하게 구별되는 표시를 싣는다 (ADR-0009 결정4)', () => {
+  const cleanupFns: Array<() => void | Promise<void>> = [];
+
+  afterEach(async () => {
+    while (cleanupFns.length > 0) {
+      const fn = cleanupFns.pop();
+      if (fn) await fn();
+    }
+  });
+
+  it(
+    'alice가 room-A에 참여 중일 때, bob의 room-A 일반 메시지와 carol의 global 메시지가 본문·닉네임까지 동일해도 alice는 global 사본에만 실린 추가 표시로 둘을 구별할 수 있다 (RQ-04, GA-41)',
+    async () => {
+      const url = await startServer(cleanupFns);
+      const alice = connectClient(url, cleanupFns);
+      const bob = connectClient(url, cleanupFns);
+      const carol = connectClient(url, cleanupFns);
+
+      // given: alice가 room-A에 참여한다. bob은 identify를 거치지 않고 바로
+      // join한다 — join은 payload.nickname을 고유성 검사 없이 그대로 신뢰
+      // 하므로(session.ts:144-146 주석, room.ts:45) state.nicknamesInUse를
+      // 건드리지 않는다. carol은 identify로 **동일한 닉네임 문자열**을
+      // 요청한다 — bob의 닉네임이 nicknamesInUse에 등록된 적이 없으므로
+      // 접미사 없이 그대로 부여된다(session.ts:177-178). 이렇게 두 메시지의
+      // 발신 닉네임을 실제로 동일하게 만든다(골든 given: "본문·발신
+      // 닉네임이 동일하다").
+      expect((await waitForJoinAck(alice, { room: 'room-A', nickname: 'alice' })).ok).toBe(true);
+      expect((await waitForJoinAck(bob, { room: 'room-A', nickname: 'twinNick' })).ok).toBe(true);
+      const carolIdentify = await waitForIdentifyAck(carol, { nickname: 'twinNick' });
+      if (!carolIdentify.ok) throw new Error(`carol identify 실패: ${carolIdentify.error}`);
+      // 전제 확인: 고유화 접미사가 붙지 않아 bob과 정확히 같은 닉네임이어야
+      // given이 실제로 성립한다 — 접미사가 붙으면(예: 'twinNick2') 이 테스트
+      // 자체가 무의미해지므로 가정하지 않고 실측으로 확인한다.
+      expect(carolIdentify.nickname).toBe('twinNick');
+
+      // when: bob이 room-A에 먼저 보내 "원본"을 만들고, alice가 그것을 받을
+      // 때까지 기다린 뒤에 carol이 같은 본문으로 global에 보내 "사본"을
+      // 만든다. 둘 다 room:'room-A' 태그로 도착하므로(GA-37이 증명한 팬아웃
+      // 메커니즘) 동시에 등록하면 어느 이벤트가 원본이고 어느 것이 사본인지
+      // 구별할 수 없다 — 순서를 분리해 각 payload를 명확히 식별한다.
+      const roomOriginalArrives = waitForRoomMessage(alice, 'room-A');
+      bob.emit('message', { room: 'room-A', body: 'identical greeting' });
+      const roomOriginalPayload = await roomOriginalArrives;
+
+      const globalFanoutArrives = waitForRoomMessage(alice, 'room-A');
+      carol.emit('message', { room: GLOBAL_ROOM, body: 'identical greeting' });
+      const globalFanoutPayload = await globalFanoutArrives;
+
+      // then(전제 재확인): 두 payload 모두 room·nickname·body는 실제로 같은
+      // 내용을 싣고 있다 — 이후 단언이 "내용이 달라서 구별된" 것이 아니라
+      // "표시가 있어서 구별된" 것임을 보장한다(팀리드 지시: 우연한 차이로
+      // 통과하면 안 된다).
+      const sharedContent = { room: 'room-A', nickname: 'twinNick', body: 'identical greeting' };
+      expect(roomOriginalPayload).toMatchObject(sharedContent);
+      expect(globalFanoutPayload).toMatchObject(sharedContent);
+
+      // then(핵심 판정, GA-41): 그런데도 두 payload는 관측 가능하게 다르다.
+      // room-A 원본에 있는 모든 정보는 global 사본에도 그대로 실려
+      // 있어야 하고(toMatchObject: 사본이 원본의 상위집합 — 원본 내용이
+      // 조금이라도 바뀌면 이 단언이 깨진다), 그런데도 전체로는 동일하지
+      // 않아야 한다(not.toEqual). 이 둘을 함께 만족하려면 사본에는 원본에
+      // 없는 무언가가 반드시 실려 있어야 한다 — 그것이 "출처가 global임을
+      // 나타내는 표시"의 관측 가능한 정의다. 어떤 필드 이름·값인지는 이
+      // 테스트가 고정하지 않는다(plan.md §2-4가 `ChatMessage.origin?:
+      // 'global'`을 제안하지만 그것은 설계 제안이지 스펙이 아니다 — 다른
+      // 메커니즘으로 구현해도 이 두 단언은 그대로 통과해야 한다).
+      //
+      // 이 두 단언이 함께 죽이는 오구현:
+      //   - 표시를 전혀 싣지 않는 구현(현재 코드 포함) → 두 payload가
+      //     완전히 동일해 not.toEqual이 깨진다.
+      //   - 원본 쪽에도 무언가를 붙이는(또는 원본의 값을 바꾸는) 구현 →
+      //     toMatchObject(roomOriginalPayload)가 깨진다(사본이 원본의
+      //     상위집합이 아니게 된다) — 골든 then의 "room-A 원본에는 없다"를
+      //     그대로 집행한다.
+      expect(globalFanoutPayload).toMatchObject(roomOriginalPayload);
+      expect(globalFanoutPayload).not.toEqual(roomOriginalPayload);
     }
   );
 });
