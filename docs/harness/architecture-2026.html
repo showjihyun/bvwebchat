@@ -1500,7 +1500,7 @@
                 <td><code>docs/harness/changelog.md</code> 마지막 항목이 <b>2026-07-20</b>에 멈춰 있다
                   (그 뒤 PR #23~#29 머지). <code>harness/sensor-catalog.md:30</code>의 🟡 행은
                   RQ-17이 확정된 지금 이미 초록인데 방치됐다.</td>
-                <td><code>scripts/doc-freshness.mjs</code> 6종 검사. 갱신일은 <b>손으로 쓰지 않고</b>
+                <td><code>scripts/doc-freshness.mjs</code> 7종 검사. 갱신일은 <b>손으로 쓰지 않고</b>
                   <code>git log -1 --format=%cI -- &lt;path&gt;</code>로 유도한다 →
                   "메타데이터 자체의 드리프트" 계층이 통째로 사라진다. (§02)</td>
               </tr>
@@ -1766,7 +1766,7 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
         </div>
 
         <div class="sub-head reveal">
-          <h3>Feedforward 평면 — <code>doc-freshness.mjs</code> 6종 검사</h3>
+          <h3>Feedforward 평면 — <code>doc-freshness.mjs</code> 7종 검사</h3>
           <p>
             문서 신선도를 사람의 성실성에 맡기지 않는다. 다만 <b>전부를 blocking으로 걸면 게이트가 죽는다</b>는
             것도 설계에 반영했다.
@@ -1790,6 +1790,7 @@ createChatServer.ts   <i>합성 루트 — 공개 계약 무변경</i></pre>
               <tr><td><b>C4</b></td><td>링크·경로 무결성</td><td><span class="no">blocking</span></td><td><code>CLAUDE.md</code> 참조 맵의 죽은 경로</td></tr>
               <tr><td><b>C5</b></td><td>진입점 예산 (<code>max_lines</code>)</td><td><span class="no">blocking</span></td><td>anti-01(거대한 단일 지시문)의 유일한 기계 방어</td></tr>
               <tr><td><b>C6</b></td><td>열린 마커 낡음 (<code>🟡</code>/<code>TODO(</code> 14일 초과)</td><td><span class="warn">advisory</span></td><td>센서 카탈로그의 죽은 🟡, <code>ci.yml:45</code>의 스테일 TODO</td></tr>
+              <tr><td><b>C7</b></td><td>문서 수치 대조 (<code>data-verify</code> 선언 ↔ 코드가 잰 정본)</td><td><span class="bad">blocking</span></td><td>배포 문서가 대장 회차·보류표 행 수·changelog 마지막 날짜를 낡은 값으로 단언하던 것 — 리뷰 5회가 손으로 잡다 못 닫은 축이다</td></tr>
             </tbody>
           </table>
         </div>
