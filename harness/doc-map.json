@@ -205,16 +205,11 @@
       "tier": 2,
       "purpose": "팀 공유 — AI 워크플로우 적용 보고서. 이 하네스가 무엇을 왜 하는지와 무엇이 안 됐는지를 팀에 설명한다.",
       "_doc_why_registered": "2026-07-24 판이 13일간 낡아 팀 도입 권고 자리에 거짓 3건을 담게 됐다 — 그중 하나는 발동 0회인 게이트를 1순위로 권했다. 원인은 'exclude_globs 라 센서가 안 본다' 가 아니라 미등재였다(그 진단이 틀렸다는 것 자체가 죽은 설정의 대가다). 등재를 PR #45 에서 미룬 이유는 낡은 걸 알면서 등재하면 C2 가 정당하게 막고 면제로 뚫으면 거짓을 기록하기 때문이다 — 내용을 고친 지금 그 사유가 해소됐고, 등재와 내용 수정을 같은 PR 에 넣는 것이 그 규칙의 정확한 이행이다.",
-      "_c2_reviewed": {
-        "dep": "docs/harness/changelog.md",
-        "sha": "db95190",
-        "why": "2026-08-07 C7 신설. 이 보고서가 changelog 에서 옮겨 적는 값은 둘뿐이고 — 행 수와 마지막 행 날짜 — 그 둘이 이 커밋부터 data-verify=\"changelog-rows\"·\"changelog-last-date\" 로 **C7 의 기계 대조 대상**이다. 즉 이 의존 축은 시각 비교(C2)보다 강한 검사가 이미 물고 있고, 값이 어긋나면 C2 가 침묵해도 C7 이 blocking 으로 잡는다. 실측: 이 커밋이 changelog 에 더한 것은 기존 행에 서술을 덧붙인 것이라 행 수(128)와 마지막 날짜(2026-08-06) 둘 다 안 움직였다. 산문 축은 이 보고서가 changelog 를 재서술하지 않는다 — 인용하는 자리가 '하네스 변경마다 한 행씩' 이라는 관행 서술 하나다."
-      },
+      "_doc_depends": "docs/harness/changelog.md 를 depends_on 에서 뺐다(2026-08-07, C7 신설). 판별 규칙(재서술하면 의존, 포인터로만 참조하면 비의존)을 적용했다 — 이 보고서가 changelog 에서 옮겨 적는 값은 둘뿐이고(행 수·마지막 행 날짜) 그 둘은 이제 data-verify 로 C7 의 기계 대조 대상이다. 시각 비교(C2)보다 강한 검사가 같은 축을 물고 있고, 값이 어긋나면 C7 이 blocking 으로 잡는다. 산문 축에서는 재서술이 없다 — 인용하는 자리가 '하네스 변경마다 한 행씩' 이라는 관행 서술 하나다. 면제(_c2_reviewed)로 두지 않은 이유: changelog 는 하네스 변경마다 움직이는데 면제 sha 는 그것을 쫓아가야 하고, sha 를 고치는 커밋이 changelog 를 함께 실으면 즉시 재무장한다 — 실제로 한 번 걸렸다. 면제가 구조적으로 낡는 자리에서는 의존을 좁히는 것이 맞다.",
       "depends_on": [
         "harness/policy/phase-matrix.json",
         "harness/sensor-catalog.md",
-        "harness/recurrence.md",
-        "docs/harness/changelog.md"
+        "harness/recurrence.md"
       ],
       "review_every_days": 30
     },
