@@ -22,10 +22,14 @@
  *   최상단에 표시되고 선택 가능. 나가기·삭제 UI는 없다(ADR-0004가 global의
  *   leave를 거부하므로 그 조작을 노출하면 거짓 어포던스 — DESIGN.md:84
  *   "global은 최상단 고정, 삭제 UI 없음").
- * - GA-32: 활성 room이 room-A(global은 비참여가 아니라 비활성)인 상태에서
- *   user2가 global에 메시지를 보내면 global 항목에 안 읽음 배지 1이 뜨고,
- *   room-A 대화에는 그 메시지가 삽입되지 않는다(D14, DESIGN.md:86 "현재
- *   대화에 삽입·배너 금지").
+ * - GA-32 (2026-08-08 개정 · RQ-04 v1.2 · ADR-0009가 D14를 D14-r로 뒤집음):
+ *   활성 room이 room-A(global은 비참여가 아니라 비활성)인 상태에서 user2가
+ *   global에 메시지를 보내면 global 항목에 안 읽음 배지 1이 뜨고, room-A
+ *   대화에도 그 메시지가 표시되되 출처 칩으로 room-A 원본과 구별된다
+ *   (ADR-0009 결정1·4, DESIGN.md:95 "room 안의 global 메시지"). room-A
+ *   자체의 안 읽음 배지는 오르지 않는다(ADR-0009 결정5). 옛 "삽입되지
+ *   않는다(D14, DESIGN.md:86)" 단언은 폐기 — RQ-04-a GREEN에서 이 케이스만
+ *   실패해 모순이 드러났다(evals/golden/track-a-product.jsonl GA-32 note).
  * - GA-33: GA-32 직후, user1이 목록에서 global을 선택하면
  *   `activeRoom={room:'global'}`이 서버에 실제로 수락되고(ok:true) global
  *   배지가 0이 되며 대화 패널이 열려 그 메시지가 보인다.
@@ -343,7 +347,7 @@ describe('RQ-18-a / GA-31: global이 참여 user room 없이도 목록 최상단
   );
 });
 
-describe('RQ-18-a / GA-32: 비활성 global에 도착한 메시지는 배지로만 알리고, 활성 대화(room-A)에는 삽입되지 않는다', () => {
+describe('RQ-18-a / GA-32: 비활성 global에 도착한 메시지는 배지로 알리고, 활성 대화(room-A)에도 출처 칩과 함께 표시된다(room-A 자체 안 읽음은 그대로)', () => {
   const cleanupFns: Array<() => void | Promise<void>> = [];
 
   afterEach(async () => {
@@ -354,7 +358,7 @@ describe('RQ-18-a / GA-32: 비활성 global에 도착한 메시지는 배지로�
   });
 
   it(
-    'user1의 활성 room이 room-A(global은 자동 참여 중이지만 비활성)인 상태에서 user2가 global에 메시지를 보내면 global 항목에 안 읽음 배지 1이 뜨고, room-A 대화에는 삽입되지 않는다 (RQ-18, GA-32)',
+    'user1의 활성 room이 room-A(global은 자동 참여 중이지만 비활성)인 상태에서 user2가 global에 메시지를 보내면 global 항목에 안 읽음 배지 1이 뜨고, room-A 대화에도 그 메시지가 출처 칩과 함께 표시되며, room-A 자체의 안 읽음은 오르지 않는다 (RQ-18, GA-32)',
     async () => {
       const url = await startServer(cleanupFns);
       render(createElement(ChatApp, { nickname: 'user1' }));
@@ -371,16 +375,43 @@ describe('RQ-18-a / GA-32: 비활성 global에 도착한 메시지는 배지로�
       if (!identifyAck2.ok) throw new Error(`user2 identify 실패: ${identifyAck2.error}`);
       user2.emit('message', { room: GLOBAL_ROOM, body: 'GA32-unread-body' });
 
-      // then: global 항목에 안 읽음 배지 1이 뜬다.
+      // then(축1): global 항목에 안 읽음 배지 1이 뜬다.
       await waitForUi(() => {
         const item = getRoomItemByName(GLOBAL_ROOM);
         expect(within(item).getByText('1')).toBeTruthy();
       });
 
-      // then: room-A(현재 활성) 대화에는 그 메시지가 삽입되지 않는다
-      // (D14, DESIGN.md:86 "현재 대화에 삽입·배너 금지") — 활성 room도 그대로 room-A다.
-      expect(screen.queryByText('GA32-unread-body')).toBeNull();
+      // then(축2 — 이 케이스의 존재 이유, 클라 렌더 축): room-A(현재 활성)
+      // 대화에도 그 메시지가 표시된다(D14-r · RQ-04 v1.2 · ADR-0009 결정1) —
+      // room-A 원본과 구별하는 출처 칩이 붙는다(결정4, DESIGN.md:95 "room 안의
+      // global 메시지"). payload에 구분 정보가 실제로 실리는지(서버 계약
+      // 수준)는 GA-41이 이미 덮으므로, 여기서는 그 값이 화면에 실제로
+      // 그려지는지만 확인한다(GA-32 note: 서버가 유니캐스트를 보내는 것과
+      // 클라가 그것을 그리는 것은 다른 실패 지점).
+      await waitForUi(() => {
+        expect(screen.getByText('GA32-unread-body')).toBeTruthy();
+      });
+      const msgRow = screen.getByText('GA32-unread-body').closest('.msg-row');
+      if (!msgRow) {
+        throw new Error("'GA32-unread-body'를 담은 .msg-row를 찾을 수 없다");
+      }
+      expect(within(msgRow as HTMLElement).getByText('# global')).toBeTruthy();
       expect(getChatHeaderText()).toBe('# room-A');
+
+      // then(축3): room-A 자체의 안 읽음 배지는 오르지 않는다(ADR-0009 결정5:
+      // "안 읽음은 #global만 올린다"). room-A가 활성인 동안은 RoomList가 활성
+      // room의 배지를 항상 숨기므로(hasUnread = unread>0 && room!==activeRoom,
+      // RoomList.tsx:34) 활성 상태에서 배지가 안 보이는 것만으로는 "실제로
+      // 0"과 "활성이라 숨겨졌을 뿐"을 구분할 수 없다 — 부정 단언이 무의미하게
+      // 통과하는 함정(GA-40 설계 메모와 동일 근거). 그래서 global로 활성을
+      // 전환해 room-A를 비활성으로 만든 뒤에도 배지가 없는지로 판정한다:
+      // 서버가 결정5를 어기고 room-A에도 unread를 올렸다면 이 시점에 '1'이
+      // 드러난다.
+      await selectRoomAndConfirmAck(GLOBAL_ROOM);
+      await waitForUi(() => {
+        expect(getChatHeaderText()).toBe(`# ${GLOBAL_ROOM}`);
+      });
+      expect(within(getRoomItemByName('room-A')).queryByText('1')).toBeNull();
     },
     10000,
   );
