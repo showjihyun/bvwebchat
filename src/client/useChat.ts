@@ -45,6 +45,9 @@ export interface ClientMessage {
   nickname: string;
   body: string;
   at: number;
+  /** RQ-04-a / ADR-0009 결정4: global에서 이 room으로 팬아웃된 사본이면
+   *  'global'. room 원본에는 없다 — 렌더가 이 필드로 출처 칩을 그린다. */
+  origin?: 'global';
 }
 
 export type ConnStatus = 'connecting' | 'connected' | 'reconnecting';
@@ -228,6 +231,7 @@ export function useChat(nickname: string | null, onResumeFail?: () => void): Cha
         nickname: payload.nickname,
         body: payload.body,
         at: Date.now(),
+        origin: payload.origin,
       };
       setMessagesByRoom((prev) => ({
         ...prev,
@@ -371,7 +375,7 @@ export function useChat(nickname: string | null, onResumeFail?: () => void): Cha
           // 라이브가 있어도 prepend로 순서(과거→현재) 유지하며 잃지 않는다.
           const historyMsgs: ClientMessage[] = result.history.map((m) => {
             msgSeq += 1;
-            return { id: `h${msgSeq}`, room: m.room, nickname: m.nickname, body: m.body, at: Date.now() };
+            return { id: `h${msgSeq}`, room: m.room, nickname: m.nickname, body: m.body, at: Date.now(), origin: m.origin };
           });
           setMessagesByRoom((prev) => ({ ...prev, [name]: [...historyMsgs, ...(prev[name] ?? [])] }));
           // RQ-18/D1·D4: join이 서버에서 확정된 뒤에야 활성 room을 통지하고

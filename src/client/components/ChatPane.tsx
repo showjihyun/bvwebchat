@@ -66,7 +66,11 @@ export function ChatPane({ room, nickname, messages, status, onSend, onNewRoom }
         ) : (
           messages.map((msg, i) => {
             const prev = messages[i - 1];
-            const grouped = prev !== undefined && prev.nickname === msg.nickname;
+            // origin도 그룹핑 조건에 넣는다 — 같은 닉네임이 이어져도 출처가
+            // 바뀌면(예: room 원본 다음에 global 사본) 새 lead row로 갈라서
+            // 칩이 있는 헤더가 항상 보이게 한다(DESIGN.md "room 안의 global
+            // 메시지" — 구분이 없으면 그 방에서 한 말로 오인된다).
+            const grouped = prev !== undefined && prev.nickname === msg.nickname && prev.origin === msg.origin;
             const isMe = msg.nickname === nickname;
             if (grouped) {
               return (
@@ -80,6 +84,7 @@ export function ChatPane({ room, nickname, messages, status, onSend, onNewRoom }
                 <Avatar nickname={msg.nickname} />
                 <div style={{ minWidth: 0 }}>
                   <div className="msg-meta">
+                    {msg.origin === 'global' && <span className="origin-chip"># global</span>}
                     <span className="msg-name" title={msg.nickname}>
                       {displayNickname(msg.nickname)}
                     </span>

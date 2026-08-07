@@ -19,4 +19,10 @@ export interface ChatMessage {
    *  ADR-0003 세션 토큰 후속(RQ-10 잔여)에서 닫는다. */
   nickname: string;
   body: string;
+  /** RQ-04-a / ADR-0009 결정4: global에서 이 room으로 팬아웃된 사본임을
+   *  나타내는 표시. room 원본(즉 room === GLOBAL_ROOM인 메시지)에는 붙이지
+   *  않는다 — 붙이면 클라이언트가 "origin이 있으면 칩" 규칙을 못 쓴다
+   *  (_workspace/RQ-04-a/plan.md §2-4). GA-41이 이 필드의 존재(이름은
+   *  고정하지 않지만 이 구현은 plan.md 제안을 그대로 따른다)를 판정한다. */
+  origin?: 'global';
 }

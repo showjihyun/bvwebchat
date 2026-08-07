@@ -117,6 +117,36 @@ export function handleMessage(io: ChatServer, state: ChatState, socket: ChatSock
   // 이미 밀려나 볼 수 없는 메시지는 세지 않는다는 요구와 일치한다.
   const cap = appendMessage(state, payload.room, message);
   fanOutUnread(io, state, payload.room, cap);
+
+  // RQ-04-a / ADR-0009: global 메시지는 #global에 더해, 수신자가 참여 중인
+  // 각 room 안에도 표시된다(결정1). 위 세 줄(emit·appendMessage·
+  // fanOutUnread)은 GLOBAL_ROOM 자신에 대해 그대로 실행됐다 — #global 채널
+  // 동작은 건드리지 않는다(결정3).
+  //
+  // 대상 room은 state.members의 키를 그대로 쓴다 — global은 이 장부에
+  // 애초에 등록되지 않으므로(state.ts RoomMembers 주석: "자동 참여하는
+  // global room은 ... 대상에서 제외") global을 거르는 조건문이 따로
+  // 필요 없다. room 단위 emit이 그 room 멤버에게만 가므로, 이 순회 자체가
+  // "수신자가 참여 중인 room만"이라는 범위 제약(결정1, GA-38)을 만족한다 —
+  // 서버에 존재하는 모든 room이 아니라 멤버가 있는 room만 이 장부에 있다.
+  if (payload.room === GLOBAL_ROOM) {
+    for (const room of state.members.keys()) {
+      // ADR-0009 결정4: room 안 사본은 room 원본과 구별되는 표시(origin)를
+      // 싣는다 — 원본 message 객체에는 붙이지 않는다(그건 그대로 #global로
+      // 나갔다).
+      const copy: ChatMessage = { ...message, room, origin: 'global' };
+      io.to(room).emit('message', copy);
+      // ADR-0009 결정2: 이 room의 링버퍼에도 저장해 재접속 후에도 남는다
+      // (GA-39). 반환값(post-append 길이)은 쓰지 않는다 — 안 읽음을
+      // 올리지 않으므로 상한 클램프가 필요 없다.
+      //
+      // ADR-0009 결정5: fanOutUnread를 이 사본에 대해 호출하지 않는다 —
+      // 각 room의 안 읽음은 그대로 두고 GLOBAL_ROOM 자체의 안 읽음(위
+      // fanOutUnread 호출)만 오른다(GA-40). 전달·이력 저장과 안 읽음
+      // 집계를 여기서 분리하는 것이 이 변경에서 가장 틀리기 쉬운 지점이다.
+      appendMessage(state, room, copy);
+    }
+  }
 }
 
 /** RQ-03 본체: 이 소켓을 room의 수신자 목록에서 제거한다 (Socket.IO room = 수신자 목록). */
