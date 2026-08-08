@@ -352,7 +352,7 @@
   <div class="kicker">Part I</div>
   <h2>제품 — 실시간 채팅 서비스</h2>
   <p>
-    채널(room) 참여 채팅과 전체 공지용 <code>global</code> 채널, 새로고침 후 세션 복구,
+    채널(room) 참여 채팅과 전체 공지용 <code>global</code> 채널(<b>공지는 참여 중인 각 방 안에도 출처 표시와 함께 뜬다</b> — RQ-04 v1.2 · ADR-0009), 새로고침 후 세션 복구,
     서버가 소유하는 식별과 기본 입력 검증을 최소 구성으로 제공한다. 상태는 전부 프로세스 메모리에 있고
     서버 재시작 뒤 영속 복구는 없다 — 그 선택의 대가는 P6 에 적었다.
   </p>
@@ -506,7 +506,7 @@
       <tr><td><code>identify</code></td><td>닉네임을 서버에서 확정하고 세션 토큰을 받는다</td><td>ack</td></tr>
       <tr><td><code>join</code></td><td>user room 참여. <b>성공 ack 뒤에만</b> 클라이언트가 채널을 추가한다</td><td>ack + history</td></tr>
       <tr><td><code>leave</code></td><td><code>global</code> 외 채널에서 나간다</td><td>ack</td></tr>
-      <tr><td><code>message</code></td><td>현재 room 에 방송. 서버가 이력을 최근 50개로 자른다 — <b>빈도 제한은 없다</b></td><td>broadcast</td></tr>
+      <tr><td><code>message</code></td><td>현재 room 에 방송. 서버가 이력을 최근 50개로 자른다 — <b>빈도 제한은 없다</b>. <b><code>global</code> 로 보내면 수신자가 참여 중인 각 room 에도 사본이 간다</b> — 사본은 그 room 이름으로 태그되고 <code>origin</code> 으로 출처가 표시되며 그 room 이력에도 저장된다. <b>각 room 의 안 읽음은 오르지 않는다</b>(<code>#global</code> 만 오른다). RQ-04 v1.2 · ADR-0009</td><td>broadcast</td></tr>
       <tr><td><code>participants</code></td><td>참여자 목록 — <b>room 한정</b> 방송(참여 순)</td><td>broadcast</td></tr>
       <tr><td><code>rooms</code></td><td>공개 room 디렉터리 — <b>전 접속자</b>. 미참여자도 받는다</td><td>broadcast</td></tr>
       <tr><td><code>unread</code></td><td>안 읽음 수 — 그 세션의 <b>현재 소켓에만</b>(사적 UI 상태)</td><td>유니캐스트</td></tr>
@@ -1358,7 +1358,7 @@
   <table>
     <thead><tr><th class="nowrap">ID</th><th>원인</th><th class="nowrap">횟수</th><th class="nowrap">처방</th></tr></thead>
     <tbody>
-      <tr><td><b>R1</b></td><td>문서가 <b>존재하지 않는 방어를 현재형으로 단언</b></td><td><b data-verify="recurrence-R1">15</b></td><td><span class="pill warn">센서 · 사각지대</span></td></tr>
+      <tr><td><b>R1</b></td><td>문서가 <b>존재하지 않는 방어를 현재형으로 단언</b></td><td><b data-verify="recurrence-R1">16</b></td><td><span class="pill warn">센서 · 사각지대</span></td></tr>
       <tr><td><b>R2</b></td><td><b>분류는 옳은데 집행이 0이고 아무도 검사하지 않음</b></td><td>5</td><td><span class="pill warn">센서</span></td></tr>
       <tr><td><b>R3</b></td><td><b>커밋 오염</b> — pathspec 없는 커밋이 남의 스테이징을 함께 싣는다</td><td>3</td><td><span class="pill ok">구조</span></td></tr>
       <tr><td><b>R4</b></td><td>전이가 체크포인트를 만드는데 <b>커밋하지 않고 평가를 돌림</b></td><td>4</td><td><span class="pill ok">게이트</span></td></tr>
