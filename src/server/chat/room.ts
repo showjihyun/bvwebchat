@@ -4,11 +4,17 @@
 // 앞으로 room 모양의 요구사항(비공개 room, room 이름 변경, room별 설정)은
 // 전부 여기로 떨어진다 — 그게 이 경계의 이유다.
 //
-// handleMessage가 네 줄로 읽히는 것이 이 분해의 목표였다:
+// handleMessage가 다섯 줄로 읽히는 것이 이 분해의 목표다:
 //   격리 검증(RQ-02) → io.to().emit(RQ-02/04) → appendMessage(ADR-0002)
 //   → fanOutUnread(cap)(ADR-0003 결정4)
+//   → fanOutGlobalToJoinedRooms(RQ-04 v1.2 / ADR-0009, global일 때만)
 // cap이 appendMessage의 반환값에서 곧바로 흘러가므로 GA-17의 상한과
 // 링버퍼 길이가 서로 어긋날 수 없다.
+//
+// 다섯 번째 줄은 **이름 있는 함수로 뽑았다**. 인라인으로 두면 이 열거가
+// handleMessage가 하는 일을 다 적지 못해 거짓이 되고, 머리 주석만 읽는
+// 사람이 팬아웃을 못 본다 — 문서가 코드에 뒤처지는 R1 형상이 src/ 안에서
+// 나는 자리다(2026-08-08 리뷰 S-1).
 //
 // 계층(ADR-0007 규칙2): L5 — protocol·state·validation·broadcast·session에
 // 의존한다. session.ts는 여기를 되돌아 import 하지 않는다(단방향).
@@ -117,6 +123,40 @@ export function handleMessage(io: ChatServer, state: ChatState, socket: ChatSock
   // 이미 밀려나 볼 수 없는 메시지는 세지 않는다는 요구와 일치한다.
   const cap = appendMessage(state, payload.room, message);
   fanOutUnread(io, state, payload.room, cap);
+
+  if (payload.room === GLOBAL_ROOM) {
+    fanOutGlobalToJoinedRooms(io, state, message);
+  }
+}
+
+/**
+ * RQ-04-a / ADR-0009: global 메시지를 **수신자가 참여 중인 각 room 안에도** 표시한다(결정1).
+ *
+ * `handleMessage`가 GLOBAL_ROOM 자신에 대해 이미 emit·appendMessage·fanOutUnread를
+ * 끝낸 **뒤에** 호출된다 — #global 채널 동작은 건드리지 않는다(결정3).
+ *
+ * **대상 room은 `state.members`의 키를 그대로 쓴다.** global은 이 장부에 애초에 등록되지
+ * 않으므로(state.ts `RoomMembers` 주석: "자동 참여하는 global room은 … 대상에서 제외")
+ * global을 거르는 조건문이 따로 필요 없다 — 쓰면 그 전제가 바뀌는 날 조용히 틀린다.
+ * room 단위 emit이 그 room 멤버에게만 가므로 **이 순회 자체가** "수신자가 참여 중인
+ * room만"이라는 범위 제약(결정1, GA-38)을 만족한다: 서버에 존재하는 모든 room이 아니라
+ * 멤버가 있는 room만 이 장부에 있다.
+ *
+ * **`fanOutUnread`를 부르지 않는다**(결정5, GA-40). 각 room의 안 읽음은 그대로 두고
+ * GLOBAL_ROOM 자체의 안 읽음만 오른다. 전달·이력 저장과 안 읽음 집계를 여기서 분리하는
+ * 것이 이 변경에서 **가장 틀리기 쉬운 지점**이다 — 앞의 둘을 복사하다 보면 셋째도
+ * 복사하는 것이 자연스러워 보인다.
+ */
+function fanOutGlobalToJoinedRooms(io: ChatServer, state: ChatState, message: ChatMessage): void {
+  for (const room of state.members.keys()) {
+    // ADR-0009 결정4: 사본은 room 원본과 구별되는 표시(origin)를 싣는다 —
+    // 원본 message 객체에는 붙이지 않는다(그건 그대로 #global로 나갔다).
+    const copy: ChatMessage = { ...message, room, origin: 'global' };
+    io.to(room).emit('message', copy);
+    // 결정2: 이 room의 링버퍼에도 저장해 재접속 후에도 남는다(GA-39).
+    // 반환값(post-append 길이)은 쓰지 않는다 — 안 읽음을 올리지 않으므로 상한 클램프가 없다.
+    appendMessage(state, room, copy);
+  }
 }
 
 /** RQ-03 본체: 이 소켓을 room의 수신자 목록에서 제거한다 (Socket.IO room = 수신자 목록). */

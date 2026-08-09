@@ -1,0 +1,46 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "feat/RQ-04-a-global-fanout",
+  "edge_legal": true,
+  "exit_hint": "스펙이 확정되면(🟡 0건) → python harness/phase.py enter PLAN",
+  "forced": false,
+  "from": "IDLE",
+  "guards": [],
+  "head_sha": "358b634a1ea24281f6fc254c5990df4fe31f3da3",
+  "reason": null,
+  "rq": "RQ-04-a",
+  "schema": 1,
+  "seq": 278,
+  "session": {
+    "acceptance": [
+      "global 메시지가 수신자가 참여 중인 모든 room 안에 표시된다",
+      "각 room 이력에도 저장돼 새로고침·재접속 뒤에도 남는다",
+      "#global 채널은 그대로 남고 거기에도 표시된다",
+      "방 안의 global 메시지는 일반 메시지와 시각적으로 구분된다",
+      "안 읽음(RQ-18)은 #global 만 올리고 각 방은 올리지 않는다"
+    ],
+    "done": [
+      "사용자가 기대한 global 의미와 구현이 다름을 실측했다 — 서로 다른 room 에 있는 두 사용자가 global 메시지를 둘 다 받았지만 도착 채널은 global 하나뿐이고, 각자의 room 안에는 안 찍혔다(_workspace/global-semantics.mjs)",
+      "스펙 대조: RQ-04 는 '접속 중인 모든 사용자에게 전달' 만 요구하고 ADR-0004 가 그것을 예약 상설 room 으로 모델링했다. 버린 대안에 '별개 개념 — 브로드캐스트 경로·히스토리·참여자 목록 이중 구현' 이 명시돼 있다. 즉 구현은 스펙대로이고 결함이 아니다",
+      "사용자 결정 5건 — 범위는 수신자가 참여 중인 방에만 · 각 room 이력에도 저장 · #global 채널은 남긴다 · 방 안 global 은 시각적으로 구분 · 안 읽음은 #global 만 올린다"
+    ],
+    "goal": "사용자가 기대한 global 의 의미와 구현이 다르다. RQ-04 는 '접속 중인 모든 사용자에게 전달' 만 요구했고 ADR-0004 가 그것을 예약 상설 room 으로 모델링해, global 메시지는 #global 채널에만 찍힌다. 사용자는 '모든 방에 찍히는 것' 을 원했다 — 실측으로 둘이 다름을 확인했고(다른 room 에 있는 두 사용자 모두 수신했으나 도착 채널은 global 뿐) 사용자가 스펙 개정을 선택했다",
+    "next": [
+      "requirements.md 의 RQ-04 를 개정하고 ADR-0009 로 ADR-0004 결정 4 를 대체한다",
+      "DESIGN.md 에 방 안 global 표시 규칙을 넣고 골든 케이스를 신설한다"
+    ],
+    "open_questions": [
+      "force 비율이 1건에서 2건이 됐다. 매트릭스 자체 경보선은 5% 이고 아직 한참 아래지만, 리뷰 게이트를 사람이 넘은 첫 사례이므로 주간 회고에서 이 결정이 옳았는지 재본다"
+    ]
+  },
+  "to": "SPEC",
+  "ts": "2026-08-07T09:51:58.049Z",
+  "write_allow": [
+    "specs/**",
+    "docs/adr/**",
+    "docs/design/**",
+    "docs/progress.md",
+    "evals/golden/**",
+    "_workspace/**"
+  ]
+}
