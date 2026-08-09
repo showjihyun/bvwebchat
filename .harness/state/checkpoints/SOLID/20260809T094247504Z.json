@@ -1,0 +1,40 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "harness/solid-convention",
+  "edge_legal": true,
+  "exit_hint": "스펙이 확정되면(🟡 0건) → python harness/phase.py enter PLAN",
+  "forced": false,
+  "from": "IDLE",
+  "guards": [],
+  "head_sha": "44db076fa75faa3cf95a348c90e50b16067b277c",
+  "reason": null,
+  "rq": "SOLID",
+  "schema": 1,
+  "seq": 315,
+  "session": {
+    "acceptance": [
+      "ADR-0010 이 SOLID 5원칙을 이 저장소의 관용구(클래스 0개 · 함수형 TS)로 번역해 규정한다",
+      "기계화 가능한 축(함수 60줄 · 파일 250줄 · 계층 그래프)이 eslint 로 차단된다 — check.mjs lint 스텝과 CI 에 이미 배선된 표면을 쓴다",
+      "기존 위반은 eslint-disable 로 숨기지 않고 ADR 예외표 + docs/progress.md 부채 행으로 등재된다",
+      "CLAUDE.md 에 포인터 1줄 (100줄 상한 안)"
+    ],
+    "done": [],
+    "goal": "저장소에 SOLID 를 이름으로 요구하는 규약이 없다. ADR-0007 이 계층·의존 방향만 eslint 로 부분 집행하고 단일 책임·개방폐쇄·인터페이스 분리는 어디에도 안 적혀 있어, 리뷰어도 코더도 근거로 쓸 문장이 없다",
+    "next": [
+      "IDLE→SPEC 으로 ADR-0010 작성"
+    ],
+    "open_questions": [
+      "gate_phase.py 가 Edit 은 막고 프로그램 쓰기는 못 막는다. 이번 세션에서 실제로 우회했고 되돌렸다 — 구조로 막을 수 있는지가 다음 harness-audit 의 1건 후보다"
+    ]
+  },
+  "to": "SPEC",
+  "ts": "2026-08-09T09:42:47.503Z",
+  "write_allow": [
+    "specs/**",
+    "docs/adr/**",
+    "docs/design/**",
+    "docs/progress.md",
+    "evals/golden/**",
+    "_workspace/**"
+  ]
+}
