@@ -196,18 +196,18 @@
       "_c2_reviewed": [
         {
           "dep": "harness/sensor-catalog.md",
-          "sha": "0747b68",
-          "why": "P1~P13 → P1~P14 변경에 대한 검토다. 이 설계서는 P 번호 범위를 단언하지 않는다 — 반증 명령: rg -n 'P1[~-–]P1[0-9]' docs/harness/architecture-2026.html → 0건. ⚠️ 2026-08-07 정정: 이 항목을 C7 신설(8989afc)까지 넓혔던 면제를 **철회했다**. 그 면제문은 '이 설계서는 검사 열거를 옮겨 적지 않는다' 고 썼는데 **거짓이었다** — :1787-1794 가 여섯 검사를 ID·이름·판정 등급·예시 버그까지 표로 옮겨 적고 :1503·:1769 는 '6종 검사' 라고 개수까지 단언한다. 근거로 댄 '이 파일에 C1~C6 문자열 0건' 은 **판별력이 없는 grep** 이었다: 그 표는 <td><b>C1</b></td> 마크업이라 리터럴 C1~C6 이 나올 수 없다 — 통과하도록 고른 근거다. 이 저장소가 이미 이름 붙인 함정이고(전칭 주장을 쓰려면 그것을 반증할 rg 한 줄을 같은 자리에 적어라) 네 번째 위반이었다. **면제가 진짜 양성을 껐다** — 리뷰가 그것을 실측으로 보였다. 지금은 설계서를 7종으로 고쳐 C2 가 정당하게 통과한다."
+          "sha": "0e9c616",
+          "why": "2026-08-09 재검토 (ADR-0010 SOLID 규약). 조치 커밋 c991650·0e9c616 이 센서 카탈로그에 'SOLID 규약 집행' 행을 **더했다**. 1차 리뷰 major: 앞서 쓴 반증 명령(git diff --diff-filter=A -- scripts/ → 0)은 신설 **스크립트 개수**만 재고 '행의 집합을 옮겨 적지 않는다'는 전칭을 **반증하지 못했다** — 이 설계서는 실제로 카탈로그 행 표를 갖는다. 판별력 있는 명령으로 바꾼다: grep -c \"SOLID\" docs/harness/architecture-2026.html → 0 · grep -c \"ADR-0010\" docs/harness/architecture-2026.html → 0. 둘 다 이번에 추가된 카탈로그 행의 고유어이므로, 0 이면 이 설계서가 그 행을 옮겨 적지 않는다는 것이 직접 관측된다. (보조 근거로 스크립트 0 신설은 유지한다 — 이 설계서가 단언하는 '신설 스크립트 8개'가 그대로 참이라는 별개의 축이다.)"
         },
         {
           "dep": "harness/policy/README.md",
-          "sha": "544703f",
-          "why": "2026-08-06 재검토(리뷰 NB-1). 조치 커밋 544703f 가 SPEC.write_allow 에서 docs/architecture.html 을 **빼고** harness/policy/README.md 를 재생성했다 — 그 파일이 한 번도 추적된 적 없어 생성물이 죽은 경로를 렌더링했기 때문이다(리뷰 B-1). 이 문서가 재서술하는 값은 여전히 움직이지 않았다: 이 설계서는 단계별 쓰기 경로 목록을 싣지 않고 3층 모델의 구조와 \"가드 11종\" 이라는 개수만 옮겨 적는다 — P14 는 policy-lint 의 검사이지 전이 가드가 아니라 11 이 그대로다. 항목을 더한 변경이든 뺀 변경이든 이 문서가 옮겨 적지 않는 값이라는 사실은 같다."
+          "sha": "ba3182b",
+          "why": "2026-08-09 재검토 (ADR-0010 SOLID 규약). 조치 커밋 ba3182b 가 HARNESS.write_allow 에 eslint.config.js 를 **더했다** — 그 경로가 어느 단계의 write_allow 에도 없어 구조적으로 편집 불가였기 때문이다(evals/golden/** 이 2026-07-27 에 겪은 것과 같은 구멍). 이 문서가 재서술하는 값은 움직이지 않았다. 반증 명령: grep -c \"docs/deploy.md\" <이 문서> → 0 — docs/deploy.md 는 HARNESS.write_allow 의 고유 원소이므로, 0 이면 이 문서는 그 목록을 열거하지 않는다. 목록을 옮겨 적는 문서는 docs/harness/handbook.html 하나뿐이고 그것은 같은 PR 에서 갱신됐다. 항목을 더한 변경이든 뺀 변경이든 이 문서가 옮겨 적지 않는 값이라는 사실은 같다."
         },
         {
           "dep": "harness/policy/phase-matrix.json",
-          "sha": "544703f",
-          "why": "2026-08-06 재검토(리뷰 NB-1). 조치 커밋 544703f 가 SPEC.write_allow 에서 docs/architecture.html 을 **빼고** harness/policy/README.md 를 재생성했다 — 그 파일이 한 번도 추적된 적 없어 생성물이 죽은 경로를 렌더링했기 때문이다(리뷰 B-1). 이 문서가 재서술하는 값은 여전히 움직이지 않았다: 이 설계서는 단계별 쓰기 경로 목록을 싣지 않고 3층 모델의 구조와 \"가드 11종\" 이라는 개수만 옮겨 적는다 — P14 는 policy-lint 의 검사이지 전이 가드가 아니라 11 이 그대로다. 항목을 더한 변경이든 뺀 변경이든 이 문서가 옮겨 적지 않는 값이라는 사실은 같다."
+          "sha": "ba3182b",
+          "why": "2026-08-09 재검토 (ADR-0010 SOLID 규약). 조치 커밋 ba3182b 가 HARNESS.write_allow 에 eslint.config.js 를 **더했다** — 그 경로가 어느 단계의 write_allow 에도 없어 구조적으로 편집 불가였기 때문이다(evals/golden/** 이 2026-07-27 에 겪은 것과 같은 구멍). 이 문서가 재서술하는 값은 움직이지 않았다. 반증 명령: grep -c \"docs/deploy.md\" <이 문서> → 0 — docs/deploy.md 는 HARNESS.write_allow 의 고유 원소이므로, 0 이면 이 문서는 그 목록을 열거하지 않는다. 목록을 옮겨 적는 문서는 docs/harness/handbook.html 하나뿐이고 그것은 같은 PR 에서 갱신됐다. 항목을 더한 변경이든 뺀 변경이든 이 문서가 옮겨 적지 않는 값이라는 사실은 같다."
         }
       ],
       "review_every_days": 90
@@ -223,7 +223,14 @@
         "harness/sensor-catalog.md",
         "harness/recurrence.md"
       ],
-      "review_every_days": 30
+      "review_every_days": 30,
+      "_c2_reviewed": [
+        {
+          "dep": "harness/recurrence.md",
+          "sha": "07aec0d",
+          "why": "2026-08-09 재검토 (R18 5회차 · 재현율 베이스라인 0.2 기록). 조치 커밋 07aec0d 가 대장의 R18 회차를 4→5 로 올렸다. **회차는 표의 행에 산다** — 이 문서는 R18 **행이 없고** 언급은 전부 범위 표기(R1–R18)뿐이며 그 경계는 안 움직였다. 반증 명령: grep -c \"<strong>R18</strong>\" <이 문서> → 0. 이 문서가 실제로 옮겨 적는 회차(R13·R17)는 같은 PR 에서 함께 고쳤다."
+        }
+      ]
     },
     {
       "path": "docs/harness/handbook.html",
@@ -238,7 +245,14 @@
         "src/server/chat/validation.ts",
         "src/server/chat/state.ts"
       ],
-      "review_every_days": 30
+      "review_every_days": 30,
+      "_c2_reviewed": [
+        {
+          "dep": "harness/recurrence.md",
+          "sha": "07aec0d",
+          "why": "2026-08-09 재검토 (R18 5회차 · 재현율 베이스라인 0.2 기록). 조치 커밋 07aec0d 가 대장의 R18 회차를 4→5 로 올렸다. **회차는 표의 행에 산다** — 이 문서는 R18 **행이 없고** 언급은 전부 범위 표기(R1–R18)뿐이며 그 경계는 안 움직였다. 반증 명령: grep -c \"<b>R18</b>\" <이 문서> → 0. 이 문서가 실제로 옮겨 적는 회차(R13·R17)는 같은 PR 에서 함께 고쳤다."
+        }
+      ]
     },
     {
       "path": "evals/README.md",
@@ -280,8 +294,8 @@
         },
         {
           "dep": "harness/policy/phase-matrix.json",
-          "sha": "544703f",
-          "why": "2026-08-06 재검토(리뷰 NB-1). 조치 커밋 544703f 가 SPEC.write_allow 에서 docs/architecture.html 을 **빼고** harness/policy/README.md 를 재생성했다 — 그 파일이 한 번도 추적된 적 없어 생성물이 죽은 경로를 렌더링했기 때문이다(리뷰 B-1). 이 문서가 재서술하는 값은 여전히 움직이지 않았다: 이 스킬은 \"각 전이의 가드와 쓰기 허용을 여기 옮겨 적지 않는다\" 를 본문에 선언하고 실제로 열거하지 않는다. 항목을 더한 변경이든 뺀 변경이든 이 문서가 옮겨 적지 않는 값이라는 사실은 같다."
+          "sha": "ba3182b",
+          "why": "2026-08-09 재검토 (ADR-0010 SOLID 규약). 조치 커밋 ba3182b 가 HARNESS.write_allow 에 eslint.config.js 를 **더했다** — 그 경로가 어느 단계의 write_allow 에도 없어 구조적으로 편집 불가였기 때문이다(evals/golden/** 이 2026-07-27 에 겪은 것과 같은 구멍). 이 문서가 재서술하는 값은 움직이지 않았다. 반증 명령: grep -c \"docs/deploy.md\" <이 문서> → 0 — docs/deploy.md 는 HARNESS.write_allow 의 고유 원소이므로, 0 이면 이 문서는 그 목록을 열거하지 않는다. 목록을 옮겨 적는 문서는 docs/harness/handbook.html 하나뿐이고 그것은 같은 PR 에서 갱신됐다. 항목을 더한 변경이든 뺀 변경이든 이 문서가 옮겨 적지 않는 값이라는 사실은 같다."
         }
       ],
       "review_every_days": 60
@@ -297,13 +311,13 @@
       "_c2_reviewed": [
         {
           "dep": ".claude/agents/reviewer.md",
-          "sha": "f0002c7",
-          "why": "R16(정션 파괴) 어포던스 절 추가. 이 스킬이 reviewer 에서 옮겨 적는 것은 판정·라벨 줄 형식 계약뿐이고 워크트리 규율은 재서술하지 않는다 — 실측: rg 'worktree|정션|isolation' 이 이 파일에서 0건이다."
+          "sha": "c991650",
+          "why": "2026-08-09 재검토 (ADR-0010 SOLID 규약). 조치 커밋 c991650 이 reviewer.md 에 검토 항목 7(SOLID)을 더했다. 이 스킬이 reviewer 에서 옮겨 적는 것은 판정·라벨 줄의 형식 계약뿐이고 검토 항목 목록은 재서술하지 않는다. 반증 명령 둘: grep -c \"검토 항목\" .claude/skills/review-gate/SKILL.md → 0 · git diff origin/main...HEAD -- .claude/agents/reviewer.md | grep -cE \"^[+-].*(판정:|라벨:)\" → 0. 항목이 늘어도 이 스킬의 Phase 2.5 형식 검사는 같은 두 줄을 본다."
         },
         {
           "dep": "harness/policy/phase-matrix.json",
-          "sha": "544703f",
-          "why": "2026-08-06 재검토(리뷰 NB-1). 조치 커밋 544703f 가 SPEC.write_allow 에서 docs/architecture.html 을 **빼고** harness/policy/README.md 를 재생성했다 — 그 파일이 한 번도 추적된 적 없어 생성물이 죽은 경로를 렌더링했기 때문이다(리뷰 B-1). 이 문서가 재서술하는 값은 여전히 움직이지 않았다: 이 스킬이 매트릭스 값을 재서술하는 곳은 :43 의 \"GREEN 은 src/** 만 열어 준다\" 하나이고 GREEN 은 손대지 않았다. 항목을 더한 변경이든 뺀 변경이든 이 문서가 옮겨 적지 않는 값이라는 사실은 같다."
+          "sha": "ba3182b",
+          "why": "2026-08-09 재검토 (ADR-0010 SOLID 규약). 조치 커밋 ba3182b 가 HARNESS.write_allow 에 eslint.config.js 를 **더했다** — 그 경로가 어느 단계의 write_allow 에도 없어 구조적으로 편집 불가였기 때문이다(evals/golden/** 이 2026-07-27 에 겪은 것과 같은 구멍). 이 문서가 재서술하는 값은 움직이지 않았다. 반증 명령: grep -c \"docs/deploy.md\" <이 문서> → 0 — docs/deploy.md 는 HARNESS.write_allow 의 고유 원소이므로, 0 이면 이 문서는 그 목록을 열거하지 않는다. 목록을 옮겨 적는 문서는 docs/harness/handbook.html 하나뿐이고 그것은 같은 PR 에서 갱신됐다. 항목을 더한 변경이든 뺀 변경이든 이 문서가 옮겨 적지 않는 값이라는 사실은 같다."
         }
       ],
       "review_every_days": 60
@@ -352,8 +366,8 @@
       "purpose": "격리 세션 에이전트 정의. 프롬프트가 구조를 설명하되 대체하지 않는다.",
       "_c2_reviewed": {
         "dep": "harness/policy/phase-matrix.json",
-        "sha": "544703f",
-        "why": "2026-08-06 재검토(리뷰 NB-1). 조치 커밋 544703f 가 SPEC.write_allow 에서 docs/architecture.html 을 **빼고** harness/policy/README.md 를 재생성했다 — 그 파일이 한 번도 추적된 적 없어 생성물이 죽은 경로를 렌더링했기 때문이다(리뷰 B-1). 이 문서가 재서술하는 값은 여전히 움직이지 않았다: 네 에이전트 문서는 전부 \"목록을 여기 옮겨 적지 않는다\" 를 명시하고 자기 단계(RED/GREEN/EVAL/REVIEW)의 금지만 적는다 — SPEC 변경과 교집합이 0이다. 항목을 더한 변경이든 뺀 변경이든 이 문서가 옮겨 적지 않는 값이라는 사실은 같다."
+        "sha": "ba3182b",
+        "why": "2026-08-09 재검토 (ADR-0010 SOLID 규약). 조치 커밋 ba3182b 가 HARNESS.write_allow 에 eslint.config.js 를 **더했다** — 그 경로가 어느 단계의 write_allow 에도 없어 구조적으로 편집 불가였기 때문이다(evals/golden/** 이 2026-07-27 에 겪은 것과 같은 구멍). 이 문서가 재서술하는 값은 움직이지 않았다. 반증 명령: grep -c \"docs/deploy.md\" <이 문서> → 0 — docs/deploy.md 는 HARNESS.write_allow 의 고유 원소이므로, 0 이면 이 문서는 그 목록을 열거하지 않는다. 목록을 옮겨 적는 문서는 docs/harness/handbook.html 하나뿐이고 그것은 같은 PR 에서 갱신됐다. 항목을 더한 변경이든 뺀 변경이든 이 문서가 옮겨 적지 않는 값이라는 사실은 같다."
       },
       "depends_on": [
         "harness/policy/phase-matrix.json"

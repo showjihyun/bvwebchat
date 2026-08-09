@@ -12,10 +12,16 @@
 | [ADR-0005](0005-test-strategy.md) | 테스트 전략 | 통합 중심 TDD, Vitest, 전송만 대역 | 승인 |
 | [ADR-0006](0006-deployment.md) | 배포 (RQ-05/17) | Docker 단일 컨테이너 — 정적 클라 + Socket.IO 단일 서버, 스모크=골든 승격 | 승인 |
 | [ADR-0007](0007-server-module-boundaries.md) | 서버 모듈 경계 | `src/server/chat/` 8모듈 분해 — 인스턴스별 상태·단방향 계층·순수 코어·타이머 소유권 | 제안 |
+| [ADR-0008](0008-global-participants.md) | global 참여자 목록 | global 채널은 참여자 목록을 갖지 않는다 | 승인 |
+| [ADR-0009](0009-global-fanout-to-rooms.md) | global 메시지 표시 범위 | 참여 중인 모든 room 안에도 사본을 표시 (ADR-0004 결정4 대체) | 승인 |
+| [ADR-0010](0010-solid-conventions.md) | SOLID 규약 | 함수형 TS 로 번역 — SRP·DIP 는 ESLint 차단, OCP·LSP·ISP 는 reviewer | 승인 |
 
 > ADR-0001~0005는 2026-07-17 Deep Interview로 일괄 승인. ADR-0006은
 > 2026-07-21 RQ-05 착수 시 배포 방식 결정(사용자 선택: Docker). ADR-0007은
 > 2026-07-27 하네스 재구성(L3) 중 `createChatServer.ts` 822줄 분해와 함께 제안.
+> ADR-0008·0009는 2026-08-05·08-07에 승인됐으나 **이 표에 등재되지 않은 채로
+> 있었다** — ADR-0010 등재 중에 발견해 함께 채웠다. 색인이 본문보다 낡는 것은
+> 이 표가 손으로 유지되기 때문이고, 그 자체가 기계 검사가 없는 축이다.
 
 디자인 스타일은 ADR이 아니라 `docs/design/DESIGN.md`(클로드 디자인
 산출물 — 질문 26~28)가 진실 공급원이다. UI 구현은 이를 이어받는다.
