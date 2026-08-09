@@ -82,7 +82,7 @@ export default tseslint.config(
             { name: 'socket.io', message: '상태·규칙 모듈은 전송 계층을 알아서는 안 된다 (ADR-0007 규칙3).' },
             { name: 'socket.io-client', message: '상태·규칙 모듈은 전송 계층을 알아서는 안 된다 (ADR-0007 규칙3).' },
           ],
-          patterns: ['./protocol', './broadcast', './session', './room', './departure', './connection'],
+          patterns: ['./protocol', './broadcast', './session', './room', './departure', './connection', '../createChatServer'],
         },
       ],
     },
@@ -104,7 +104,7 @@ export default tseslint.config(
     rules: {
       'no-restricted-imports': [
         'error',
-        { patterns: ['./state', './broadcast', './session', './room', './departure', './connection'] },
+        { patterns: ['./state', './broadcast', './session', './room', './departure', './connection', '../createChatServer'] },
       ],
     },
   },
@@ -113,20 +113,48 @@ export default tseslint.config(
     rules: {
       'no-restricted-imports': [
         'error',
-        { patterns: ['./session', './room', './departure', './connection'] },
+        { patterns: ['./session', './room', './departure', './connection', '../createChatServer'] },
       ],
     },
   },
   {
     files: ['src/server/chat/session.ts'],
     rules: {
-      'no-restricted-imports': ['error', { patterns: ['./room', './departure', './connection'] }],
+      'no-restricted-imports': ['error', { patterns: ['./room', './departure', './connection', '../createChatServer'] }],
     },
   },
   {
     files: ['src/server/chat/room.ts', 'src/server/chat/departure.ts'],
     rules: {
-      'no-restricted-imports': ['error', { patterns: ['./connection'] }],
+      'no-restricted-imports': ['error', { patterns: ['./connection', '../createChatServer'] }],
+    },
+  },
+  {
+    // 사슬의 **두 끝**. 1차 리뷰가 "계층 그래프 전체"라는 문장이 집행보다 넓다고
+    // 잡았다 — L1(shared/types)과 L8(createChatServer)이 어느 블록에도 없어
+    // `../createChatServer` 역방향 import 를 아무것도 막지 않았다. 문언을 좁히는
+    // 대신 집행을 넓힌다.
+    //
+    // L1 — shared/types 는 사슬의 바닥이라 **어떤 지역 모듈도** import 하지 않는다.
+    // 현재 import 가 0줄이므로 이 규칙은 오늘의 코드를 고치지 않는다.
+    files: ['src/shared/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: ['./*', '../*', './**', '../**'] }],
+    },
+  },
+  {
+    // L8 — createChatServer 는 사슬의 꼭대기다. chat/** 의 어느 모듈도 그것을
+    // 되짚어 부르지 않는다. connection.ts 가 이름을 언급하지만 주석이고 import 는
+    // 없다(`grep -n createChatServer src/server/chat/connection.ts` → 주석 1줄).
+    //
+    // ⚠️ 이 항목이 **파일별 블록마다 반복**되는 이유: flat config 는 같은 규칙 ID 에
+    // 대해 **나중 블록이 앞 블록을 덮는다.** `src/server/chat/**` 를 한 덩어리로
+    // 뒤에 두면 위의 계층별 patterns 가 통째로 지워진다 — 1차 조치에서 실제로
+    // 그렇게 썼다가 되돌렸다. 공통 항목을 뒤에 몰아 두는 것이 flat config 에서
+    // 안 되는 형상이고, 여기서는 반복이 정답이다.
+    files: ['src/server/chat/connection.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: ['../createChatServer'] }],
     },
   },
 );
