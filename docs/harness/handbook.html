@@ -548,6 +548,9 @@
     <div class="card"><div style="font:600 11px var(--mono);color:var(--prod);margin-bottom:8px">STATE</div>
       <div style="font-size:15px;font-weight:600;margin-bottom:6px">메모리 한계</div>
       <p style="margin:0;color:var(--ink-2);font-size:12.8px">채널별 최근 이력 50개. <b>재시작 뒤 영속 복구 없음.</b></p></div>
+    <div class="card"><div style="font:600 11px var(--mono);color:var(--prod);margin-bottom:8px">RESUME</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px">새로고침 뒤 대화가 <em>빈다</em></div>
+      <p style="margin:0;color:var(--ink-2);font-size:12.8px">서버는 room 이력을 갖고 있는데 <b>클라이언트가 재접속(resume) 후 그것을 요청하지 않는다</b> — 새로고침하면 그 방이 통째로 빈 채로 보이고, 누군가 새 메시지를 보내야 그때부터 쌓인다. global 사본도 같다. RQ-11·RQ-04 v1.2 가 공유하는 미이행이고 <code>docs/progress.md</code> 보류표에 기전·처방 후보가 있다.</p></div>
   </div>
 
   <div class="note danger">
