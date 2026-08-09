@@ -531,7 +531,7 @@
     <tr><td class="nowrap"><strong>ADR-0009</strong></td><td>global 팬아웃 <span class="chip acc">2026-08-07</span></td><td>global 메시지를 <strong>수신자가 참여 중인 각 room 안에도</strong> 표시한다 — <code>ADR-0004</code> 결정 4를 대체한다. 범위는 참여 room 한정(미참여 room 에 넣으면 RQ-02 격리가 global 예외로 뚫린다) · 각 room 이력에도 저장 · <code>#global</code> 유지 · 방 안 사본은 출처 표시로 구별 · 안 읽음은 <code>#global</code> 만. <strong>결함 수정이 아니라 의도 변경이다</strong> — 개정 전 구현은 스펙 위반이 아니었고 <code>D14</code> 가 표시를 디자인 재량으로 다뤘다(<code>D14-r</code> 로 뒤집었다)</td></tr>
     <tr><td class="nowrap"><strong>ADR-0010</strong></td><td>SOLID 규약 <span class="chip acc">2026-08-09</span></td><td>SOLID 5원칙을 <strong>함수형 TypeScript 로 번역</strong>해 규정하고 집행 층위를 원칙마다 명시한다. 이 저장소에는 <strong>클래스가 0개</strong>라 원문 그대로 적으면 LSP 는 적용 대상이 0인 공허참이 되고 OCP 는 상속을 전제해 판정 불가가 된다 — <strong>번역이 규약의 본체다</strong>. SRP 는 길이 <strong>대리 지표</strong>(함수 60 · 파일 250)로, DIP 는 <code>ADR-0007</code> 계층 그래프로 <strong>ESLint 차단</strong>. OCP·LSP·ISP 는 기계 밖이라 reviewer 검토 항목 7이 본다. <strong>새 스크립트도 새 CI 스텝도 0건</strong> — 이미 도는 lint 표면에 규칙만 얹어 통제면이 안 늘어난다. 기존 위반 6건은 <code>eslint-disable</code> 이 아니라 <strong>현재값 고정 override</strong> 로 등재했다 — 부채이지 면제가 아니다. 위반이 <strong>전부 클라이언트고 서버는 0건</strong>인 것이 이 결정의 가장 강한 근거다: 서버는 <code>ADR-0007</code> 이 경계를 정했고 클라이언트에는 그런 문서가 없다</td></tr>
   </table></div>
-  <p class="ev"><code>ls docs/adr/</code> → <code>0001</code>~<code>0009</code> + <code>0000-template.md</code>, <code>README.md</code> ·
+  <p class="ev"><code>ls docs/adr/</code> → <code>0001</code>~<code>0010</code> + <code>0000-template.md</code>, <code>README.md</code> ·
     각 ADR 제목은 파일 첫 헤딩</p>
   <p>
     특기할 점은 ADR이 <strong>테스트 전략과 구현 범위 판단의 근거</strong>로 실제 소비됐다는

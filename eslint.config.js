@@ -90,7 +90,11 @@ export default tseslint.config(
   // ── ADR-0010 DIP 축 ── ADR-0007 결정2의 계층 그래프를 **전체로** 확장한다.
   //
   //   shared/types → validation·protocol → state → broadcast → session
-  //                → room·departure → connection
+  //                → room·departure → connection → createChatServer
+  //
+  // (사슬의 마디를 세면 8이다. 1차 조치에서 이 주석은 `connection`에서 끊어 놓고
+  //  아래 줄에서 "8층"이라고 세는 자기모순이었다 — ADR 사본만 고치고 여기를
+  //  안 고쳤다. 같은 값을 두 곳에 적으면 한쪽만 고쳐진다, R10.)
   //
   // 2026-08-09까지 선언은 8층인데 집행은 위 블록의 **2층뿐**이었다. 실측한 import
   // 간선이 이 선언과 정확히 일치하므로(각 모듈의 import를 전수 확인) 이 확장에
