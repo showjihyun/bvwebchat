@@ -1120,14 +1120,14 @@
     <tr><td class="nowrap"><strong>R1</strong></td><td><strong>문서가 존재하지 않는 방어를 현재형으로 단언</strong> — 코드/정책을 바꾸고 그 사실을 근거로 쓰는 다른 문장을 안 고침</td><td><strong>14</strong></td><td>센서 (<code>doc-freshness</code> C2)</td><td><span class="chip warn">사각지대 확인</span></td></tr>
     <tr><td class="nowrap"><strong>R11</strong></td><td><strong>재지 않은 근거를 쓴다</strong> — 유예·채택·전칭 단언. 대장의 처방문은 <em>"6회 중 3회는 P11 관할 밖"</em>이라고 6회 시점 서술을 유지한다</td><td><strong>8</strong></td><td>게이트 (P11) + 사람 리뷰</td><td><span class="chip warn">관할 밖 3회</span></td></tr>
     <tr><td class="nowrap"><strong>R2</strong></td><td>분류는 옳은데 <strong>집행이 0이고 아무도 검사하지 않음</strong> — <code>gate_spec_freeze</code>(무력) · P11 자신</td><td>5</td><td>센서 (P8·P10·P11 자기시험)</td><td><span class="chip warn">두 번 어김</span></td></tr>
-    <tr><td class="nowrap"><strong>R13</strong></td><td>체크포인트가 재개를 지탱하지 못한다 — <code>goal</code>/<code>next</code> 부정합 · <strong>앵커 빈곤</strong></td><td>5</td><td>센서 (회고 질문)</td><td><span class="chip warn">배치 시점 어긋남</span></td></tr>
+    <tr><td class="nowrap"><strong>R13</strong></td><td>체크포인트가 재개를 지탱하지 못한다 — <code>goal</code>/<code>next</code> 부정합 · <strong>앵커 빈곤</strong></td><td>6</td><td>센서 (회고 질문)</td><td><span class="chip warn">배치 시점 어긋남</span></td></tr>
     <tr><td class="nowrap"><strong>R10</strong></td><td>평가와 문서 수렴의 <strong>순서가 어긋나 전수 재실행이 두 번</strong> 붙는다</td><td>5</td><td>구조 (<code>CLAUDE.md</code>가 스킬 규칙을 재서술하지 않는다)</td><td><span class="chip good">처방됨</span></td></tr>
     <tr><td class="nowrap"><strong>R4</strong></td><td>전이가 체크포인트를 만드는데 <strong>커밋하지 않고 평가를 돌림</strong></td><td>4</td><td>게이트 2차 (<code>eval-b</code>가 시작 시 거부)</td><td><span class="chip good">재처방됨</span></td></tr>
     <tr><td class="nowrap"><strong>R14</strong></td><td>구조화 파일을 프로그램으로 고칠 때 <strong>재직렬화가 의미 변경을 파묻는다</strong> (2줄 변경에 99줄)</td><td>4</td><td>Guide (<code>Edit</code>로 수술적으로)</td><td><span class="chip good">처방됨</span></td></tr>
     <tr><td class="nowrap"><strong>R16</strong></td><td><strong>워크트리 정리가 <code>node_modules</code> 정션을 따라가 원본을 파괴</strong> — 저장소의 모든 lint·test·build가 멈춘다</td><td><strong>4</strong></td><td>Guide (제약을 <code>.claude/agents/*.md</code>로 이동)</td><td><span class="chip good">처방됨</span> <em>단 §6 참조</em></td></tr>
     <tr><td class="nowrap"><strong>R3</strong></td><td><strong>커밋 오염</strong> — pathspec 없는 <code>git commit</code>이 남의 스테이징을 함께 싣는다</td><td>3</td><td>구조 (<code>isolation: "worktree"</code>)</td><td><span class="chip good">처방됨</span></td></tr>
     <tr><td class="nowrap"><strong>R7</strong></td><td><code>next</code>가 체크포인트만으로 복원되지 않는다 — 바깥 문서 라벨을 쓴다</td><td>3</td><td>게이트 (<code>policy-lint</code> P12)</td><td><span class="chip warn">범위 한계</span></td></tr>
-    <tr><td class="nowrap"><strong>R17</strong></td><td><strong>선행 점검이 자기가 만든 낡음을 구조적으로 못 본다</strong> — <code>harness-audit</code> Phase 1의 값은 <em>변경 전</em></td><td>3</td><td>게이트(절차) — Phase 4에 재실행 0번 단계 신설</td><td><span class="chip good">처방됨</span></td></tr>
+    <tr><td class="nowrap"><strong>R17</strong></td><td><strong>선행 점검이 자기가 만든 낡음을 구조적으로 못 본다</strong> — <code>harness-audit</code> Phase 1의 값은 <em>변경 전</em></td><td>5</td><td>게이트(절차) — Phase 4에 재실행 0번 단계 신설</td><td><span class="chip good">처방됨</span></td></tr>
     <tr><td class="nowrap">R5·R6·R8·R9·R12·R15</td><td>rubric이 측정 대상이 아닌 것을 잰다 · 낡은 <code>session.json</code> 박제 · 값을 바꾸고 재서술 문서를 안 씀 · 센서가 환경에 따라 다른 답 · <strong>게이트가 자기 인자를 못 받는다</strong> · 판정이 "이번 실행"이 아니라 "누적"을 잰다</td><td>1~2</td><td>Guide / 게이트 / 구조</td><td><span class="chip good">전부 처방됨</span></td></tr>
   </table></div>
   <p class="ev"><code>harness/recurrence.md</code> "## 대장" 표 — 18행 전수.
@@ -1436,7 +1436,7 @@
       각 행이 <em>근거</em>와 <em>되살릴 조건</em>을 짝으로 갖는다</div></div>
     <div class="stat"><div class="num">2</div><div class="lbl">주간 회고 산출 (W31 · W32)</div>
       <div class="src"><code>ls harness/reports/</code></div></div>
-    <div class="stat"><div class="num" data-verify="changelog-rows">134</div><div class="lbl">하네스 changelog 행 (07-16 ~ <span data-verify="changelog-last-date">2026-08-09</span>)</div>
+    <div class="stat"><div class="num" data-verify="changelog-rows">135</div><div class="lbl">하네스 changelog 행 (07-16 ~ <span data-verify="changelog-last-date">2026-08-09</span>)</div>
       <div class="src"><code>grep -c '^| 2026' docs/harness/changelog.md</code></div></div>
     <div class="stat"><div class="num">D-10</div><div class="lbl">마감 7/31 대비 7/21 <strong>기능</strong> RQ 완료</div>
       <div class="src"><code>docs/progress.md</code> Phase 4~5.<br>

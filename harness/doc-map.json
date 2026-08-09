@@ -196,8 +196,8 @@
       "_c2_reviewed": [
         {
           "dep": "harness/sensor-catalog.md",
-          "sha": "c991650",
-          "why": "2026-08-09 재검토 (ADR-0010 SOLID 규약). 조치 커밋 c991650 이 센서 카탈로그에 'SOLID 규약 집행' 행을 **더했다**. 1차 리뷰 major: 앞서 쓴 반증 명령(git diff --diff-filter=A -- scripts/ → 0)은 신설 **스크립트 개수**만 재고 '행의 집합을 옮겨 적지 않는다'는 전칭을 **반증하지 못했다** — 이 설계서는 실제로 카탈로그 행 표를 갖는다. 판별력 있는 명령으로 바꾼다: grep -c \"SOLID\" docs/harness/architecture-2026.html → 0 · grep -c \"ADR-0010\" docs/harness/architecture-2026.html → 0. 둘 다 이번에 추가된 카탈로그 행의 고유어이므로, 0 이면 이 설계서가 그 행을 옮겨 적지 않는다는 것이 직접 관측된다. (보조 근거로 스크립트 0 신설은 유지한다 — 이 설계서가 단언하는 '신설 스크립트 8개'가 그대로 참이라는 별개의 축이다.)"
+          "sha": "0e9c616",
+          "why": "2026-08-09 재검토 (ADR-0010 SOLID 규약). 조치 커밋 c991650·0e9c616 이 센서 카탈로그에 'SOLID 규약 집행' 행을 **더했다**. 1차 리뷰 major: 앞서 쓴 반증 명령(git diff --diff-filter=A -- scripts/ → 0)은 신설 **스크립트 개수**만 재고 '행의 집합을 옮겨 적지 않는다'는 전칭을 **반증하지 못했다** — 이 설계서는 실제로 카탈로그 행 표를 갖는다. 판별력 있는 명령으로 바꾼다: grep -c \"SOLID\" docs/harness/architecture-2026.html → 0 · grep -c \"ADR-0010\" docs/harness/architecture-2026.html → 0. 둘 다 이번에 추가된 카탈로그 행의 고유어이므로, 0 이면 이 설계서가 그 행을 옮겨 적지 않는다는 것이 직접 관측된다. (보조 근거로 스크립트 0 신설은 유지한다 — 이 설계서가 단언하는 '신설 스크립트 8개'가 그대로 참이라는 별개의 축이다.)"
         },
         {
           "dep": "harness/policy/README.md",
@@ -238,7 +238,14 @@
         "src/server/chat/validation.ts",
         "src/server/chat/state.ts"
       ],
-      "review_every_days": 30
+      "review_every_days": 30,
+      "_c2_reviewed": [
+        {
+          "dep": "harness/recurrence.md",
+          "sha": "7263d64",
+          "why": "2026-08-09 재검토 (ADR-0010 2차 조치). 조치 커밋 7263d64 가 대장의 R17 회차를 3→5 로 올리고 처방을 보강했다. 핸드북의 반복 대장 표는 **선별 발췌**이고 R17 행이 없다 — 반증 명령: grep -c \"R17\" docs/harness/handbook.html → 0. 이 문서가 실제로 옮겨 적는 회차(R13)는 같은 PR 에서 5→6 으로 함께 고쳤고, 표 머리의 범위 표기도 R1–R17 → R1–R18 로 잡았다(main 에서 이미 틀려 있던 것). 즉 이 문서가 옮겨 적는 값은 전부 갱신됐고 남은 것은 옮겨 적지 않는 값이다."
+        }
+      ]
     },
     {
       "path": "evals/README.md",
