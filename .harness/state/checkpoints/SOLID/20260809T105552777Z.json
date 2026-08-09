@@ -1,0 +1,48 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "harness/solid-convention",
+  "edge_legal": true,
+  "exit_hint": "작업을 시작하려면: python harness/phase.py enter PLAN  (또는 SPEC / HARNESS)",
+  "forced": false,
+  "from": "SPEC",
+  "guards": [],
+  "head_sha": "e75a52a7419e38ec09fdab1ab11bdfadf211c1ed",
+  "reason": null,
+  "rq": "SOLID",
+  "schema": 1,
+  "seq": 329,
+  "session": {
+    "acceptance": [
+      "ADR-0010 이 SOLID 5원칙을 이 저장소의 관용구(클래스 0개 · 함수형 TS)로 번역해 규정한다",
+      "기계화 가능한 축(함수 60줄 · 파일 250줄 · 계층 그래프)이 eslint 로 차단된다 — check.mjs lint 스텝과 CI 에 이미 배선된 표면을 쓴다",
+      "기존 위반은 eslint-disable 로 숨기지 않고 ADR 예외표 + docs/progress.md 부채 행으로 등재된다",
+      "CLAUDE.md 에 포인터 1줄 (100줄 상한 안)"
+    ],
+    "done": [
+      "ADR-0010 작성 — SOLID 5원칙을 함수형 TS 로 번역, 집행 수단을 원칙마다 명시. ADR-0008·0009 색인 누락도 함께 채움",
+      "ESLint 집행·reviewer 축·카탈로그·핸드북·changelog·C2 면제 7건 완료. 음성 시험 5건 통과",
+      "ADR C4 수정",
+      "트랙 B 전수 재실행 5 pass / 1 fail — GB-06 Q3 만 0/1. 실패 아티팩트 4f2e90f7 커밋",
+      "recurrence.md R13 을 6회차로 등재 — next[0] 이 그 체크포인트를 찍은 전이가 끝낸 작업이었다(세 번째 하위 기전)",
+      "R13 등재 커밋",
+      "GB-06 재실행 6 pass / 0 fail (89714863, 5건 carried_from). 두 아티팩트 모두 커밋",
+      "리뷰 1차 REQUEST_CHANGES — blocker 3 · major 3. 주장 6개 중 5개는 실행으로 재현됨, R13 재실행도 정직 판정",
+      "blocker②③·major⑤ 조치 — 계층 두 끝 집행 + 음성 시험 2건",
+      "major④⑤ ADR 문언 조치"
+    ],
+    "goal": "저장소에 SOLID 를 이름으로 요구하는 규약이 없다. ADR-0007 이 계층·의존 방향만 eslint 로 부분 집행하고 단일 책임·개방폐쇄·인터페이스 분리는 어디에도 안 적혀 있어, 리뷰어도 코더도 근거로 쓸 문장이 없다",
+    "next": [
+      "blocker 3건 조치: ① doc-freshness --pr 3건(changelog 대상 열에 recurrence.md 누락 포함) ② adr-approved 근거 문장 2곳 0001~0009 ③ §3-2 ADR 표에 ADR-0010 행",
+      "major 3건 조치: ④ 래칫이 함수 단위로 성립 안 함(ADR 예외표 문언) ⑤ 계층 그래프가 createChatServer·shared/types 를 안 검 ⑥ C2 면제 1건의 반증 명령이 전칭을 반증 못 함"
+    ],
+    "open_questions": [
+      "resume-test.mjs 의 Q3 가 needAll 이라 100% 일치를 요구하는데 정답지가 체크포인트 자신의 next 필드다. 끝난 항목을 next 에서 지우면 점수가 오르지만 그것은 채점기를 맞추는 것이다 — docs/progress.md 보류표가 이 항목의 처방 후보 둘을 들고 있다"
+    ]
+  },
+  "to": "IDLE",
+  "ts": "2026-08-09T10:55:52.776Z",
+  "write_allow": [
+    "_workspace/**",
+    "docs/progress.md"
+  ]
+}
