@@ -67,7 +67,7 @@ LSP 위반이다.
 
 ```
 shared/types → validation·protocol → state → broadcast → session
-             → room·departure → connection
+             → room·departure → connection → createChatServer
 ```
 
 실측한 import 간선이 이 선언과 **정확히 일치**하므로(2026-08-09), 그래프 전체를
@@ -75,20 +75,41 @@ shared/types → validation·protocol → state → broadcast → session
 중 `state.ts`·`validation.ts` **두 파일만** 걸려 있었다 — 선언은 8층이고 집행은
 2층이었다.
 
+**사슬의 두 끝을 빠뜨렸다가 1차 리뷰가 잡았다.** 처음 배선에서 L1(`src/shared/**`)과
+L8(`createChatServer`)이 어느 블록에도 없어 `../createChatServer` 역방향 import 를
+아무것도 막지 않았다 — *"계층 그래프 전체"* 라는 **문장이 집행보다 넓었다.**
+문언을 좁히는 대신 집행을 넓혔고, 두 끝에 대한 음성 시험을 붙였다
+(`room.ts` 에 `../createChatServer`, `shared/types.ts` 에 `../server/chat/state` 를
+주입하면 각각 `exit 1`).
+
+> **flat config 함정 하나를 기록한다.** 공통 금지(`../createChatServer`)를
+> `src/server/chat/**` 한 덩어리로 **뒤에** 두면 같은 규칙 ID 에 대해 나중 블록이
+> 이겨서 **앞의 계층별 patterns 가 통째로 지워진다.** 실제로 그렇게 썼다가
+> `npx eslint --print-config` 로 7개 파일의 실효 규칙을 찍어 보고 잡았다.
+> 공통 항목을 각 블록에 **반복**하는 것이 이 도구에서의 정답이다.
+
 ## 예외표 — 부채이지 면제가 아니다
 
 기존 위반 6건을 `eslint-disable` 로 숨기지 않는다. `eslint.config.js` 에 **현재
 값으로 고정한 override** 로 등재한다. 값을 현재치에 박는 것이 핵심이다 —
 **그 파일은 더 자랄 수 없고**(래칫), 부채를 갚으면 항목을 지워 임계값이 조인다.
 
-| 파일 | 규칙 | 현재 | 규약 |
-|---|---|---|---|
-| `src/client/useChat.ts` | `max-lines` | 293 | 250 |
-| `src/client/useChat.ts` | `max-lines-per-function` (`useChat`) | 237 | 60 |
-| `src/client/useChat.ts` | 〃 (`:147` 화살표 함수) | 92 | 60 |
-| `src/client/useChat.ts` | 〃 (`:280` 화살표 함수) | 61 | 60 |
-| `src/client/components/ChatPane.tsx` | 〃 (`ChatPane`) | 75 | 60 |
-| `src/client/components/JoinRoomModal.tsx` | 〃 (`JoinRoomModal`) | 64 | 60 |
+**핀은 파일 단위다** — ESLint override 의 단위가 파일이라 한 파일 안의 여러 함수는
+그중 **가장 긴 것**으로 함께 덮인다. 따라서 아래 4개 핀이 위반 6건을 흡수한다.
+
+| 파일 | 규칙 | 핀 | 규약 | 이 핀이 덮는 위반 |
+|---|---|---|---|---|
+| `src/client/useChat.ts` | `max-lines` | 293 | 250 | 파일 293줄 |
+| `src/client/useChat.ts` | `max-lines-per-function` | 237 | 60 | `useChat` 237 · `:147` 화살표 92 · `:280` 화살표 61 |
+| `src/client/components/ChatPane.tsx` | `max-lines-per-function` | 75 | 60 | `ChatPane` 75 |
+| `src/client/components/JoinRoomModal.tsx` | `max-lines-per-function` | 64 | 60 | `JoinRoomModal` 64 |
+
+⚠️ **래칫의 한계를 여기 적어 둔다** (1차 리뷰 major). 파일 단위 핀이므로
+**`useChat.ts` 안에서는 92줄·61줄 함수가 236줄까지 자라도 통과하고, 새 함수도
+그렇다.** *"그 파일은 더 자랄 수 없다"* 가 엄밀히 참인 것은 `max-lines` 축뿐이다.
+함수 축의 래칫은 **파일 최댓값에만** 걸린다. ESLint 는 함수 단위 override 를
+제공하지 않으므로 이 한계는 도구의 것이고, 좁히려면 그 파일을 쪼개는 수밖에
+없다 — 즉 **부채를 갚는 것이 유일한 처방**이고 그것이 원장에 있는 이유다.
 
 **위반 6건이 전부 클라이언트에 있고 서버 모듈은 하나도 없다.** 이것이 이 ADR 의
 가장 강한 근거다 — 서버는 ADR-0007 이 경계를 정했고 클라이언트는 그런 문서가
