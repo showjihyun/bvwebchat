@@ -560,7 +560,7 @@
       2026-07-16부터 매 하네스 변경마다 한 행씩(<code>grep -c '^| 2026' docs/harness/changelog.md</code> 이 정본이다). 이 동행은 이제 문화가 아니라
       전이 가드 <code>changelog_updated</code>가 강제한다.</li>
   </ul>
-  <p class="ev"><code>wc -l docs/progress.md</code> → <span data-verify="progress-lines">229</span>행 ·
+  <p class="ev"><code>wc -l docs/progress.md</code> → <span data-verify="progress-lines">230</span>행 ·
     <code>grep -c '^| 2026' docs/harness/changelog.md</code> 의 출력이 정본이다 ·
     <code>phase-matrix.json</code> <code>guards.changelog_updated</code></p>
 
@@ -1411,7 +1411,7 @@
       <div class="src">최신 아티팩트(<code>ls -t evals/results/track-b/</code> 첫 줄)의 <code>summary</code> = <code>{total:6, pass:6, fail:0}</code></div></div>
     <div class="stat"><div class="num">45</div><div class="lbl">PR 머지</div>
       <div class="src"><code>gh pr list --state merged --limit 100 --json number --jq 'length'</code> → 45 (#1~#45)</div></div>
-    <div class="stat"><div class="num" data-verify="adr-approved">9</div><div class="lbl">ADR 승인 (모순 구현 0건)</div>
+    <div class="stat"><div class="num" data-verify="adr-approved">10</div><div class="lbl">ADR 승인 (모순 구현 0건)</div>
       <div class="src"><code>ls docs/adr/</code> → 0001~0009</div></div>
     <div class="stat"><div class="num">9 · 16 · 11</div><div class="lbl">단계 · 전이 간선 · 전이 가드</div>
       <div class="src"><code>phase-matrix.json</code>의 <code>phases</code>/<code>transitions</code>/<code>guards</code> 키 수</div></div>
@@ -1430,12 +1430,12 @@
     <div class="stat"><div class="num" data-verify="recurrence-rows">18</div><div class="lbl">반복 실패 대장 등재 행 (R1 최다 <strong data-verify="recurrence-R1">16</strong>회)</div>
       <div class="src"><code>harness/recurrence.md</code> "## 대장" 표 — R1~R18.<br>
       건수 정본은 <code>policy-lint --self-test</code> 출력</div></div>
-    <div class="stat"><div class="num" data-verify="pending-rows">62</div><div class="lbl">보류표 행 — <strong>"하지 않기로 결정한 것"</strong></div>
+    <div class="stat"><div class="num" data-verify="pending-rows">63</div><div class="lbl">보류표 행 — <strong>"하지 않기로 결정한 것"</strong></div>
       <div class="src"><code>docs/progress.md</code> 보류표 데이터 행 수.<br>
       각 행이 <em>근거</em>와 <em>되살릴 조건</em>을 짝으로 갖는다</div></div>
     <div class="stat"><div class="num">2</div><div class="lbl">주간 회고 산출 (W31 · W32)</div>
       <div class="src"><code>ls harness/reports/</code></div></div>
-    <div class="stat"><div class="num" data-verify="changelog-rows">133</div><div class="lbl">하네스 changelog 행 (07-16 ~ <span data-verify="changelog-last-date">2026-08-09</span>)</div>
+    <div class="stat"><div class="num" data-verify="changelog-rows">134</div><div class="lbl">하네스 changelog 행 (07-16 ~ <span data-verify="changelog-last-date">2026-08-09</span>)</div>
       <div class="src"><code>grep -c '^| 2026' docs/harness/changelog.md</code></div></div>
     <div class="stat"><div class="num">D-10</div><div class="lbl">마감 7/31 대비 7/21 <strong>기능</strong> RQ 완료</div>
       <div class="src"><code>docs/progress.md</code> Phase 4~5.<br>

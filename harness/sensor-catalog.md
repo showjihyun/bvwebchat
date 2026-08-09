@@ -129,6 +129,7 @@ Sensor로 두는 것은 낭비이고, 반대로 추론이 필요한 판단을 �
 |---|---|---|---|---|
 | 파일 수정 후 빠른 검사 | Comp | 수정 직후 (PostToolUse) | `post_observe.py` → `node scripts/check.mjs --fast` | ✅ |
 | lint / typecheck / 단위·통합 테스트 | Comp | CI PR 게이트 | `ci.yml` → `check.sh` → `node scripts/check.mjs` | ✅ |
+| **SOLID 규약 집행 (ADR-0010)** | Comp | lint 스텝에 동승 — 수정 직후 · CI | `eslint.config.js` — **SRP 대리**(`max-lines-per-function` 60 · `max-lines` 250, `skipComments`만) + **DIP**(`no-restricted-imports` 를 ADR-0007 계층 8층 전체로). 2026-08-09 까지 계층 집행은 `state.ts`·`validation.ts` **2층뿐**이었고 선언만 8층이었다. **새 스크립트도 새 CI 스텝도 없다** — 이미 도는 lint 표면에 규칙만 얹었다(통제면 증식 회피). **기존 위반 6건은 `eslint-disable` 이 아니라 현재값 고정 override 로 등재**돼 그 파일들이 더 자랄 수 없다(래칫). 값을 올리는 방향의 수정은 ADR-0010 을 대체하는 새 ADR 로만 한다 | ✅ **음성 시험 5건** — `npx eslint src` 가 ① 그대로 0건 ② 예외 무력화 시 5건 ③ 함수 핀 −1 에 1건 ④ 파일 핀 −1 에 1건 ⑤ `session.ts` 금지 목록에 실제 import 주입 시 `exit 1`. ⚠️ **OCP·LSP·ISP 는 기계 밖**이고 `reviewer` 검토 항목 7이 본다 — 길이 게이트 통과가 SRP 준수를 뜻하지 않는다 |
 | 전체 검증 전이 가드 | Comp | `GREEN→EVAL` | `check_full_green` 가드 (`check.mjs` exit 0) | ✅ |
 | Red 정당성 판정 | Comp | `RED→GREEN` | `red_evidence` 가드 → `check.mjs --red --rq` (ADR-0005 결정3: TS2307/TS2305만 정당한 Red). **접미사 ID(`RQ-10-a`) 를 받는다** — 2026-07-30 이전에는 잘못된 인자로 거부해 전이가 막혔다(`recurrence.md` R12). 음성 시험 `check.mjs --self-test` 10건 | ✅ |
 | Red 산출물 실재 | Comp | `RED→GREEN` | `tests_committed` 가드 (`git` — 브랜치에 `tests/**` 커밋 ≥1). **RED 의 산출물은 "커밋된 실패 테스트"** 다 — 워킹트리에만 있으면 다음 단계가 그것을 증거로 쓸 수 없다. M3(테스트 선행률)의 측정 지점이기도 하다 | ✅ |
