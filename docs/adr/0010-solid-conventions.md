@@ -105,7 +105,7 @@ shared/types → validation·protocol → state → broadcast → session
 전제해 둘 다 판정 불가가 된다. 규약이 판정 불가면 리뷰어는 그것을 인용할 수
 없고, 인용되지 않는 규약은 없는 규약이다.
 
-**버린 대안 2 — 새 센서(`scripts/solid-lint.mjs`).** ESLint 가 이미 하는 일과
+**버린 대안 2 — 새 센서 스크립트(가칭 `solid-lint`).** ESLint 가 이미 하는 일과
 중복이고, 통제면을 하나 더 늘린다(안티패턴 02). 새 게이트는 음성 시험 의무도
 따라온다(`harness/recurrence.md` R2). ESLint 는 `scripts/check.mjs` 의 lint 스텝과
 CI `gate` 잡에 **이미 배선돼 있어** 새 표면이 0이다.
