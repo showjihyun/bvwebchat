@@ -528,8 +528,9 @@
     <tr><td class="nowrap">ADR-0006</td><td>배포</td><td>Docker 단일 컨테이너, 스모크 = 골든 케이스 승격</td></tr>
     <tr><td class="nowrap"><strong>ADR-0007</strong></td><td>서버 모듈 경계 <span class="chip acc">2026-07-27</span></td><td><code>createChatServer</code> 822줄 → <code>src/server/chat/</code> 8모듈 + 조립점 51줄. 구속 규칙 4개(인스턴스별 상태 / 단방향 계층 / 순수 코어 — ESLint <code>no-restricted-imports</code>로 기계 강제 / 타이머 소유권). <strong><code>tests/</code> 무수정(0줄)</strong>으로 행동 보존 실증</td></tr>
     <tr><td class="nowrap"><strong>ADR-0008</strong></td><td>global 참여자 <span class="chip acc">2026-08-05 · PR #40</span></td><td>global 채널은 참여자 목록을 <strong>갖지 않는다</strong>. 서버를 고쳐 넣는 대신 <em>예외를 명문화하고 UI가 그 이유를 표시</em>하는 쪽을 택했다 — 현재 배제가 RQ-12(빈 room 자동 삭제)의 <strong>구조적</strong> 보장이라, 고치면 그 보장이 구조에서 조건문으로 한 칸 내려가기 때문</td></tr>
+    <tr><td class="nowrap"><strong>ADR-0009</strong></td><td>global 팬아웃 <span class="chip acc">2026-08-07</span></td><td>global 메시지를 <strong>수신자가 참여 중인 각 room 안에도</strong> 표시한다 — <code>ADR-0004</code> 결정 4를 대체한다. 범위는 참여 room 한정(미참여 room 에 넣으면 RQ-02 격리가 global 예외로 뚫린다) · 각 room 이력에도 저장 · <code>#global</code> 유지 · 방 안 사본은 출처 표시로 구별 · 안 읽음은 <code>#global</code> 만. <strong>결함 수정이 아니라 의도 변경이다</strong> — 개정 전 구현은 스펙 위반이 아니었고 <code>D14</code> 가 표시를 디자인 재량으로 다뤘다(<code>D14-r</code> 로 뒤집었다)</td></tr>
   </table></div>
-  <p class="ev"><code>ls docs/adr/</code> → <code>0001</code>~<code>0008</code> + <code>0000-template.md</code>, <code>README.md</code> ·
+  <p class="ev"><code>ls docs/adr/</code> → <code>0001</code>~<code>0009</code> + <code>0000-template.md</code>, <code>README.md</code> ·
     각 ADR 제목은 파일 첫 헤딩</p>
   <p>
     특기할 점은 ADR이 <strong>테스트 전략과 구현 범위 판단의 근거</strong>로 실제 소비됐다는
@@ -992,7 +993,7 @@
   <div class="table-wrap"><table>
     <tr><th></th><th>트랙 A (<code>track-a-product.jsonl</code>)</th><th>트랙 B (<code>track-b-harness.jsonl</code>)</th></tr>
     <tr><td class="nowrap">대상</td><td>제품 행동</td><td>하네스·에이전트 행동</td></tr>
-    <tr><td class="nowrap">케이스</td><td><strong>36건</strong> (GA-01 ~ GA-36)</td><td><strong>7건</strong> (GB-01 ~ GB-07)</td></tr>
+    <tr><td class="nowrap">케이스</td><td><strong>41건</strong> (GA-01 ~ GA-41)</td><td><strong>7건</strong> (GB-01 ~ GB-07)</td></tr>
     <tr><td class="nowrap">판정</td><td>통합 테스트 (<code>verify</code> 필드가 가리키는 파일)</td><td>rubric — <code>auto</code>(결정론) + <code>judge</code>(추론)</td></tr>
     <tr><td class="nowrap">실행</td><td><code>npx vitest run</code> · <code>golden-coverage.mjs</code></td><td><code>scripts/eval-b.mjs</code></td></tr>
     <tr><td class="nowrap">게이트</td><td><code>GREEN→EVAL</code>의 <code>golden_coverage</code></td><td><code>HARNESS→REVIEW</code>의 <code>track_b_passing</code></td></tr>
@@ -1099,14 +1100,14 @@
 
 <!-- ═══════════════════ 3-10. 반복 실패 대장 ═══════════════════ -->
 <section id="recurrence">
-  <h2>3-10. 반복 실패 대장 R1~R17 <span class="chip acc">v1에 통째로 없던 절</span></h2>
+  <h2>3-10. 반복 실패 대장 R1~R18 <span class="chip acc">v1에 통째로 없던 절</span></h2>
   <p>
     운영 규칙 3은 <em>"같은 실수가 2회 반복되면 센서 하나 <strong>또는</strong> Guide 한 줄"</em>을
     요구했다. <strong>그런데 누적을 세는 곳이 없었다.</strong> 그래서 2026-07-27 하루에 같은 원인으로
     3~9회를 반복하면서 매번 새로 발견했다 — 규칙은 알고 있었고 세는 자리가 없었다.
   </p>
   <p>
-    <code>harness/recurrence.md</code>가 그 자리다. <strong>17행</strong>이 있고,
+    <code>harness/recurrence.md</code>가 그 자리다. <strong>18행</strong>이 있고,
     <code>scripts/policy-lint.mjs</code>의 <strong>P11</strong>이 읽어
     <strong>2회 이상인데 처방이 열려 있으면 CI를 <code>exit 1</code></strong>로 만든다.
     처방은 <strong>구조 &gt; 게이트 &gt; 센서 &gt; Guide</strong> 중 <em>주 처방을 하나만</em> 고르고,
@@ -1128,7 +1129,7 @@
     <tr><td class="nowrap"><strong>R17</strong></td><td><strong>선행 점검이 자기가 만든 낡음을 구조적으로 못 본다</strong> — <code>harness-audit</code> Phase 1의 값은 <em>변경 전</em></td><td>3</td><td>게이트(절차) — Phase 4에 재실행 0번 단계 신설</td><td><span class="chip good">처방됨</span></td></tr>
     <tr><td class="nowrap">R5·R6·R8·R9·R12·R15</td><td>rubric이 측정 대상이 아닌 것을 잰다 · 낡은 <code>session.json</code> 박제 · 값을 바꾸고 재서술 문서를 안 씀 · 센서가 환경에 따라 다른 답 · <strong>게이트가 자기 인자를 못 받는다</strong> · 판정이 "이번 실행"이 아니라 "누적"을 잰다</td><td>1~2</td><td>Guide / 게이트 / 구조</td><td><span class="chip good">전부 처방됨</span></td></tr>
   </table></div>
-  <p class="ev"><code>harness/recurrence.md</code> "## 대장" 표 — 17행 전수.
+  <p class="ev"><code>harness/recurrence.md</code> "## 대장" 표 — 18행 전수.
     건수의 정본은 <code>node scripts/policy-lint.mjs --self-test</code>의 출력이다
     (<em>대장에 숫자를 적었다가 두 번 낡았다 — R10 처방</em>)</p>
 
@@ -1399,8 +1400,8 @@
     <div class="stat"><div class="num">+5</div><div class="lbl">마감 뒤 나온 결함 후속 RQ (전부 ✅)</div>
       <div class="src">RQ-10-a · 13-a · 15-a · 15-b · 18-a — <code>docs/progress.md</code> 작업 원장</div></div>
     <div class="stat"><div class="num">76 / 76</div><div class="lbl">테스트 통과 · <strong>21개 파일</strong></div>
-      <div class="src"><code>git ls-files | grep -E '\.test\.(ts|tsx)$'</code> → 20파일.<br>
-      각 파일의 <code>it(</code>/<code>test(</code> 정적 집계 합 = 71 (최근 <code>npm test</code> 출력과 일치)</div></div>
+      <div class="src"><code>git ls-files | grep -E '\.test\.(ts|tsx)$'</code> → 21파일.<br>
+      각 파일의 <code>it(</code>/<code>test(</code> 정적 집계 합 = 76 (최근 <code>npm test</code> 출력과 일치)</div></div>
     <div class="stat"><div class="num" data-verify="golden-total">48</div><div class="lbl">골든 케이스 — 트랙 A 41 + B 7 <span style="opacity:.7">(시작 15)</span></div>
       <div class="src"><code>wc -l evals/golden/*.jsonl</code> → 41 + 7.<br>
       시작값은 <code>git show e37ce9c:</code> → 10 + 5</div></div>
@@ -1425,14 +1426,14 @@
       나머지 53건은 <strong>유예(경고) 통과</strong>다.<br>
       <strong>이 로그는 gitignore — 이 머신 전용이다</strong></div></div>
     <div class="stat"><div class="num" data-verify="recurrence-rows">18</div><div class="lbl">반복 실패 대장 등재 행 (R1 최다 <strong data-verify="recurrence-R1">16</strong>회)</div>
-      <div class="src"><code>harness/recurrence.md</code> "## 대장" 표 — R1~R17.<br>
+      <div class="src"><code>harness/recurrence.md</code> "## 대장" 표 — R1~R18.<br>
       건수 정본은 <code>policy-lint --self-test</code> 출력</div></div>
     <div class="stat"><div class="num" data-verify="pending-rows">59</div><div class="lbl">보류표 행 — <strong>"하지 않기로 결정한 것"</strong></div>
       <div class="src"><code>docs/progress.md</code> 보류표 데이터 행 수.<br>
       각 행이 <em>근거</em>와 <em>되살릴 조건</em>을 짝으로 갖는다</div></div>
     <div class="stat"><div class="num">2</div><div class="lbl">주간 회고 산출 (W31 · W32)</div>
       <div class="src"><code>ls harness/reports/</code></div></div>
-    <div class="stat"><div class="num" data-verify="changelog-rows">131</div><div class="lbl">하네스 changelog 행 (07-16 ~ <span data-verify="changelog-last-date">2026-08-09</span>)</div>
+    <div class="stat"><div class="num" data-verify="changelog-rows">132</div><div class="lbl">하네스 changelog 행 (07-16 ~ <span data-verify="changelog-last-date">2026-08-09</span>)</div>
       <div class="src"><code>grep -c '^| 2026' docs/harness/changelog.md</code></div></div>
     <div class="stat"><div class="num">D-10</div><div class="lbl">마감 7/31 대비 7/21 <strong>기능</strong> RQ 완료</div>
       <div class="src"><code>docs/progress.md</code> Phase 4~5.<br>
@@ -1733,7 +1734,7 @@
     </li>
     <li>
       <p><strong>골든 케이스 승격 루프 — 정답은 사람이 쓴다</strong>
-        <span class="chip good">15 → 43, 승격 사례 다수</span></p>
+        <span class="chip good">15 → 48, 승격 사례 다수</span></p>
       <p>
         장애·리뷰 지적을 골든 케이스로 승격하고, <strong>에이전트가 자기 정답을 쓰는 순환을
         구조로 막는다.</strong> 이 저장소의 현재 방어는 permissions가 아니라
@@ -1820,8 +1821,8 @@
       CI는 <code>continue-on-error</code> 유무, 전이 가드는 <code>phase-matrix.json</code>의
       <code>guards</code>/<code>transitions</code>, 권한은 <code>.claude/settings.json</code>으로 판정했다.</li>
     <li><strong>테스트 수는 실행하지 않고 정적으로 셌다</strong> — 백그라운드에서 트랙 B 평가가
-      돌고 있어 부하를 주지 않기 위해서다. 20개 테스트 파일의 <code>it(</code>/<code>test(</code>
-      선언을 합산해 71을 얻었고, 이는 최근 <code>npm test</code> 출력(<em>71 passed / 20 files</em>)과 일치한다.</li>
+      돌고 있어 부하를 주지 않기 위해서다. 21개 테스트 파일의 <code>it(</code>/<code>test(</code>
+      선언을 합산해 76을 얻었고, 이는 최근 <code>npm test</code> 출력(<em>76 passed / 21 files</em>)과 일치한다.</li>
     <li><strong>발동 횟수 없이 "값나갔다"고 적지 않았다.</strong> 게이트마다
       "실제로 몇 번 막았는가"를 <code>tools.jsonl</code>·<code>phase.jsonl</code>·주간 리포트에서 확인했다.</li>
   </ul>
@@ -1868,9 +1869,9 @@
   <h3>낡은 수치 (일부)</h3>
   <div class="table-wrap"><table>
     <tr><th>항목</th><th>v1</th><th>v2 (실측)</th></tr>
-    <tr><td>골든 케이스</td><td>32 (A 27 + B 5)</td><td><strong>43</strong> (A 36 + B 7)</td></tr>
-    <tr><td>테스트</td><td>44 / 13파일</td><td><strong>71 / 20파일</strong></td></tr>
-    <tr><td>ADR</td><td>6</td><td><strong>8</strong></td></tr>
+    <tr><td>골든 케이스</td><td>32 (A 27 + B 5)</td><td><strong>48</strong> (A 41 + B 7)</td></tr>
+    <tr><td>테스트</td><td>44 / 13파일</td><td><strong>76 / 21파일</strong></td></tr>
+    <tr><td>ADR</td><td>6</td><td><strong>9</strong></td></tr>
     <tr><td>PR 머지</td><td>29</td><td><strong>45</strong></td></tr>
     <tr><td>지표</td><td>M1~M7</td><td><strong>M1·M2·M3·M5·M6·M7·M8a·M8b</strong> (M4 삭제)</td></tr>
     <tr><td>트랙 B</td><td>5케이스 · <em>"정식 실행 기록 없음"</em></td><td><strong>7케이스 · 필수 6 · 자동 러너 · 아티팩트가 매 실행 커밋된다 · 전이 가드가 요구</strong></td></tr>
@@ -1880,7 +1881,7 @@
 
   <h3>신설한 절</h3>
   <p>
-    §3-4 9단계 상태 머신 · §3-5 전이 가드 11종 · §3-10 반복 실패 대장 R1~R17 ·
+    §3-4 9단계 상태 머신 · §3-5 전이 가드 11종 · §3-10 반복 실패 대장 R1~R18 ·
     §3-11 주간 회고 · §4-1 <em>"무엇을 못 잡았나"</em> + 하네스 종료 조건 ·
     §A 측정 방법과 확인 불가 항목. <strong>v1에서 <code>grep phase|IDLE|RELEASE</code>가 0건이었다</strong> —
     이 프로젝트 워크플로우의 본체가 보고서에 없었다.
