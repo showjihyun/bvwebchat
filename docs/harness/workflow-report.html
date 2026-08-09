@@ -284,7 +284,7 @@
   <div class="nav-group">
     <div class="nav-group-label">적용 내역</div>
     <a href="#spec">3-1. 스펙 우선 · Deep Interview</a>
-    <a href="#adr">3-2. ADR 8건</a>
+    <a href="#adr">3-2. ADR</a>
     <a href="#ledger">3-3. 진행 원장</a>
     <a href="#phases">3-4. 9단계 상태 머신 <span class="chip acc">신설</span></a>
     <a href="#guards">3-5. 전이 가드 11종 <span class="chip acc">신설</span></a>
@@ -335,7 +335,7 @@
     </p>
     <p>
       이 저장소는 그 실패 형상에 이미 이름이 있다. 반복 실패 대장의 <strong>R1 —
-      <em>"문서가 존재하지 않는 방어를 현재형으로 단언"</em>, 누적 15회</strong>다.
+      <em>"문서가 존재하지 않는 방어를 현재형으로 단언"</em>, 누적 16회</strong>다.
       <strong>그리고 이 문서는 그 처방(문서 신선도 센서 C2)의 관할 밖이었다</strong> —
       <code>harness/doc-map.json</code>에 <strong>등재된 적이 없다.</strong>
       git에 추적되면서도 어떤 신선도 센서의 대상도 아니었고, 그래서 12일 동안 아무도 모르게
@@ -418,7 +418,7 @@
   <h3>진실 공급원 위계 (충돌 시 위가 이김)</h3>
   <div class="hier">
     <div class="hier-row"><span class="rank">1</span><span class="name">specs/requirements.md</span><span class="desc">EARS 형식 요구사항 14건. 여기 없는 기능은 만들지 않는다 — 스코프 크리프의 방어선</span></div>
-    <div class="hier-row"><span class="rank">2</span><span class="name">docs/adr/</span><span class="desc">아키텍처 결정 기록 <strong>8건</strong>. 모순 구현 금지, 변경은 새 ADR 먼저</span></div>
+    <div class="hier-row"><span class="rank">2</span><span class="name">docs/adr/</span><span class="desc">아키텍처 결정 기록. 모순 구현 금지, 변경은 새 ADR 먼저 — 건수는 §5 타일이 정본이다</span></div>
     <div class="hier-row"><span class="rank">3</span><span class="name">CLAUDE.md</span><span class="desc">최상위 규칙의 포인터 인덱스. 상세는 참조 파일로 위임해 100줄 이하 유지 — <code>doc-map.json</code> C5가 기계로 강제</span></div>
     <div class="hier-row"><span class="rank">4</span><span class="name">docs/design/DESIGN.md</span><span class="desc">UI 진실 공급원. 기능을 추가할 수 없어 충돌 시 requirements가 이긴다</span></div>
   </div>
@@ -513,7 +513,7 @@
 
 <!-- ═══════════════════ 3-2. ADR ═══════════════════ -->
 <section id="adr">
-  <h2>3-2. ADR — 아키텍처 결정 기록 <span class="chip acc">6 → 8</span></h2>
+  <h2>3-2. ADR — 아키텍처 결정 기록 <span class="chip acc">v1 이후 계속 늘었다</span></h2>
   <p>
     아키텍처 갈림길을 ADR로 기록하고, <strong>ADR과 모순되는 코드 변경을 금지</strong>했다
     (변경하려면 새 ADR로 대체가 먼저).
@@ -560,7 +560,7 @@
       2026-07-16부터 매 하네스 변경마다 한 행씩(<code>grep -c '^| 2026' docs/harness/changelog.md</code> 이 정본이다). 이 동행은 이제 문화가 아니라
       전이 가드 <code>changelog_updated</code>가 강제한다.</li>
   </ul>
-  <p class="ev"><code>wc -l docs/progress.md</code> → <span data-verify="progress-lines">226</span>행 ·
+  <p class="ev"><code>wc -l docs/progress.md</code> → <span data-verify="progress-lines">228</span>행 ·
     <code>grep -c '^| 2026' docs/harness/changelog.md</code> 의 출력이 정본이다 ·
     <code>phase-matrix.json</code> <code>guards.changelog_updated</code></p>
 
@@ -1134,10 +1134,12 @@
     (<em>대장에 숫자를 적었다가 두 번 낡았다 — R10 처방</em>)</p>
 
   <div class="callout bad">
-    <div class="co-title">R1이 15회인 것 — 그리고 <strong>이 보고서가 걸린 병이 정확히 그것이다</strong></div>
+    <div class="co-title">R1이 16회인 것 — 그리고 <strong>이 보고서가 걸린 병이 정확히 그것이다</strong></div>
     <p>
-      최다 누적은 <strong>R1: "문서가 존재하지 않는 방어를 현재형으로 단언" 15회</strong>다
-      (2026-08-06 하루에 13 → 14 → 15로 두 번 올랐다).
+      최다 누적은 <strong>R1: "문서가 존재하지 않는 방어를 현재형으로 단언" 16회</strong>다
+      (2026-08-06 하루에 13 → 14 → 15로 두 번 올랐고, <strong>16회차는 이 보고서를 갱신한 PR 자신이 만들었다</strong> —
+      RQ-04 를 개정하면서 그 값을 근거로 쓰는 <strong>골든</strong>을 역추적하지 않았다. 대상이 산문·설정이 아니라
+      <strong>정답지</strong>였던 첫 사례이고, 정답지가 낡으면 검사가 옛 계약을 집행해 올바른 구현을 거짓으로 판정한다).
       2026-08-06 감사가 이 보고서에서 <strong>같은 형상을 3건 더</strong> 찾았다 —
       스펙 동결 게이트 "가장 자주 발동"(발동 0회) · "테스트-코드 동행 검사가 머지 게이트"(경고 전용) ·
       "수정 직후 lint+typecheck"(eslint 단독).
@@ -1428,12 +1430,12 @@
     <div class="stat"><div class="num" data-verify="recurrence-rows">18</div><div class="lbl">반복 실패 대장 등재 행 (R1 최다 <strong data-verify="recurrence-R1">16</strong>회)</div>
       <div class="src"><code>harness/recurrence.md</code> "## 대장" 표 — R1~R18.<br>
       건수 정본은 <code>policy-lint --self-test</code> 출력</div></div>
-    <div class="stat"><div class="num" data-verify="pending-rows">59</div><div class="lbl">보류표 행 — <strong>"하지 않기로 결정한 것"</strong></div>
+    <div class="stat"><div class="num" data-verify="pending-rows">61</div><div class="lbl">보류표 행 — <strong>"하지 않기로 결정한 것"</strong></div>
       <div class="src"><code>docs/progress.md</code> 보류표 데이터 행 수.<br>
       각 행이 <em>근거</em>와 <em>되살릴 조건</em>을 짝으로 갖는다</div></div>
     <div class="stat"><div class="num">2</div><div class="lbl">주간 회고 산출 (W31 · W32)</div>
       <div class="src"><code>ls harness/reports/</code></div></div>
-    <div class="stat"><div class="num" data-verify="changelog-rows">132</div><div class="lbl">하네스 changelog 행 (07-16 ~ <span data-verify="changelog-last-date">2026-08-09</span>)</div>
+    <div class="stat"><div class="num" data-verify="changelog-rows">133</div><div class="lbl">하네스 changelog 행 (07-16 ~ <span data-verify="changelog-last-date">2026-08-09</span>)</div>
       <div class="src"><code>grep -c '^| 2026' docs/harness/changelog.md</code></div></div>
     <div class="stat"><div class="num">D-10</div><div class="lbl">마감 7/31 대비 7/21 <strong>기능</strong> RQ 완료</div>
       <div class="src"><code>docs/progress.md</code> Phase 4~5.<br>
@@ -1831,7 +1833,7 @@
   <div class="table-wrap"><table>
     <tr><th>항목</th><th>왜 확인 못 했나</th><th>대신 확인한 것</th></tr>
     <tr><td><strong>"머지된 PR 전건이 독립 리뷰를 경유했다"</strong></td><td>PR별 reviewer 보고서는 세션 작업 폴더의 리뷰 보고서에 있고 그 경로는 gitignore다. GitHub 쪽 리뷰 레코드는 0건(리뷰가 로컬 스킬 산출물이라 원격에 없다)</td><td><strong>머지 수 45는 확인했다.</strong> 리뷰 판정은 원장·changelog에 <em>기록된 건</em>만 §3-7 표에 적었다 — <strong>전수 주장은 하지 않는다</strong></td></tr>
-    <tr><td>v1의 시간 수치 (<em>"1.4초"</em> · <em>"3.2초"</em>)</td><td>작성 시점의 머신·<code>.eslintcache</code> 상태·13파일 규모를 재현할 수 없다</td><td>지금 이 머신 값은 <code>--fast</code> 0.13초(대상 0건) / 전체 5.7초(20파일 71테스트). <strong>벽시계 값은 머신 의존이라 v2 본문에서 뺐다</strong> — <code>metrics-baseline.md</code>가 <em>"예산이 있는 값은 적고 개수는 적지 않는다"</em>고 규정하는데, <code>--fast</code>는 ADR-0005 결정5의 5초 예산 안이므로 설계 결정은 깨지지 않았다</td></tr>
+    <tr><td>v1의 시간 수치 (<em>"1.4초"</em> · <em>"3.2초"</em>)</td><td>작성 시점의 머신·<code>.eslintcache</code> 상태·13파일 규모를 재현할 수 없다</td><td>작성 시점(2026-08-06) 이 머신 값은 <code>--fast</code> 0.13초(대상 0건) / 전체 5.7초. 스위트 규모는 §5 타일이 정본이다. <strong>벽시계 값은 머신 의존이라 v2 본문에서 뺐다</strong> — <code>metrics-baseline.md</code>가 <em>"예산이 있는 값은 적고 개수는 적지 않는다"</em>고 규정하는데, <code>--fast</code>는 ADR-0005 결정5의 5초 예산 안이므로 설계 결정은 깨지지 않았다</td></tr>
     <tr><td>RQ-05 B-1 리뷰 <strong>원문</strong></td><td>세션 작업 폴더의 리뷰 보고서 미접근 (다른 에이전트가 사용 중)</td><td><strong>정황은 전부 일치</strong> — 원장이 <em>"리뷰 B-1(잘못된 URL 인코딩 크래시=무인증 DoS) 수정"</em>으로 기록하고, <code>rq-coverage.json</code>·<code>scripts/smoke.sh</code>가 실제로 그 검사를 갖는다</td></tr>
     <tr><td>"evaluator가 11회 반복 실행으로 가드 강도를 검증"(RQ-14)</td><td>원 실행 로그가 세션 작업 폴더(gitignore)</td><td>원장 기록과 일치: <em>"evaluator PASS(11회 클린 재현, 가드 강도 확인)"</em></td></tr>
     <tr><td>트랙 B 최신 상태의 <em>재실행</em></td><td><strong>의도적으로 실행하지 않았다</strong> — 이 문서 작성 중 백그라운드 평가가 돌고 있었고 <code>GB-06</code>은 시간 예산이 있다</td><td><strong>작성 시점</strong>에 커밋돼 있던 아티팩트 <strong>47건</strong>의 <code>summary</code> 필드를 직접 파싱했다(최신 = 6/6). 그 뒤로 늘었다 — 지금 건수는 §5 재현 명령이 정본이다</td></tr>
@@ -1896,7 +1898,7 @@
   <div class="table-wrap"><table>
     <tr><th>항목</th><th>초안</th><th>이 판 (재실측)</th></tr>
     <tr><td><code>policy-lint</code> 범위</td><td>P1~P13</td><td><strong>P1~P14</strong> (P14 = 문서 관할)</td></tr>
-    <tr><td>R1 누적 회차</td><td>13</td><td><strong>15</strong> (이 PR 이 한 건 더 만들었다)</td></tr>
+    <tr><td>R1 누적 회차</td><td>13</td><td><strong>16</strong> (이 PR 이 한 건 더 만들었다)</td></tr>
     <tr><td><code>force</code> 건수</td><td>1 / 233 전이</td><td><strong>1건</strong> — 분자는 그대로이고 분모만 늘었다. 비율은 §5 재현 명령이 정본이다</td></tr>
     <tr><td>PR 머지</td><td>43</td><td><strong>45</strong></td></tr>
     <tr><td>커밋된 트랙 B 아티팩트</td><td>45</td><td>늘었다 — 건수는 §5 재현 명령이 정본이다</td></tr>
