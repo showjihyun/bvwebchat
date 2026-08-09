@@ -79,8 +79,8 @@ shared/types → validation·protocol → state → broadcast → session
 L8(`createChatServer`)이 어느 블록에도 없어 `../createChatServer` 역방향 import 를
 아무것도 막지 않았다 — *"계층 그래프 전체"* 라는 **문장이 집행보다 넓었다.**
 문언을 좁히는 대신 집행을 넓혔고, 두 끝에 대한 음성 시험을 붙였다
-(`room.ts` 에 `../createChatServer`, `shared/types.ts` 에 `../server/chat/state` 를
-주입하면 각각 `exit 1`).
+(`src/server/chat/room.ts` 에 `../createChatServer`, `src/shared/types.ts` 에
+`../server/chat/state` 를 주입하면 각각 `exit 1`).
 
 > **flat config 함정 하나를 기록한다.** 공통 금지(`../createChatServer`)를
 > `src/server/chat/**` 한 덩어리로 **뒤에** 두면 같은 규칙 ID 에 대해 나중 블록이
