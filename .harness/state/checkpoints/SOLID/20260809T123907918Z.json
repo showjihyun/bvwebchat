@@ -1,0 +1,60 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "chore/state-solid-idle",
+  "edge_legal": true,
+  "exit_hint": "작업을 시작하려면: python harness/phase.py enter PLAN  (또는 SPEC / HARNESS)",
+  "forced": false,
+  "from": "RELEASE",
+  "guards": [],
+  "head_sha": "e9132f7887ae81028d390640ea77949ff9e76055",
+  "reason": null,
+  "rq": "SOLID",
+  "schema": 1,
+  "seq": 347,
+  "session": {
+    "acceptance": [
+      "ADR-0010 이 SOLID 5원칙을 이 저장소의 관용구(클래스 0개 · 함수형 TS)로 번역해 규정한다",
+      "기계화 가능한 축(함수 60줄 · 파일 250줄 · 계층 그래프)이 eslint 로 차단된다 — check.mjs lint 스텝과 CI 에 이미 배선된 표면을 쓴다",
+      "기존 위반은 eslint-disable 로 숨기지 않고 ADR 예외표 + docs/progress.md 부채 행으로 등재된다",
+      "CLAUDE.md 에 포인터 1줄 (100줄 상한 안)"
+    ],
+    "done": [
+      "ADR-0010 작성 — SOLID 5원칙을 함수형 TS 로 번역, 집행 수단을 원칙마다 명시. ADR-0008·0009 색인 누락도 함께 채움",
+      "ESLint 집행·reviewer 축·카탈로그·핸드북·changelog·C2 면제 7건 완료. 음성 시험 5건 통과",
+      "ADR C4 수정",
+      "트랙 B 전수 재실행 5 pass / 1 fail — GB-06 Q3 만 0/1. 실패 아티팩트 4f2e90f7 커밋",
+      "recurrence.md R13 을 6회차로 등재 — next[0] 이 그 체크포인트를 찍은 전이가 끝낸 작업이었다(세 번째 하위 기전)",
+      "R13 등재 커밋",
+      "GB-06 재실행 6 pass / 0 fail (89714863, 5건 carried_from). 두 아티팩트 모두 커밋",
+      "리뷰 1차 REQUEST_CHANGES — blocker 3 · major 3. 주장 6개 중 5개는 실행으로 재현됨, R13 재실행도 정직 판정",
+      "blocker②③·major⑤ 조치 — 계층 두 끝 집행 + 음성 시험 2건",
+      "major④⑤ ADR 문언 조치",
+      "blocker①·major⑥ 조치",
+      "C4 경로 수정",
+      "리뷰 blocker 3 · major 3 전부 조치. 센서 전원 초록, HASH_GLOBS 무변경이라 트랙 B 아티팩트 89714863 유효",
+      "재리뷰 2차: 6건 중 5건 완전 해소 판정. 되돌림 완전 확인(--print-config 8파일 전수)",
+      "2차 리뷰 조치 완료 — B-4(마크업 쪼개진 리터럴) · M-4 · M-5 · minor 2. R17 4·5회차 등재 + 처방을 원자성으로 보강",
+      "R17 무한 후퇴를 실제로 겪고 끊었다 — 원자성만으로 안 닫혔고(amend 가 sha 를 바꿈) 의존 없는 changelog 를 맨 뒤에 두어 종결",
+      "check.mjs --repeat 5 → 5회 중 1회 실패, crash 시그니처만. R18 이고 코드 회귀 아님 — 첫 재현율 실측",
+      "R18 5회차 등재 + 재현율 베이스라인 0.2 실측. C2/C7 연쇄 종결 — 전 게이트 초록",
+      "3차 리뷰 APPROVE · 라벨 없음 · blocker 0. 남은 major 3(M-6·M-7·M-8) + minor 2 는 종료 조건 2·3 에 따라 보류표행",
+      "원장 마감 · 보류표 4행 · changelog 3차 APPROVE 기록",
+      "C7 수치 3건 동기화 — 전 게이트 초록",
+      "PR #49 머지(e9132f7) — ADR-0010 + 집행 배선 반영"
+    ],
+    "goal": "저장소에 SOLID 를 이름으로 요구하는 규약이 없다. ADR-0007 이 계층·의존 방향만 eslint 로 부분 집행하고 단일 책임·개방폐쇄·인터페이스 분리는 어디에도 안 적혀 있어, 리뷰어도 코더도 근거로 쓸 문장이 없다",
+    "next": [
+      "다음 하네스 PR 의 첫 자리에서 harness/recurrence.md 를 연다: R18 베이스라인을 1/25 로 정정 · R17 최종 처방을 대장에 기입 · '의존을 안 갖는'을 '아무도 의존하지 않는'으로. 셋 다 한 칸에서 끝난다",
+      "SOLID 부채 6건은 RQ-04 v1.2 세 번째 불릿을 닫는 후속 RQ 가 useChat.ts 를 열 때 함께 갚는다"
+    ],
+    "open_questions": [
+      "RELEASE 가 원장을 건드리면 C7 수치가 무효가 되는데 그 파일을 RELEASE 가 못 쓴다 — 이번엔 순서로 회피했고 구조 처방 후보 둘이 보류표에 있다"
+    ]
+  },
+  "to": "IDLE",
+  "ts": "2026-08-09T12:39:07.916Z",
+  "write_allow": [
+    "_workspace/**",
+    "docs/progress.md"
+  ]
+}
