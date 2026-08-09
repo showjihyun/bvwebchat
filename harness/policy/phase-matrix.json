@@ -122,6 +122,7 @@
     },
     "HARNESS": {
       "purpose": "하네스 변경 전용. CLAUDE.md의 '하네스·ADR 전용 PR' 카브아웃을 구조로 승격한 단계 — 기능 코드가 섞이는 것이 물리적으로 불가능하다",
+      "_eslint_config_note": "eslint.config.js 가 HARNESS 에만 있고 GREEN 에 없는 것이 이 항목의 핵심이다. 이 파일은 lint 게이트의 정의이지 구현이 아니다 — 구현 단계에서 열어 두면 coder 가 게이트를 통과시키려고 규칙을 약화시킬 수 있고, 그것은 'GREEN 이 tests/** 를 못 쓴다'가 막는 것과 정확히 같은 계열의 우회다. 2026-08-09 까지 이 경로는 **어느 단계의 write_allow 에도 없어** 구조적으로 편집 불가였다 — evals/golden/** 이 2026-07-27 에 겪은 것과 같은 구멍이고, 그때와 달리 이번에는 HARNESS 가 block 이라 경고가 아니라 거부로 드러났다. ADR-0010 이 이 파일에 SOLID 집행을 싣기로 하면서 발화했다.",
       "write_allow": [
         ".claude/**",
         "harness/**",
@@ -135,7 +136,8 @@
         "_workspace/**",
         "docs/progress.md",
         ".gitignore",
-        "CLAUDE.md"
+        "CLAUDE.md",
+        "eslint.config.js"
       ],
       "write_deny": [
         "src/**",
