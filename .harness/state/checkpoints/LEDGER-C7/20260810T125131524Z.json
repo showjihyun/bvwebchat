@@ -1,0 +1,66 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "docs/ledger-marker-sync",
+  "edge_legal": true,
+  "exit_hint": "하네스 변경 후 → python harness/phase.py enter REVIEW  (가드: 트랙 B 회귀 평가 아티팩트, changelog 동행)",
+  "forced": false,
+  "from": "IDLE",
+  "guards": [],
+  "head_sha": "451d9ec7377a5e76e37cbc768e7fdedd01524a17",
+  "reason": null,
+  "rq": "LEDGER-C7",
+  "schema": 1,
+  "seq": 351,
+  "session": {
+    "acceptance": [
+      "docs/progress.md 의 RQ-04-a 와 '진행 중' 절 표식이 머지 사실과 일치한다 (PR #47 578543e · PR #35 a3be1dc)",
+      "doc-freshness C7 초록 — workflow-report.html 이 다른 관할 파일의 움직이는 수치를 못박지 않는다",
+      "이 형상이 harness/recurrence.md 에 등재되고 처방이 붙는다 (policy-lint P11 초록)",
+      "docs/harness/changelog.md 에 기록 (HARNESS→REVIEW 의 changelog_updated 가드)"
+    ],
+    "done": [
+      "원장 표식 2건 정정 — RQ-04-a 를 ✅ 로 닫되 세 번째 불릿이 서버 축만 이행된 것을 행 안에 명시 · '진행 중' 절의 2026-07-31 행을 완료분으로 옮기고 PR #35 a3be1dc 를 붙임",
+      "C7 차단 해소 — progress-lines 선언을 빼고 재현 명령만 남김. data-verify 7건 전수 실측 결과 정본이 다른 관할인 것이 5건이었다",
+      "R19 등재(2회차 · 처방 '다른 관할 파일의 움직이는 수치는 못박지 않는다') · changelog 2건 기입 · handbook 의 R1–R18 3곳을 R19 로",
+      "handbook 의 'R1(15회)' 가 실측 16 이라 이미 틀려 있었다 — 값을 고치는 대신 숫자를 빼고 표를 정본으로 가리켰다(R10)",
+      "R18 6번째 관측 — check.mjs 1회 실패(crash, 단언 diff 0) 뒤 --repeat 5 가 5/5. 재현율 1/6 ≈ 0.17 로 베이스라인 0.2 와 정합, 원인 안 움직였다. 대장 회차는 안 올렸다",
+      "트랙 B 전수 재실행 5 pass / 1 fail — GB-06 만 떨어졌고 정답은 5/5 만점, 걸린 축은 파일 예산 8/7 하나. 아티팩트 e3e424cd",
+      "GB-06 실패가 채점기 결함이었다 — 목록에 '6'·'3' 이 파일로 들어 있었다. tail -n 6 x 의 플래그 값을 경로로 셌다. 실파일은 6개로 예산 안이었다",
+      "scripts/resume-test.mjs 에 shellReadFiles 순수 함수 분리 + --self-test 10건(양성 9 · 음성 7). 바(5/5 · ≤7 · ≤5분)는 그대로 뒀다 — 오측을 고친 것이지 느슨하게 한 것이 아니다",
+      "커밋 4건: 7877f05(전이) · b56ad80(원장+C7+R19) · e3e424c(handbook) · f126f2c(채점기+음성시험)",
+      "GB-06 재실행이 캐시로 옛 fail 을 재사용했다 — scripts/ 가 HASH_GLOBS 밖이라 채점기를 고쳐도 입력 해시가 안 움직인다. 보류표가 예고한 구멍이 실제로 발현했고 --force 가 필요하다",
+      "C2 연쇄 3건 종결 — changelog 내용 갱신 1 + _c2_reviewed 면제 2(architecture-2026 · workflow-report). 판별 명령과 반증력 확인 동봉",
+      "judgeC2Ack 실측 — 같은 dep 의 두 번째 항목은 안 읽힌다. sha 갱신 + 근거 합치기가 맞다",
+      "전 센서 초록: check.mjs · doc-freshness --pr 차단 0 · policy-lint · 자기시험 4종(resume-test 10 · eval-b 42 · phase 25) · 아티팩트 검증",
+      "1차 리뷰 REQUEST_CHANGES — blocker 1(B-1 과소 계수) · major 2(M-1 R19 census · M-2 보류표 발동 이력) · minor 5. 주장 전부 실행으로 재현됨"
+    ],
+    "goal": "원장 표식 2건이 머지 사실과 어긋나 있었다 — 끝난 작업이 🔄 로 남아 재개 세션이 그것을 다음 행동으로 읽는다. 그런데 정정하는 순간 C7 이 차단했다: workflow-report.html 이 docs/progress.md 의 줄 수를 못박는데 두 파일의 쓰기 관할 단계가 달라, 원장을 쓸 수 있는 단계에서는 그 수치를 고칠 방법이 없다",
+    "next": [
+      "B-1: VALUE_FLAGS 에서 -n·-c 를 빼고 숫자 스킵을 ^[+-]?\\d+$ 로. 주석과 sensor-catalog 의 '값이 경로일 수 없는 플래그뿐' 단언을 사실로 교체. 음성 시험에 과소 계수 케이스 추가",
+      "M-1: recurrence.md R19 census 를 5→6 건(changelog-rows 누락)으로, 남은 축 4→5. 선언 위치도 handbook.html 1건 포함으로 정정. changelog 같은 문장도",
+      "M-2: docs/progress.md 보류표 HASH_GLOBS 행에 2026-08-10 발동 이력 한 줄 + 비용 수치 단일화(R10)",
+      "B-1 이 scripts/ 를 다시 건드리므로 GB-06 --force 재실행 + 아티팩트 갱신이 따라온다 (R20 이 예고한 절차). 그 뒤 재리뷰 1회 — 종료 조건 2 상한"
+    ],
+    "open_questions": [
+      "못박은 수치를 전부 빼면 C7 이 존재 이유(배포 문서가 낡은 값을 단언하던 축)를 잃는다 — 선언을 좁힐지 write_allow 관할을 넓힐지는 사람 결정이고 후자는 트랙 B 전수 재실행이 붙는다"
+    ]
+  },
+  "to": "HARNESS",
+  "ts": "2026-08-10T12:51:31.522Z",
+  "write_allow": [
+    ".claude/**",
+    "harness/**",
+    "scripts/**",
+    ".github/**",
+    "docs/harness/**",
+    "docs/deploy.md",
+    "README.md",
+    "evals/*.md",
+    "evals/results/**",
+    "_workspace/**",
+    "docs/progress.md",
+    ".gitignore",
+    "CLAUDE.md",
+    "eslint.config.js"
+  ]
+}
