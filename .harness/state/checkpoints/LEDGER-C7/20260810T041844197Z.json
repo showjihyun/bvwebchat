@@ -1,0 +1,52 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "docs/ledger-marker-sync",
+  "edge_legal": true,
+  "exit_hint": "하네스 변경 후 → python harness/phase.py enter REVIEW  (가드: 트랙 B 회귀 평가 아티팩트, changelog 동행)",
+  "forced": false,
+  "from": "IDLE",
+  "guards": [],
+  "head_sha": "ba4b993b41c8f215c63bcd096a89d429e4bee3cb",
+  "reason": null,
+  "rq": "LEDGER-C7",
+  "schema": 1,
+  "seq": 348,
+  "session": {
+    "acceptance": [
+      "docs/progress.md 의 RQ-04-a 와 '진행 중' 절 표식이 머지 사실과 일치한다 (PR #47 578543e · PR #35 a3be1dc)",
+      "doc-freshness C7 초록 — workflow-report.html 이 다른 관할 파일의 움직이는 수치를 못박지 않는다",
+      "이 형상이 harness/recurrence.md 에 등재되고 처방이 붙는다 (policy-lint P11 초록)",
+      "docs/harness/changelog.md 에 기록 (HARNESS→REVIEW 의 changelog_updated 가드)"
+    ],
+    "done": [
+      "원장 표식 2건 정정 — RQ-04-a 를 ✅ 로 닫되 세 번째 불릿이 서버 축만 이행된 것을 행 안에 명시 · '진행 중' 절의 2026-07-31 행을 완료분으로 옮기고 PR #35 a3be1dc 를 붙임",
+      "data-verify 선언 7건 전수 실측 — 전부 workflow-report.html(HARNESS 관할)에 있고 정본은 5건이 다른 단계 관할이다"
+    ],
+    "goal": "원장 표식 2건이 머지 사실과 어긋나 있었다 — 끝난 작업이 🔄 로 남아 재개 세션이 그것을 다음 행동으로 읽는다. 그런데 정정하는 순간 C7 이 차단했다: workflow-report.html 이 docs/progress.md 의 줄 수를 못박는데 두 파일의 쓰기 관할 단계가 달라, 원장을 쓸 수 있는 단계에서는 그 수치를 고칠 방법이 없다",
+    "next": [
+      "workflow-report.html 의 data-verify 5건이 아직 다른 관할 파일을 정본으로 삼는다 — pending-rows(docs/progress.md) · golden-total(evals/golden) · adr-approved(docs/adr) · changelog-last-date/changelog-rows(RELEASE 에서만 함정). 이번엔 progress-lines 하나만 뺐다",
+      "harness/recurrence.md 의 R18 베이스라인을 1/25 로 정정 · R17 최종 처방을 대장 칸에 기입 · '의존을 안 갖는'을 '아무도 의존하지 않는'으로"
+    ],
+    "open_questions": [
+      "C7 의 못박은 수치와 단계 관할이 어긋나는 축이 5건 남아 있다 — 3회차가 나면 policy-lint 규칙으로 승격할지 판단한다"
+    ]
+  },
+  "to": "HARNESS",
+  "ts": "2026-08-10T04:18:44.196Z",
+  "write_allow": [
+    ".claude/**",
+    "harness/**",
+    "scripts/**",
+    ".github/**",
+    "docs/harness/**",
+    "docs/deploy.md",
+    "README.md",
+    "evals/*.md",
+    "evals/results/**",
+    "_workspace/**",
+    "docs/progress.md",
+    ".gitignore",
+    "CLAUDE.md",
+    "eslint.config.js"
+  ]
+}
