@@ -561,7 +561,10 @@
       2026-07-16부터 매 하네스 변경마다 한 행씩(<code>grep -c '^| 2026' docs/harness/changelog.md</code> 이 정본이다). 이 동행은 이제 문화가 아니라
       전이 가드 <code>changelog_updated</code>가 강제한다.</li>
   </ul>
-  <p class="ev"><code>wc -l docs/progress.md</code> → <span data-verify="progress-lines">235</span>행 ·
+  <p class="ev"><code>wc -l docs/progress.md</code> 의 출력이 정본이다 —
+    여기 값을 못박지 않는다(원장은 <code>IDLE</code>·<code>SPEC</code>·<code>RED</code>·<code>GREEN</code>·<code>RELEASE</code> 에서도
+    쓰이는데 이 문서는 <code>HARNESS</code> 관할이라, 못박으면 원장을 고친 단계가 그 값을 따라 고칠 수 없다 —
+    <code>harness/recurrence.md</code> R19) ·
     <code>grep -c '^| 2026' docs/harness/changelog.md</code> 의 출력이 정본이다 ·
     <code>phase-matrix.json</code> <code>guards.changelog_updated</code></p>
 
@@ -1428,15 +1431,15 @@
       <div class="src"><code>.harness/logs/tools.jsonl</code> <code>gate_block</code> 70건 중 <code>warn_only !== true</code> 17건.<br>
       나머지 53건은 <strong>유예(경고) 통과</strong>다.<br>
       <strong>이 로그는 gitignore — 이 머신 전용이다</strong></div></div>
-    <div class="stat"><div class="num" data-verify="recurrence-rows">18</div><div class="lbl">반복 실패 대장 등재 행 (R1 최다 <strong data-verify="recurrence-R1">16</strong>회)</div>
-      <div class="src"><code>harness/recurrence.md</code> "## 대장" 표 — R1~R18.<br>
+    <div class="stat"><div class="num" data-verify="recurrence-rows">19</div><div class="lbl">반복 실패 대장 등재 행 (R1 최다 <strong data-verify="recurrence-R1">16</strong>회)</div>
+      <div class="src"><code>harness/recurrence.md</code> "## 대장" 표 — R1~R19.<br>
       건수 정본은 <code>policy-lint --self-test</code> 출력</div></div>
     <div class="stat"><div class="num" data-verify="pending-rows">67</div><div class="lbl">보류표 행 — <strong>"하지 않기로 결정한 것"</strong></div>
       <div class="src"><code>docs/progress.md</code> 보류표 데이터 행 수.<br>
       각 행이 <em>근거</em>와 <em>되살릴 조건</em>을 짝으로 갖는다</div></div>
     <div class="stat"><div class="num">2</div><div class="lbl">주간 회고 산출 (W31 · W32)</div>
       <div class="src"><code>ls harness/reports/</code></div></div>
-    <div class="stat"><div class="num" data-verify="changelog-rows">137</div><div class="lbl">하네스 changelog 행 (07-16 ~ <span data-verify="changelog-last-date">2026-08-09</span>)</div>
+    <div class="stat"><div class="num" data-verify="changelog-rows">138</div><div class="lbl">하네스 changelog 행 (07-16 ~ <span data-verify="changelog-last-date">2026-08-10</span>)</div>
       <div class="src"><code>grep -c '^| 2026' docs/harness/changelog.md</code></div></div>
     <div class="stat"><div class="num">D-10</div><div class="lbl">마감 7/31 대비 7/21 <strong>기능</strong> RQ 완료</div>
       <div class="src"><code>docs/progress.md</code> Phase 4~5.<br>
