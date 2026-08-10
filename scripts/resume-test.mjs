@@ -60,7 +60,8 @@ const EXIT_UNPREPARED = 3;
 // ── 인자 ────────────────────────────────────────────────────────────────────
 const argv = process.argv.slice(2);
 if (argv.includes('--help') || argv.includes('-h')) {
-  console.log('사용법: node scripts/resume-test.mjs [--cold|--warm] [--at <ISO스탬프>] [--dry-run] [--json] [--keep] [--verbose]');
+  console.log('사용법: node scripts/resume-test.mjs [--cold|--warm] [--at <ISO스탬프>] [--dry-run] [--json] [--keep] [--verbose] [--self-test]');
+  console.log('  --self-test  LLM 없이 "읽은 파일" 계수만 잰다 — 플래그 값을 파일로 세지 않는지');
   console.log('  --cold  (기본) SessionStart 다이제스트 무력화 + 라이브 커서 없음 — 커밋된 상태 파일만으로 복원');
   console.log('  --warm  다이제스트 + 라이브 커서 복사 — 진단. 시간은 계측만 하고 판정하지 않는다');
   console.log('종료 코드: 0 PASS · 1 FAIL · 2 실행 불가(CLI 부재/미인증) · 3 준비 불가(체크포인트 없음)');
@@ -215,6 +216,39 @@ function parseStream(stdout) {
 
 /** 도구 호출에서 "읽은 파일"을 센다. 셸로 세탁한 읽기(cat/head/…)도 함께 잡는다. */
 const SHELL_READ_RE = /(?:^|[|;&]\s*)(?:cat|head|tail|less|more|type|Get-Content|sed\s+-n)\s+([^|;&>]+)/gi;
+
+/**
+ * 플래그의 **값**은 파일이 아니다 — `tail -n 6 x` 의 `6` 이 파일로 세어지면
+ * 예산 검사가 대상이 아닌 것을 잰다. 2026-08-10 GB-06 이 정확히 이것으로 떨어졌다:
+ * 실파일 6개인데 `6`·`3` 이 섞여 8/7 로 FAIL 이 났다 (`harness/recurrence.md` R5·R15 계열).
+ *
+ * **`-Path`·`-LiteralPath` 는 넣지 않는다** — 그 값은 진짜 파일이라, 빼면
+ * 과소 계수가 되어 얇은 상태 계약이 통과한다. 여기 있는 것은 값이 경로일 수
+ * **없는** 플래그뿐이다.
+ */
+const VALUE_FLAGS = new Set(
+  ['-n', '-c', '--lines', '--bytes', '-tail', '-totalcount', '-first', '-last', '-head', '-skip', '-encoding', '-delimiter'],
+);
+/** `sed -n` 의 스크립트 인자(`3,10p` · `$p` · `1,$p`). 주소는 경로가 아니다. */
+const SED_SCRIPT_RE = /^[\d,$]+[a-z]$/i;
+
+/** 셸 명령 하나에서 **읽은 파일**만 뽑는다. 순수 함수 — `--self-test` 가 이것을 잰다. */
+function shellReadFiles(cmd) {
+  const out = [];
+  for (const m of String(cmd).matchAll(SHELL_READ_RE)) {
+    const toks = m[1].trim().split(/\s+/);
+    for (let i = 0; i < toks.length; i++) {
+      const tok = toks[i];
+      if (tok.startsWith('-')) continue;
+      if (VALUE_FLAGS.has(String(toks[i - 1] || '').toLowerCase())) continue;
+      const bare = tok.replace(/^["']|["']$/g, '');
+      if (/^\d+$/.test(bare)) continue;
+      if (SED_SCRIPT_RE.test(bare)) continue;
+      out.push(relOf(bare));
+    }
+  }
+  return out;
+}
 function collectTools(events) {
   const files = new Set();
   const searches = [];
@@ -235,12 +269,7 @@ function collectTools(events) {
         // phase.py 는 phase.json·session.json·phase.jsonl 을 한 번에 읽는다.
         // 상태 파일 묶음 1건으로 센다 — 셸을 쓴다고 예산이 공짜가 되면 안 된다.
         if (/harness[/\\]phase\.py/.test(cmd)) files.add('harness/phase.py(상태 파일 묶음)');
-        for (const m of cmd.matchAll(SHELL_READ_RE)) {
-          for (const tok of m[1].trim().split(/\s+/)) {
-            if (tok.startsWith('-')) continue;
-            files.add(relOf(tok.replace(/^["']|["']$/g, '')));
-          }
-        }
+        for (const f of shellReadFiles(cmd)) files.add(f);
       }
     }
   }
@@ -253,6 +282,43 @@ function relOf(p) {
   const i = s.lastIndexOf('/.harness/');
   if (i >= 0) return s.slice(i + 1);
   return s;
+}
+
+// ── 자기시험 ────────────────────────────────────────────────────────────────
+// 여기까지는 선언뿐이라 부작용 없이 빠져나갈 수 있다.
+// **양쪽을 다 넣는다**: 세어야 하는 것(과소 계수 = 얇은 계약이 통과)과
+// 세면 안 되는 것(과대 계수 = 2026-08-10 GB-06 의 오판). 한쪽만 넣으면
+// 반대 방향으로 고치면서 통과한다 — `harness/recurrence.md` R2 가 그 형상이다.
+const SELF_TEST_CASES = [
+  // [명령, 반드시 세어야 할 것, 절대 세면 안 되는 것]
+  ['cat README.md', ['README.md'], []],
+  ['head -n 3 .harness/state/decisions.jsonl', ['.harness/state/decisions.jsonl'], ['3']],
+  ['tail -n 6 .harness/state/phase.jsonl', ['.harness/state/phase.jsonl'], ['6']],
+  ["sed -n '3,10p' docs/progress.md", ['docs/progress.md'], ['3,10p']],
+  ['tail -6 .harness/state/phase.jsonl', ['.harness/state/phase.jsonl'], ['-6', '6']],
+  ['Get-Content -Path docs/progress.md', ['docs/progress.md'], []],
+  ['Get-Content -Tail 5 docs/progress.md', ['docs/progress.md'], ['5']],
+  ['cat a.md b.md', ['a.md', 'b.md'], []],
+  ['cat x.md | head -n 2', ['x.md'], ['2']],
+  ['git status', [], ['status']],
+];
+if (argv.includes('--self-test')) {
+  let bad = 0;
+  for (const [cmd, must, mustNot] of SELF_TEST_CASES) {
+    const got = shellReadFiles(cmd);
+    const missing = must.filter((f) => !got.includes(f));
+    const leaked = mustNot.filter((f) => got.includes(f));
+    const ok = missing.length === 0 && leaked.length === 0;
+    if (!ok) bad++;
+    console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${cmd}`);
+    if (!ok) console.log(`        기대 포함 ${JSON.stringify(must)} · 금지 ${JSON.stringify(mustNot)} · 실제 ${JSON.stringify(got)}`);
+  }
+  console.log(
+    bad
+      ? `\n재개 시험 자기시험 실패 ${bad}건 / ${SELF_TEST_CASES.length}건 — 파일 계수가 대상이 아닌 것을 센다.`
+      : `\n재개 시험 자기시험 ${SELF_TEST_CASES.length}건 통과 (읽은 파일 계수 — 양성 ${SELF_TEST_CASES.filter((c) => c[1].length).length} · 음성 ${SELF_TEST_CASES.filter((c) => c[2].length).length}).`,
+  );
+  process.exit(bad ? EXIT_FAIL : EXIT_PASS);
 }
 
 function lastAssistantText(events) {
