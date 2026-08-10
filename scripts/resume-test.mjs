@@ -223,11 +223,23 @@ const SHELL_READ_RE = /(?:^|[|;&]\s*)(?:cat|head|tail|less|more|type|Get-Content
  * 실파일 6개인데 `6`·`3` 이 섞여 8/7 로 FAIL 이 났다 (`harness/recurrence.md` R5·R15 계열).
  *
  * **`-Path`·`-LiteralPath` 는 넣지 않는다** — 그 값은 진짜 파일이라, 빼면
- * 과소 계수가 되어 얇은 상태 계약이 통과한다. 여기 있는 것은 값이 경로일 수
- * **없는** 플래그뿐이다.
+ * 과소 계수가 되어 얇은 상태 계약이 통과한다.
+ *
+ * **`-n`·`-c` 도 넣지 않는다** (2026-08-10 1차 리뷰 B-1). 처음엔 넣었는데,
+ * 같은 글자가 `cat`·`less`·`more` 에서는 **값을 안 갖는 불리언**이라
+ * (`cat -n <경로>` · `less -N <경로>`) 바로 다음 토큰인 **진짜 경로를 삼켰다.**
+ * 위 문단이 경계한 바로 그 방향으로 뚫린 것이고, 그때 이 주석은
+ * *"여기 있는 것은 값이 경로일 수 없는 플래그뿐"* 이라고 **현재형으로 단언**하고
+ * 있었다 — 존재하지 않는 방어를 단언한 것이라 `harness/recurrence.md` R1 이다.
+ * 대신 **값의 모양으로 거른다**: `-n`·`-c` 의 값은 언제나 정수(`3` · `+5` · `200`)라
+ * 아래 숫자 규칙이 잡고, 불리언일 때의 경로는 살아남는다.
+ *
+ * 남은 목록이 안전한 이유는 *"경로일 수 없어서"* 가 아니라 **값이 정수이거나
+ * 닫힌 어휘라서**다(`-Encoding utf8` · `-Delimiter ,`). 이름이 겹치는 불리언이
+ * 있는지 확인하지 않고 여기 추가하지 마라 — B-1 이 정확히 그 실수였다.
  */
 const VALUE_FLAGS = new Set(
-  ['-n', '-c', '--lines', '--bytes', '-tail', '-totalcount', '-first', '-last', '-head', '-skip', '-encoding', '-delimiter'],
+  ['--lines', '--bytes', '-tail', '-totalcount', '-first', '-last', '-head', '-skip', '-encoding', '-delimiter'],
 );
 /** `sed -n` 의 스크립트 인자(`3,10p` · `$p` · `1,$p`). 주소는 경로가 아니다. */
 const SED_SCRIPT_RE = /^[\d,$]+[a-z]$/i;
@@ -242,7 +254,8 @@ function shellReadFiles(cmd) {
       if (tok.startsWith('-')) continue;
       if (VALUE_FLAGS.has(String(toks[i - 1] || '').toLowerCase())) continue;
       const bare = tok.replace(/^["']|["']$/g, '');
-      if (/^\d+$/.test(bare)) continue;
+      // 부호까지 받는다 — `tail -n +5` 의 `+5` 도 값이다. 경로는 정수가 아니다.
+      if (/^[+-]?\d+$/.test(bare)) continue;
       if (SED_SCRIPT_RE.test(bare)) continue;
       out.push(relOf(bare));
     }
@@ -289,9 +302,22 @@ function relOf(p) {
 // **양쪽을 다 넣는다**: 세어야 하는 것(과소 계수 = 얇은 계약이 통과)과
 // 세면 안 되는 것(과대 계수 = 2026-08-10 GB-06 의 오판). 한쪽만 넣으면
 // 반대 방향으로 고치면서 통과한다 — `harness/recurrence.md` R2 가 그 형상이다.
+//
+// **1차 판에는 과소 계수 케이스가 0건이었다** (2026-08-10 리뷰 B-1). 위 문장을
+// 적어 놓고 10건 전부를 과대 계수 한 방향으로만 채웠고, 그래서 `cat -n <경로>` 가
+// 경로를 통째로 버리는 것을 시험이 못 잡았다. 아래 `불리언 플래그` 묶음이 그 축이다.
 const SELF_TEST_CASES = [
   // [명령, 반드시 세어야 할 것, 절대 세면 안 되는 것]
   ['cat README.md', ['README.md'], []],
+  // ── 과소 계수 축 — 같은 글자가 불리언인 명령들 (B-1) ──
+  ['cat -n docs/progress.md', ['docs/progress.md'], []],
+  ['less -N docs/progress.md', ['docs/progress.md'], []],
+  ['less -c docs/progress.md', ['docs/progress.md'], []],
+  ['cat -A README.md', ['README.md'], []],
+  // ── 값이 정수인 플래그 — 값은 버리고 경로는 살린다 ──
+  ['tail -n +5 docs/progress.md', ['docs/progress.md'], ['+5']],
+  ['head -c 200 a.md', ['a.md'], ['200']],
+  ['Get-Content -Encoding utf8 a.md', ['a.md'], ['utf8']],
   ['head -n 3 .harness/state/decisions.jsonl', ['.harness/state/decisions.jsonl'], ['3']],
   ['tail -n 6 .harness/state/phase.jsonl', ['.harness/state/phase.jsonl'], ['6']],
   ["sed -n '3,10p' docs/progress.md", ['docs/progress.md'], ['3,10p']],
