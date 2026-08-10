@@ -196,8 +196,8 @@
       "_c2_reviewed": [
         {
           "dep": "harness/sensor-catalog.md",
-          "sha": "0e9c616",
-          "why": "2026-08-09 재검토 (ADR-0010 SOLID 규약). 조치 커밋 c991650·0e9c616 이 센서 카탈로그에 'SOLID 규약 집행' 행을 **더했다**. 1차 리뷰 major: 앞서 쓴 반증 명령(git diff --diff-filter=A -- scripts/ → 0)은 신설 **스크립트 개수**만 재고 '행의 집합을 옮겨 적지 않는다'는 전칭을 **반증하지 못했다** — 이 설계서는 실제로 카탈로그 행 표를 갖는다. 판별력 있는 명령으로 바꾼다: grep -c \"SOLID\" docs/harness/architecture-2026.html → 0 · grep -c \"ADR-0010\" docs/harness/architecture-2026.html → 0. 둘 다 이번에 추가된 카탈로그 행의 고유어이므로, 0 이면 이 설계서가 그 행을 옮겨 적지 않는다는 것이 직접 관측된다. (보조 근거로 스크립트 0 신설은 유지한다 — 이 설계서가 단언하는 '신설 스크립트 8개'가 그대로 참이라는 별개의 축이다.)"
+          "sha": "f277a60",
+          "why": "2026-08-10 재검토 (resume-test --self-test 신설). 조치 커밋 f277a60 이 센서 카탈로그의 GB-06 행에 --self-test 표면과 신설 계기(플래그 값을 파일로 센 오측)를 **더했다**. 이 설계서가 자기시험을 언급하는 자리는 :2944-2945 한 곳이고 거기서 세는 것은 **'신설 게이트 셋'의 음성 시험**이다 — 문맥이 그 셋을 명시한다(*'신설 게이트 셋 중 둘에 시험을 안 붙였다는 지적을 두 회차 연속 받고 붙였다'*). 저장소 전체 자기시험의 전칭 열거가 아니라 그 세 게이트에 대한 서사이므로 네 번째가 생겨도 거짓이 되지 않는다. 판별 명령: grep -c 'resume-test.*self-test' docs/harness/architecture-2026.html → 0 · grep -c 'shellReadFiles' → 0 · grep -c 'LiteralPath' → 0 (이번 추가분의 고유어 셋 전부 부재). **반증력 확인**: 같은 파일에 grep -c 'self-test' → 2 이므로 이 0 들은 '단어가 원래 안 나온다'가 아니라 '이 추가분을 옮겨 적지 않는다'를 가리킨다. 이전 회차(2026-08-09 `0e9c616`, ADR-0010 SOLID 행 추가)의 판정도 같은 축에서 유효하다 — grep -c 'SOLID' docs/harness/architecture-2026.html → 0 · grep -c 'ADR-0010' → 0. **dep 당 항목은 하나다** — 같은 dep 으로 두 번째 항목을 덧붙였더니 C2 가 계속 빨갰다(첫 항목만 읽힌다). 그래서 최신 sha 로 갱신하고 앞 회차의 근거를 이 문장에 합쳤다."
         },
         {
           "dep": "harness/policy/README.md",
@@ -229,6 +229,11 @@
           "dep": "harness/recurrence.md",
           "sha": "07aec0d",
           "why": "2026-08-09 재검토 (R18 5회차 · 재현율 베이스라인 0.2 기록). 조치 커밋 07aec0d 가 대장의 R18 회차를 4→5 로 올렸다. **회차는 표의 행에 산다** — 이 문서는 R18 **행이 없고** 언급은 전부 범위 표기(R1–R18)뿐이며 그 경계는 안 움직였다. 반증 명령: grep -c \"<strong>R18</strong>\" <이 문서> → 0. 이 문서가 실제로 옮겨 적는 회차(R13·R17)는 같은 PR 에서 함께 고쳤다."
+        },
+        {
+          "dep": "harness/sensor-catalog.md",
+          "sha": "f277a60",
+          "why": "2026-08-10 재검토 (resume-test --self-test 신설). 이 보고서가 음성 시험을 세는 자리는 :895 한 행이고 그 행의 두 번째 칸이 **CI** 다 — 즉 '저장소에 있는 자기시험 전부'가 아니라 **CI 가 돌리는 것**의 열거다. 새 --self-test 는 ci.yml 에 배선하지 않았으므로 그 행은 여전히 참이다. 판별 명령: grep -c 'resume-test.*self-test' docs/harness/workflow-report.html → 0 · grep -c 'resume-test' .github/workflows/ci.yml → 0(배선 부재가 곧 그 행이 참인 근거다). **반증력 확인**: 같은 파일에 grep -c 'self-test' → 5 이므로 0 은 단어 부재가 아니라 이 축의 부재다. ⚠️ **이 면제는 R2 노출을 만든다** — CI 가 안 돌리는 음성 시험은 '분류는 옳은데 집행이 0' 이다. 배선할지는 사람 판정이고, 배선하면 :895 행에 네 번째 항목이 붙어 이 면제는 소멸한다."
         }
       ]
     },
