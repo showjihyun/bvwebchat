@@ -1,0 +1,58 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "fix/harness-progress-lines-pin",
+  "edge_legal": true,
+  "exit_hint": "하네스 변경 후 → python harness/phase.py enter REVIEW  (가드: 트랙 B 회귀 평가 아티팩트, changelog 동행)",
+  "forced": false,
+  "from": "IDLE",
+  "guards": [],
+  "head_sha": "ba4b993b41c8f215c63bcd096a89d429e4bee3cb",
+  "reason": null,
+  "rq": "HARNESS-C7-PIN",
+  "schema": 1,
+  "seq": 348,
+  "session": {
+    "acceptance": [
+      "docs/harness/workflow-report.html 에서 progress-lines 못박기가 사라지고 재현 명령만 남는다",
+      "doc-freshness --pr --base origin/main 이 exit 0",
+      "원장 행을 1줄 더해도 C7 이 발화하지 않는다 — 실제로 더해서 확인한다",
+      "docs/harness/changelog.md 기록 · 트랙 B 아티팩트 커밋"
+    ],
+    "done": [
+      "LEDGER-C7 을 IDLE 로 닫고 원장 축(doc-freshness C7)은 그 브랜치 체크포인트에 보존",
+      "브랜치 fix/RQ-10-b-nickname-authority 를 origin/main 에서 분기 · docs/progress.md 에 착수 행",
+      "PLAN→RED 전이 (no_pending_spec · session_declared · tree_clean 전원 PASS)",
+      "게이트 RQ ID 를 RQ-10 으로 두는 결정을 decisions.jsonl 에 기록",
+      "RED 완료 — tests/integration/rq-10-b-nickname-authority.test.ts 2건 커밋(f3bb3eb). 실 서버 + 실 socket.io-client(URL 주입 shim), 전 전송 목 아님",
+      "GREEN 완료 — room.ts handleJoin 이 socket.data.identifiedNickname 우선(기존 필드, protocol.ts 주석이 이 용도를 예고), useChat.ts identify ack 이 setSelfNickname(res.nickname) 채택. check.mjs 22파일 78/78 · golden-coverage --rq RQ-10 GA-09/11 2/2 (f9256ec)",
+      "라이브 재현으로 수정 확인 — 브라우저 5탭 전원 alice 입력 → 서버가 alice~alice-5 유일화 → 각 탭이 자기 확정 닉네임에 나 배지, room 참여 후에도 참여자 패널 5명 전원 유일화 유지",
+      "EVAL 판정 FAIL — F-1 하나(doc-freshness C7). 코드·테스트에는 FAIL 사유 없음(뮤테이션 검증 통과 · RED 이후 tests 무변경 · 골든 2/2 · policy-lint P1~P14 PASS)"
+    ],
+    "goal": "doc-freshness C7 이 docs/harness/workflow-report.html 에서 docs/progress.md 의 줄 수를 못박게 두었는데, 그 값은 모든 RQ 가 원장 행을 추가할 때마다 반드시 움직인다. 게이트가 정직하게 일한 대가로 빨개지므로, 직전 네 PR 은 매번 숫자를 손으로 맞춰 왔다 — 증상 관리이지 처방이 아니다. C7 자신의 안내문이 이 경우의 처방을 이미 적고 있다",
+    "next": [
+      "harness-audit Phase 1 일괄 점검 9종을 실행한다"
+    ],
+    "open_questions": [
+      "scripts/golden-coverage.mjs 가 접미사 RQ ID 를 거부한다(--rq RQ-10-b exit 1) — scripts/check.mjs 는 같은 구멍을 이미 닫았고 CLAUDE.md 도 접미사 허용을 명문화했는데 골든 커버리지만 남았다. scripts/** 는 HARNESS 관할이라 이 PR 에서 못 고친다",
+      "세션 토큰이 localStorage 라 같은 브라우저의 두 번째 탭이 입력한 닉네임을 무시하고 첫 사용자로 합류한다(라이브 5탭 실측). requirements.md RQ-10 의 '같은 브라우저에서 새로고침하면 동일 사용자' 해석이 걸려 스펙 판단이 선행돼야 한다 — 별도 RQ"
+    ]
+  },
+  "to": "HARNESS",
+  "ts": "2026-08-11T08:08:06.589Z",
+  "write_allow": [
+    ".claude/**",
+    "harness/**",
+    "scripts/**",
+    ".github/**",
+    "docs/harness/**",
+    "docs/deploy.md",
+    "README.md",
+    "evals/*.md",
+    "evals/results/**",
+    "_workspace/**",
+    "docs/progress.md",
+    ".gitignore",
+    "CLAUDE.md",
+    "eslint.config.js"
+  ]
+}
