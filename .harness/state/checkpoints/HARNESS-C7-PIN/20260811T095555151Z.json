@@ -1,0 +1,59 @@
+{
+  "actor": "harness/phase.py",
+  "branch": "fix/harness-progress-lines-pin",
+  "edge_legal": true,
+  "exit_hint": "APPROVE면 → python harness/phase.py enter RELEASE / REQUEST_CHANGES면 → enter GREEN",
+  "forced": false,
+  "from": "HARNESS",
+  "guards": [
+    {
+      "ms": 234,
+      "name": "track_b_passing",
+      "ok": true
+    },
+    {
+      "ms": 77,
+      "name": "changelog_updated",
+      "ok": true
+    }
+  ],
+  "head_sha": "40ef013117553715b337e7034958d2927d3e6d7e",
+  "reason": null,
+  "rq": "HARNESS-C7-PIN",
+  "schema": 1,
+  "seq": 349,
+  "session": {
+    "acceptance": [
+      "docs/harness/workflow-report.html 에서 progress-lines 못박기가 사라지고 재현 명령만 남는다",
+      "doc-freshness --pr --base origin/main 이 exit 0",
+      "원장 행을 1줄 더해도 C7 이 발화하지 않는다 — 실제로 더해서 확인한다",
+      "docs/harness/changelog.md 기록 · 트랙 B 아티팩트 커밋"
+    ],
+    "done": [
+      "LEDGER-C7 을 IDLE 로 닫고 원장 축(doc-freshness C7)은 그 브랜치 체크포인트에 보존",
+      "브랜치 fix/RQ-10-b-nickname-authority 를 origin/main 에서 분기 · docs/progress.md 에 착수 행",
+      "PLAN→RED 전이 (no_pending_spec · session_declared · tree_clean 전원 PASS)",
+      "게이트 RQ ID 를 RQ-10 으로 두는 결정을 decisions.jsonl 에 기록",
+      "RED 완료 — tests/integration/rq-10-b-nickname-authority.test.ts 2건 커밋(f3bb3eb). 실 서버 + 실 socket.io-client(URL 주입 shim), 전 전송 목 아님",
+      "GREEN 완료 — room.ts handleJoin 이 socket.data.identifiedNickname 우선(기존 필드, protocol.ts 주석이 이 용도를 예고), useChat.ts identify ack 이 setSelfNickname(res.nickname) 채택. check.mjs 22파일 78/78 · golden-coverage --rq RQ-10 GA-09/11 2/2 (f9256ec)",
+      "라이브 재현으로 수정 확인 — 브라우저 5탭 전원 alice 입력 → 서버가 alice~alice-5 유일화 → 각 탭이 자기 확정 닉네임에 나 배지, room 참여 후에도 참여자 패널 5명 전원 유일화 유지",
+      "EVAL 판정 FAIL — F-1 하나(doc-freshness C7). 코드·테스트에는 FAIL 사유 없음(뮤테이션 검증 통과 · RED 이후 tests 무변경 · 골든 2/2 · policy-lint P1~P14 PASS)",
+      "workflow-report.html 의 progress-lines · pending-rows 못박기를 재현 명령으로 교체(보류표 처방 후보 ① 이행). changelog-rows 138 · changelog-last-date 2026-08-11 동기화",
+      "실증 — 원장에 2줄 추가 후 doc-freshness --pr exit 0 (변경 전에는 1줄에 exit 1)",
+      "트랙 B 전수 재실행 6 pass / 0 fail (아티팩트 40ef013) — GB-06 재개 시험 cold 5/5 · 파일 7/7 · 2.35분"
+    ],
+    "goal": "doc-freshness C7 이 docs/harness/workflow-report.html 에서 docs/progress.md 의 줄 수를 못박게 두었는데, 그 값은 모든 RQ 가 원장 행을 추가할 때마다 반드시 움직인다. 게이트가 정직하게 일한 대가로 빨개지므로, 직전 네 PR 은 매번 숫자를 손으로 맞춰 왔다 — 증상 관리이지 처방이 아니다. C7 자신의 안내문이 이 경우의 처방을 이미 적고 있다",
+    "next": [
+      "review-gate 스킬 — reviewer APPROVE 가 머지 필요조건",
+      "머지 후 fix/RQ-10-b-nickname-authority 를 origin/main 에 리베이스하면 C7 이 초록이 되고, 그 브랜치의 evaluator FAIL(F-1) 사유가 사라진다"
+    ],
+    "open_questions": [
+      "핸드북 감사 3기 결과(문서 품질·반증·누락)가 나왔다. 앞 감사 HIGH 10건 중 4건만 CONFIRMED, 5건 OVERSTATED. 새 발견의 핵심은 하네스 축은 자기 한계를 정직하게 적는데 제품 결함(후속 RQ 5건)·비용·보류표 68행 축에는 그 정직함이 없다는 것 — 별도 PR 이고 아직 원장에 행이 없다"
+    ]
+  },
+  "to": "REVIEW",
+  "ts": "2026-08-11T09:55:55.149Z",
+  "write_allow": [
+    "_workspace/**"
+  ]
+}
